@@ -1,0 +1,23 @@
+name: Bug report
+description: Report a reproducible renderer, layout, or build defect
+title: "[Bug]: "
+body:
+  - type: textarea
+    id: result
+    attributes:
+      label: Observed result
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include browser and camera/layout mode, but no secrets or private device data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true

@@ -1,0 +1,21 @@
+name: Feature request
+description: Propose a reusable topology or interaction capability
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Engineering problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed model or interaction
+    validations:
+      required: true
+  - type: dropdown
+    id: evidence
+    attributes:
+      label: Evidence level
+      options: [CODE_PROVEN, RTL_PROVEN, RUNTIME_OBSERVED, INFERRED, Not applicable]

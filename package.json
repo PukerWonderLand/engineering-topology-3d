@@ -1,0 +1,34 @@
+{
+  "name": "engineering-topology-3d",
+  "version": "0.1.0",
+  "description": "Evidence-aware 3D framework for engineering systems and causal data flows.",
+  "private": false,
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.15.1",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 4314",
+    "build": "vite build",
+    "lint": "tsc --noEmit",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 4314"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.7",
+    "@react-three/fiber": "9.7.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "three": "0.184.0",
+    "three-stdlib": "2.36.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/three": "0.185.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "typescript": "5.9.3",
+    "vite": "8.0.13"
+  },
+  "type": "module"
+}

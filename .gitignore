@@ -1,0 +1,15 @@
+/node_modules/
+/dist/
+/static-dist/
+/coverage/
+/work/
+/.wrangler/
+/.next/
+/.vinext/
+*.tsbuildinfo
+.env*
+!.env.example
+*.pem
+*.key
+npm-debug.log*
+.DS_Store
