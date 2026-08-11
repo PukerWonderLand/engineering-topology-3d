@@ -2,7 +2,7 @@
 
 An evidence-aware 3D framework for visualizing physical systems, software stacks, causal journeys, and engineering data flows directly in the browser.
 
-[Live demo](https://pukerwonderland.github.io/engineering-topology-3d/) · [中文说明](docs/README.zh-CN.md) · [Architecture](docs/architecture.md) · [Security boundary](docs/security-boundary.md)
+[Live demo](https://pukerwonderland.github.io/engineering-topology-3d/) · [中文说明](docs/README.zh-CN.md) · [AI authoring](docs/ai-authoring.md) · [Feature baseline](docs/feature-preservation-checklist.md) · [Architecture](docs/architecture.md) · [Security boundary](docs/security-boundary.md)
 
 ## Why this project exists
 
@@ -13,7 +13,7 @@ Engineering diagrams usually separate hardware, software, runtime state, and evi
 - source-proven facts, runtime observations, and explicit inference;
 - overview labels and focus-mode function contracts.
 
-The current `v0.1` release ships one reference implementation: an anonymized T113 ARM-XVC gateway connecting an x86 FPGA workstation, LAN, USB hub, JTAG probes, and FPGA devices. It demonstrates the visualization model; it is not a deployment guide or a live device-management service.
+The current `v0.2` release uses one SceneDefinition 2.0 enhanced renderer for every domain. The anonymized T113 ARM-XVC baseline and the NVMe Bitmap example both receive the complete system index, focus mode, labels, journeys, function contracts, evidence model, controls, fullscreen behavior, and localization without domain-specific React pages. These examples demonstrate the visualization model; they are not deployment guides or live device-management services.
 
 ## Features
 
@@ -26,6 +26,63 @@ The current `v0.1` release ships one reference implementation: an anonymized T11
 - Evidence levels: `CODE_PROVEN`, `RTL_PROVEN`, `RUNTIME_OBSERVED`, and `INFERRED`.
 - Chinese and English interface switching.
 - Pure static output suitable for GitHub Pages, Nginx, or any object store.
+- Versioned `SceneDefinition` schema with YAML parsing, relational validation, and a generic scene renderer.
+- Drop-in scene discovery from `examples/<scene-id>/topology.yaml`; open it with `?scene=<scene-id>`.
+
+## AI knowledge adaptation quick start
+
+One scene has exactly one runtime knowledge file:
+
+```text
+examples/<scene-id>/topology.yaml
+```
+
+For an existing scene, edit only that file. For a new knowledge domain, create one new `examples/<scene-id>/topology.yaml`. Supporting `source-inventory.md` and `acceptance-checklist.md` files document evidence and acceptance but do not drive rendering.
+
+An authoring AI should read, in order:
+
+1. [Feature preservation checklist](docs/feature-preservation-checklist.md) — determines which existing capabilities must not regress.
+2. [AI scene authoring guide](docs/ai-authoring.md) — defines evidence, entity, journey, layout and publication rules.
+3. [SceneDefinition Schema](spec/scene-definition.schema.json) — defines the accepted YAML contract.
+4. The closest existing example under `examples/` — provides structure, not reusable facts.
+
+Copy this prompt into another AI:
+
+```text
+Adapt the supplied engineering materials into an Engineering Topology 3D scene.
+
+Scene ID: <scene-id>
+Source materials: <paths or attached documents>
+Engineering questions: <questions the scene must answer>
+
+This is a knowledge-only task. The only runtime knowledge file you may create
+or edit is examples/<scene-id>/topology.yaml.
+
+Do not modify src/, demo/, spec/, scripts/, tests/, package.json,
+vite.config.ts, renderer components, interaction code or CSS.
+
+Before editing, read:
+1. docs/feature-preservation-checklist.md
+2. docs/ai-authoring.md
+3. spec/scene-definition.schema.json
+4. the closest examples/*/topology.yaml
+
+Model zones, nodes, edges, functions, journeys, layout, zhCN/enUS text and
+evidence levels. Keep CODE_PROVEN, RTL_PROVEN, RUNTIME_OBSERVED and INFERRED
+separate. Never infer a physical path from software code or promote a target
+design into a runtime fact. Put unresolved claims in INFERRED and add a caveat.
+
+Preserve every applicable COMMON and GENERIC item in the feature checklist.
+If the current Schema cannot express a required capability, do not change the
+renderer or invent unsupported fields. Report it as a framework gap.
+
+Use the smallest viable workflow: estimate the knowledge scope, implement the
+single YAML file, then run pnpm validate:scenes, pnpm lint and pnpm build.
+Expand inspection only when validation fails or evidence is ambiguous.
+
+The final report must include changed files, entity counts, evidence boundaries,
+checklist scope, validation results, unverified items and whether src/ changed.
+```
 
 ## Repository map
 
@@ -35,8 +92,11 @@ engineering-topology-3d/
 ├── demo/                    # browser entry point
 ├── docs/                    # architecture, evidence and deployment notes
 ├── examples/
-│   └── t113-arm-xvc/        # anonymized reference model and acceptance notes
+│   ├── t113-arm-xvc/        # anonymized reference model and acceptance notes
+│   └── nvme-bitmap/         # schema-driven cross-domain example
 ├── public/                  # static public assets
+├── scripts/                 # scene validation commands
+├── spec/                    # versioned SceneDefinition JSON Schema
 ├── src/                     # renderer, interaction, layout, data and i18n source
 ├── tests/                   # small contract and static-build checks
 ├── LICENSE                  # Apache-2.0 source license
@@ -61,6 +121,7 @@ Open `http://127.0.0.1:4314/`.
 
 ```bash
 pnpm lint
+pnpm validate:scenes
 pnpm test
 ```
 
@@ -70,7 +131,7 @@ The static site is emitted to `dist/`. Asset URLs are relative, so the same outp
 
 The T113 example intentionally contains only architecture-level information. It excludes real network addresses, JTAG serial numbers, credentials, bitstreams, flash images, operational logs, and production deployment scripts. Hardware writes must always rediscover the actual cable, USB chain, FPGA, and flash identity.
 
-The renderer and interaction mechanics are reusable today, while complete schema-driven scene generation is still on the roadmap. See [roadmap.md](docs/roadmap.md) for the exact boundary instead of assuming every scene element is already data-driven.
+The T113 reference scene is the default URL. Every SceneDefinition 2.0 scene is loaded from `examples/*/topology.yaml` into the same enhanced renderer; for example, open `?scene=nvme-bitmap`. See [AI scene authoring](docs/ai-authoring.md) for the evidence, modeling, layout, localization, and validation contract.
 
 ## Contributing
 
