@@ -4,59 +4,37 @@ import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState }
 import type { CameraPreset } from "./PhysicalTopology3D";
 import type { GlobalLabelLayoutMode } from "./global-label-layout";
 import { LocaleProvider, translationVariants, useLocale } from "./i18n/locale-context";
-import {
-  edgeMeta,
-  driverCausalLayerMeta,
-  driverJourneyModuleRoleByNodeId,
-  driverJourneyOrder,
-  driverJourneys,
-  focusModuleGroups,
-  functionInteractions,
-  planeMeta,
-  runtimeFacts,
-  storageTrees,
-  systemTree,
-  topologyEdges,
-  topologyNodes,
-  viewOptions,
-  type EdgeKind,
-  type DriverCausalLayer,
-  type DriverFunctionContract,
-  type DriverJourney,
-  type DriverJourneyId,
-  type TopologyEdge,
-  type TopologyNode,
-  type ViewKey,
-} from "./topology-data";
+import { buildEnhancedSceneRuntime } from "./enhanced-scene-runtime";
+import type {
+  DriverFunctionContract,
+  DriverJourney,
+  EnhancedSceneRuntime,
+  EnhancedStorageTree,
+  EnhancedSystemTreeGroup,
+  EnhancedTopologyEdge as TopologyEdge,
+  EnhancedTopologyNode as TopologyNode,
+} from "./enhanced-scene-types";
+import { getScene } from "./scene-loader";
+import type { NormalizedSceneDefinition } from "./scene-definition";
 
-const allEdgeKinds = Object.keys(edgeMeta) as EdgeKind[];
-const allDriverCausalLayers = Object.keys(driverCausalLayerMeta) as DriverCausalLayer[];
+type EdgeKind = string;
+type DriverCausalLayer = string;
+type DriverJourneyId = string;
+type ViewKey = string;
+
 const DEFAULT_PIPE_THICKNESS = 4.5;
-const PIPE_THICKNESS_STORAGE_KEY = "t113-xvc-pipe-thickness";
 const DEFAULT_HUD_DISTANCE = 1.2;
-const HUD_DISTANCE_STORAGE_KEY = "t113-xvc-hud-distance";
 const DEFAULT_MODULE_LABEL_DISTANCE = 1.2;
-const MODULE_LABEL_DISTANCE_STORAGE_KEY = "t113-xvc-module-label-distance";
 const DEFAULT_LABEL_LAYOUT_MODE: GlobalLabelLayoutMode = "module";
-const LABEL_LAYOUT_MODE_STORAGE_KEY = "t113-xvc-label-layout-mode";
 const DEFAULT_LABEL_LINE_THICKNESS = 1.5;
-const LABEL_LINE_THICKNESS_STORAGE_KEY = "t113-xvc-label-line-thickness";
 const DEFAULT_MODULE_LABEL_SCALE = 1;
-const MODULE_LABEL_SCALE_STORAGE_KEY = "t113-xvc-module-label-scale";
 const DEFAULT_FOCUS_ANNOTATION_SCALE = 1;
-const FOCUS_ANNOTATION_SCALE_STORAGE_KEY = "t113-xvc-focus-annotation-scale";
 const DEFAULT_FOCUS_HUD_TEXT_SCALE = 1;
-const FOCUS_HUD_TEXT_SCALE_STORAGE_KEY = "t113-xvc-focus-hud-text-scale";
 const DEFAULT_SUB_LABEL_DISTANCE = 30;
-const SUB_LABEL_DISTANCE_STORAGE_KEY = "t113-xvc-sub-label-distance";
 const DEFAULT_SUB_LABEL_FADE_RANGE = 8;
-const SUB_LABEL_FADE_RANGE_STORAGE_KEY = "t113-xvc-sub-label-fade-range";
 const DEFAULT_FAR_FADE_START = 48;
-const FAR_FADE_START_STORAGE_KEY = "t113-xvc-far-fade-start";
 const DEFAULT_FAR_BLOCK_OPACITY = 0.22;
-const FAR_BLOCK_OPACITY_STORAGE_KEY = "t113-xvc-far-block-opacity";
 const DEFAULT_FAR_FLOW_OPACITY = 0.55;
-const FAR_FLOW_OPACITY_STORAGE_KEY = "t113-xvc-far-flow-opacity";
 
 function defaultJourneyStepId(journey: DriverJourney) {
   return journey.steps.find((step) => step.kind === "function")?.id ?? journey.steps[0]?.id ?? "";
@@ -176,6 +154,10 @@ function SystemIndexContent({
   mode,
   selectedId,
   nodeMap,
+  systemTree,
+  storageTrees,
+  planeMeta,
+  boundaryNote,
   onModeChange,
   onSelectNode,
   onMobileClose,
@@ -183,6 +165,10 @@ function SystemIndexContent({
   mode: SystemIndexMode;
   selectedId: string;
   nodeMap: ReadonlyMap<string, TopologyNode>;
+  systemTree: EnhancedSystemTreeGroup[];
+  storageTrees: EnhancedStorageTree[];
+  planeMeta: EnhancedSceneRuntime["planeMeta"];
+  boundaryNote: string;
   onModeChange: (mode: SystemIndexMode) => void;
   onSelectNode: (id: string) => void;
   onMobileClose?: () => void;
@@ -227,7 +213,7 @@ function SystemIndexContent({
           </div>
         ) : (
           <div className="storage-tree">
-            <p className="boundary-note">{tr("目录来自复盘、SOP 与生产证据索引；本页不会实时连接 T113、USB 或 FPGA，不能把静态模型当作当前在线状态。")}</p>
+            <p className="boundary-note">{boundaryNote}</p>
             {storageTrees.map((tree) => (
               <details key={tree.id} open>
                 <summary>
@@ -252,44 +238,90 @@ function SystemIndexContent({
   );
 }
 
-export default function TopologyExplorer() {
-  return <LocaleProvider><TopologyExplorerContent /></LocaleProvider>;
+export function EnhancedTopologyExplorer({ scene }: { scene: NormalizedSceneDefinition }) {
+  return <LocaleProvider><TopologyExplorerContent scene={scene} /></LocaleProvider>;
 }
 
-function TopologyExplorerContent() {
+export default function TopologyExplorer() {
+  const scene = getScene("t113-arm-xvc");
+  if (!scene) throw new Error("Default scene t113-arm-xvc is missing");
+  return <EnhancedTopologyExplorer scene={scene} />;
+}
+
+function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }) {
   const { locale, setLocale, tr } = useLocale();
+  const runtime = useMemo(() => buildEnhancedSceneRuntime(scene, locale), [scene, locale]);
+  useEffect(() => {
+    document.title = `${runtime.title} | Engineering Topology 3D`;
+    document.querySelector<HTMLMetaElement>('meta[name="description"]')
+      ?.setAttribute("content", runtime.description);
+  }, [runtime.description, runtime.title]);
+  const {
+    edgeMeta,
+    driverCausalLayerMeta,
+    driverJourneyModuleRoleByNodeId,
+    driverJourneyOrder,
+    driverJourneys,
+    focusModuleGroups,
+    functionInteractions,
+    planeMeta,
+    runtimeFacts,
+    storageTrees,
+    systemTree,
+    topologyEdges,
+    topologyNodes,
+    viewOptions,
+  } = runtime;
+  const allEdgeKinds = useMemo(() => Object.keys(edgeMeta), [edgeMeta]);
+  const allDriverCausalLayers = useMemo(() => Object.keys(driverCausalLayerMeta), [driverCausalLayerMeta]);
+  const defaultJourneyId = driverJourneyOrder[0];
+  const defaults = runtime.displayDefaults;
+  const storageKey = useCallback((suffix: string) => `${runtime.sceneId}-${suffix}`, [runtime.sceneId]);
+  const PIPE_THICKNESS_STORAGE_KEY = storageKey("pipe-thickness");
+  const HUD_DISTANCE_STORAGE_KEY = storageKey("hud-distance");
+  const MODULE_LABEL_DISTANCE_STORAGE_KEY = storageKey("module-label-distance");
+  const LABEL_LAYOUT_MODE_STORAGE_KEY = storageKey("label-layout-mode");
+  const LABEL_LINE_THICKNESS_STORAGE_KEY = storageKey("label-line-thickness");
+  const MODULE_LABEL_SCALE_STORAGE_KEY = storageKey("module-label-scale");
+  const FOCUS_ANNOTATION_SCALE_STORAGE_KEY = storageKey("focus-annotation-scale");
+  const FOCUS_HUD_TEXT_SCALE_STORAGE_KEY = storageKey("focus-hud-text-scale");
+  const SUB_LABEL_DISTANCE_STORAGE_KEY = storageKey("sub-label-distance");
+  const SUB_LABEL_FADE_RANGE_STORAGE_KEY = storageKey("sub-label-fade-range");
+  const FAR_FADE_START_STORAGE_KEY = storageKey("far-fade-start");
+  const FAR_BLOCK_OPACITY_STORAGE_KEY = storageKey("far-block-opacity");
+  const FAR_FLOW_OPACITY_STORAGE_KEY = storageKey("far-flow-opacity");
   const scenePanelRef = useRef<HTMLElement>(null);
   const [PhysicalTopology3D, setPhysicalTopology3D] = useState<
     null | typeof import("./PhysicalTopology3D").default
   >(null);
-  const [view, setView] = useState<ViewKey>("overview");
+  const [view, setView] = useState<ViewKey>(runtime.defaultView);
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>("iso");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [pathStart, setPathStart] = useState<string | null>(null);
   const [pathEnd, setPathEnd] = useState<string | null>(null);
   const [flowEnabled, setFlowEnabled] = useState(true);
-  const [pipeThickness, setPipeThickness] = useState(DEFAULT_PIPE_THICKNESS);
-  const [hudDistance, setHudDistance] = useState(DEFAULT_HUD_DISTANCE);
-  const [moduleLabelDistance, setModuleLabelDistance] = useState(DEFAULT_MODULE_LABEL_DISTANCE);
-  const [labelLayoutMode, setLabelLayoutMode] = useState<GlobalLabelLayoutMode>(DEFAULT_LABEL_LAYOUT_MODE);
-  const [labelLineThickness, setLabelLineThickness] = useState(DEFAULT_LABEL_LINE_THICKNESS);
-  const [moduleLabelScale, setModuleLabelScale] = useState(DEFAULT_MODULE_LABEL_SCALE);
-  const [subLabelDistance, setSubLabelDistance] = useState(DEFAULT_SUB_LABEL_DISTANCE);
-  const [subLabelFadeRange, setSubLabelFadeRange] = useState(DEFAULT_SUB_LABEL_FADE_RANGE);
-  const [farFadeStart, setFarFadeStart] = useState(DEFAULT_FAR_FADE_START);
-  const [farBlockOpacity, setFarBlockOpacity] = useState(DEFAULT_FAR_BLOCK_OPACITY);
-  const [farFlowOpacity, setFarFlowOpacity] = useState(DEFAULT_FAR_FLOW_OPACITY);
-  const [focusAnnotationScale, setFocusAnnotationScale] = useState(DEFAULT_FOCUS_ANNOTATION_SCALE);
-  const [focusHudTextScale, setFocusHudTextScale] = useState(DEFAULT_FOCUS_HUD_TEXT_SCALE);
+  const [pipeThickness, setPipeThickness] = useState(defaults.pipeThickness ?? DEFAULT_PIPE_THICKNESS);
+  const [hudDistance, setHudDistance] = useState(defaults.hudDistance ?? DEFAULT_HUD_DISTANCE);
+  const [moduleLabelDistance, setModuleLabelDistance] = useState(defaults.moduleLabelDistance ?? DEFAULT_MODULE_LABEL_DISTANCE);
+  const [labelLayoutMode, setLabelLayoutMode] = useState<GlobalLabelLayoutMode>(defaults.labelLayoutMode ?? DEFAULT_LABEL_LAYOUT_MODE);
+  const [labelLineThickness, setLabelLineThickness] = useState(defaults.labelLineThickness ?? DEFAULT_LABEL_LINE_THICKNESS);
+  const [moduleLabelScale, setModuleLabelScale] = useState(defaults.moduleLabelScale ?? DEFAULT_MODULE_LABEL_SCALE);
+  const [subLabelDistance, setSubLabelDistance] = useState(defaults.subLabelDistance ?? DEFAULT_SUB_LABEL_DISTANCE);
+  const [subLabelFadeRange, setSubLabelFadeRange] = useState(defaults.subLabelFadeRange ?? DEFAULT_SUB_LABEL_FADE_RANGE);
+  const [farFadeStart, setFarFadeStart] = useState(defaults.farFadeStart ?? DEFAULT_FAR_FADE_START);
+  const [farBlockOpacity, setFarBlockOpacity] = useState(defaults.farBlockOpacity ?? DEFAULT_FAR_BLOCK_OPACITY);
+  const [farFlowOpacity, setFarFlowOpacity] = useState(defaults.farFlowOpacity ?? DEFAULT_FAR_FLOW_OPACITY);
+  const [focusAnnotationScale, setFocusAnnotationScale] = useState(defaults.focusAnnotationScale ?? DEFAULT_FOCUS_ANNOTATION_SCALE);
+  const [focusHudTextScale, setFocusHudTextScale] = useState(defaults.focusHudTextScale ?? DEFAULT_FOCUS_HUD_TEXT_SCALE);
   const [lineSettingsOpen, setLineSettingsOpen] = useState(false);
   const [edgeKinds, setEdgeKinds] = useState<Set<EdgeKind>>(new Set(allEdgeKinds));
   const [leftMode, setLeftMode] = useState<SystemIndexMode>("system");
   const [mobilePanel, setMobilePanel] = useState<"none" | "left" | "right">("none");
   const [focusedModuleId, setFocusedModuleId] = useState<string | null>(null);
   const [focusedFunctionIndex, setFocusedFunctionIndex] = useState(0);
-  const [focusedJourneyId, setFocusedJourneyId] = useState<DriverJourneyId>("send");
-  const [focusedJourneyStepId, setFocusedJourneyStepId] = useState(defaultJourneyStepId(driverJourneys.send));
+  const [focusedJourneyId, setFocusedJourneyId] = useState<DriverJourneyId>(driverJourneyOrder[0]);
+  const [focusedJourneyStepId, setFocusedJourneyStepId] = useState(defaultJourneyStepId(driverJourneys[driverJourneyOrder[0]]));
   const [enabledCausalLayers, setEnabledCausalLayers] = useState<Set<DriverCausalLayer>>(new Set(allDriverCausalLayers));
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenIndexOpen, setFullscreenIndexOpen] = useState(true);
@@ -576,13 +608,13 @@ function TopologyExplorerContent() {
     clearPath();
     setFocusedModuleId(id);
     setFocusedFunctionIndex(0);
-    setFocusedJourneyId("send");
-    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys.send));
+    setFocusedJourneyId(defaultJourneyId);
+    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys[defaultJourneyId]));
     setEnabledCausalLayers(new Set(allDriverCausalLayers));
     setFullscreenIndexOpen(false);
     setSelectedId(id);
     setMobilePanel("none");
-  }, [clearPath, nodeMap]);
+  }, [allDriverCausalLayers, clearPath, defaultJourneyId, driverJourneys, nodeMap]);
 
   const selectFocusedJourney = useCallback((journeyId: DriverJourneyId) => {
     const journey = driverJourneys[journeyId];
@@ -592,7 +624,7 @@ function TopologyExplorerContent() {
       if (journey.steps.some((step) => step.layers.some((layer) => current.has(layer)))) return current;
       return new Set(journey.steps[0]?.layers ?? ["payload"]);
     });
-  }, []);
+  }, [driverJourneys]);
 
   const toggleCausalLayer = useCallback((layer: DriverCausalLayer) => {
     setEnabledCausalLayers((current) => {
@@ -607,30 +639,30 @@ function TopologyExplorerContent() {
   const exitFocus = useCallback(() => {
     setFocusedModuleId(null);
     setFocusedFunctionIndex(0);
-    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys.send));
+    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys[defaultJourneyId]));
     setSelectedId("");
-  }, []);
+  }, [defaultJourneyId, driverJourneys]);
 
   const clearSelection = useCallback(() => {
     clearPath();
     setFocusedModuleId(null);
     setFocusedFunctionIndex(0);
-    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys.send));
+    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys[defaultJourneyId]));
     setSelectedId("");
-  }, [clearPath]);
+  }, [clearPath, defaultJourneyId, driverJourneys]);
 
   const resetView = useCallback(() => {
-    setView("overview");
+    setView(runtime.defaultView);
     setCameraPreset("iso");
     setAnnotationsEnabled(true);
     setFocusedModuleId(null);
     setFocusedFunctionIndex(0);
-    setFocusedJourneyId("send");
-    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys.send));
+    setFocusedJourneyId(defaultJourneyId);
+    setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys[defaultJourneyId]));
     setEnabledCausalLayers(new Set(allDriverCausalLayers));
     setSelectedId("");
     clearPath();
-  }, [clearPath]);
+  }, [allDriverCausalLayers, clearPath, defaultJourneyId, driverJourneys, runtime.defaultView]);
 
   const toggleFullscreen = useCallback(async () => {
     const target = scenePanelRef.current;
@@ -701,8 +733,8 @@ function TopologyExplorerContent() {
         <div className="brand-block">
           <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
           <div>
-            <p className="eyebrow">X86 / TRUSTED LAN / T113 ARM-XVC / PHYSICAL JTAG</p>
-            <h1>{tr("T113 ARM-XVC 远程 FPGA 调试架构")}</h1>
+            <p className="eyebrow">{runtime.sceneId.toUpperCase()} · SCENEDEFINITION 2.0</p>
+            <h1>{runtime.title}</h1>
           </div>
         </div>
 
@@ -721,7 +753,7 @@ function TopologyExplorerContent() {
             <button type="button" className={locale === "en-US" ? "active" : ""} onClick={() => setLocale("en-US")} aria-pressed={locale === "en-US"}>EN</button>
           </div>
           <button className="icon-button mobile-only" onClick={() => setMobilePanel("left")} aria-label={tr("打开系统导航")}>{tr("树")}</button>
-          <button className="icon-button" onClick={resetView} title={tr("返回 x86 + T113 + USB/JTAG/FPGA 物理全景 (R)")}>ALL</button>
+          <button className="icon-button" onClick={resetView} title={tr("返回场景物理全景 (R)")}>ALL</button>
           <button className="icon-button" onClick={clearSelection} title={tr("清除选择与路径 (Esc)")}>CLR</button>
           <button className="icon-button mobile-only" onClick={() => setMobilePanel("right")} aria-label={tr("打开详情面板")}>{tr("详")}</button>
         </div>
@@ -736,7 +768,7 @@ function TopologyExplorerContent() {
             onKeyDown={(event) => {
               if (event.key === "Enter" && searchResults[0]) selectNode(searchResults[0].id);
             }}
-            placeholder={tr("搜索 Vivado、ProCISE、T113、XVC、USB Hub、JTAG、FPGA…")}
+            placeholder={tr("搜索模块、函数、接口、路径或证据…")}
             aria-label={tr("搜索服务、脚本、端口、设备或路径")}
           />
           {query && <button onClick={() => setQuery("")} aria-label={tr("清空搜索")}>×</button>}
@@ -779,6 +811,10 @@ function TopologyExplorerContent() {
             mode={leftMode}
             selectedId={selectedId}
             nodeMap={nodeMap}
+            systemTree={systemTree}
+            storageTrees={storageTrees}
+            planeMeta={planeMeta}
+            boundaryNote={`${runtime.description} ${tr("本页是静态知识模型，不能当作设备当前在线状态。")}`}
             onModeChange={setLeftMode}
             onSelectNode={selectNode}
             onMobileClose={() => setMobilePanel("none")}
@@ -788,10 +824,10 @@ function TopologyExplorerContent() {
         <section
           ref={scenePanelRef}
           className={`canvas-panel ${focusedModuleId ? "focus-mode" : ""} ${!annotationsEnabled && !focusedModuleId ? "clean-view" : ""} ${isFullscreen ? "is-fullscreen" : ""} ${isFullscreen && fullscreenIndexOpen ? "fullscreen-index-open" : ""}`}
-          aria-label={focusedModule ? `${focusedModule.data.title} · ${tr("隔离模块信息")}` : tr("x86 工具设备、T113 ARM 网关、USB Hub、JTAG 下载器与 KU15P/690T 的物理 3D 拓扑")}
+          aria-label={focusedModule ? `${focusedModule.data.title} · ${tr("隔离模块信息")}` : runtime.description}
         >
           <div className="canvas-meta">
-            <div><span className="live-pulse" /> PHYSICAL 3D MODE · X86 TOOL → TRUSTED LAN → T113 → USB HUB → JTAG → FPGA</div>
+            <div><span className="live-pulse" /> PHYSICAL 3D MODE · {runtime.sceneId.toUpperCase()}</div>
             <span>{visibleNodes.length} NODES · {visibleEdges.length} EDGES IN CURRENT VIEW</span>
           </div>
 
@@ -802,6 +838,10 @@ function TopologyExplorerContent() {
                   mode={leftMode}
                   selectedId={selectedId}
                   nodeMap={nodeMap}
+                  systemTree={systemTree}
+                  storageTrees={storageTrees}
+                  planeMeta={planeMeta}
+                  boundaryNote={`${runtime.description} ${tr("本页是静态知识模型，不能当作设备当前在线状态。")}`}
                   onModeChange={setLeftMode}
                   onSelectNode={selectNode}
                 />
@@ -821,6 +861,7 @@ function TopologyExplorerContent() {
           <div className="scene-mount">
             {PhysicalTopology3D ? (
               <PhysicalTopology3D
+                scene={runtime}
                 locale={locale}
                 view={view}
                 cameraPreset={cameraPreset}
@@ -854,7 +895,7 @@ function TopologyExplorerContent() {
                 onCanvasClick={focusedModuleId ? () => undefined : clearSelection}
               />
             ) : (
-              <div className="scene-loading"><span /><strong>{tr("正在装载 T113 ARM-XVC 3D 调试沙盘…")}</strong></div>
+              <div className="scene-loading"><span /><strong>{tr("正在装载增强型 3D 工程拓扑…")}</strong></div>
             )}
           </div>
 
@@ -1081,7 +1122,7 @@ function TopologyExplorerContent() {
                     >{value.toFixed(value % 1 === 0 ? 0 : 1)}×</button>
                   ))}
                 </div>
-                <p>{tr("只调节 KU15P 已验证链、690T 待验证链与健康恢复链；脚本和状态互动线保持细线。")}</p>
+                <p>{tr("调节场景主管道粗细；函数调用和状态互动线保持细线。")}</p>
               </section>
 
               <section className="display-setting-section label-layout-mode-section">
@@ -1349,19 +1390,19 @@ function TopologyExplorerContent() {
                 type="button"
                 className="restore-line-default"
                 onClick={() => {
-                  updatePipeThickness(DEFAULT_PIPE_THICKNESS);
-                  updateModuleLabelDistance(DEFAULT_MODULE_LABEL_DISTANCE);
-                  updateLabelLayoutMode(DEFAULT_LABEL_LAYOUT_MODE);
-                  updateLabelLineThickness(DEFAULT_LABEL_LINE_THICKNESS);
-                  updateModuleLabelScale(DEFAULT_MODULE_LABEL_SCALE);
-                  updateSubLabelDistance(DEFAULT_SUB_LABEL_DISTANCE);
-                  updateSubLabelFadeRange(DEFAULT_SUB_LABEL_FADE_RANGE);
-                  updateFarFadeStart(DEFAULT_FAR_FADE_START);
-                  updateFarBlockOpacity(DEFAULT_FAR_BLOCK_OPACITY);
-                  updateFarFlowOpacity(DEFAULT_FAR_FLOW_OPACITY);
-                  updateFocusAnnotationScale(DEFAULT_FOCUS_ANNOTATION_SCALE);
-                  updateFocusHudTextScale(DEFAULT_FOCUS_HUD_TEXT_SCALE);
-                  updateHudDistance(DEFAULT_HUD_DISTANCE);
+                  updatePipeThickness(defaults.pipeThickness);
+                  updateModuleLabelDistance(defaults.moduleLabelDistance);
+                  updateLabelLayoutMode(defaults.labelLayoutMode);
+                  updateLabelLineThickness(defaults.labelLineThickness);
+                  updateModuleLabelScale(defaults.moduleLabelScale);
+                  updateSubLabelDistance(defaults.subLabelDistance);
+                  updateSubLabelFadeRange(defaults.subLabelFadeRange);
+                  updateFarFadeStart(defaults.farFadeStart);
+                  updateFarBlockOpacity(defaults.farBlockOpacity);
+                  updateFarFlowOpacity(defaults.farFlowOpacity);
+                  updateFocusAnnotationScale(defaults.focusAnnotationScale);
+                  updateFocusHudTextScale(defaults.focusHudTextScale);
+                  updateHudDistance(defaults.hudDistance);
                 }}
               >{tr("恢复默认：子标签 30 / 渐隐 8 / 远景 48 / 板块 22% / 数据流 55%")}</button>
             </aside>
@@ -1379,17 +1420,18 @@ function TopologyExplorerContent() {
           </button>
 
           <div className="physical-map-key" aria-hidden="true">
-            <span><i className="solid-card" />x86 / T113 / USB Hub / FPGA</span>
-            <span><i className="c2s-card" />KU15P · XVC TCP 10200</span>
-            <span><i className="s2c-card" />{tr("690T 边界 / 健康恢复")}</span>
-            <span><i className="function-pin" />{tr("真实脚本 / 服务 / 设备身份")}</span>
-            <span><i className="function-link" />{tr("数据 / 控制 / 恢复 / 门禁")}</span>
-            <span><i className="depth-stack" />{tr("网络 → Namespace → USB 深度")}</span>
+            <span><i className="solid-card" />{runtime.visuals.zones.map((zone) => zone.title).join(" / ")}</span>
+            {Object.values(runtime.laneMeta).slice(0, 2).map((lane, index) => (
+              <span key={lane.label}><i className={index === 0 ? "c2s-card" : "s2c-card"} />{lane.label}</span>
+            ))}
+            <span><i className="function-pin" />{tr("函数 / RTL / 设备节点")}</span>
+            <span><i className="function-link" />{tr("数据 / 控制 / 同步 / 生命周期")}</span>
+            <span><i className="depth-stack" />{tr("场景定义的空间与因果深度")}</span>
           </div>
 
           {/* The 3D scene owns physical geometry and camera-facing labels; side panels remain the evidence/control surface. */}
           <div className="sr-only">
-            {tr("物理图从安装 Vivado、ProCISE 和验收脚本的 x86 工程设备出发，经可信局域网到达 T113 ARMv7 Buildroot 网关。T113 的 manager/supervisor 维护独立 XVC 实例，再通过 USB Host、独立供电扩展坞和 JTAG 下载器连接 FPGA。KU15P 主链已有双路实证；690T/ProCISE 远程链明确标为待验证，不会把目标架构冒充现场事实。聚焦模式展示五条事务、四类因果层和六接口契约。")}
+            {runtime.description}
           </div>
 
           <div className="canvas-legend">
@@ -1410,7 +1452,7 @@ function TopologyExplorerContent() {
           </div>
           <div className="panel-scroll inspector-scroll">
             {!selectedObject && (
-              <div className="empty-inspector"><span>◎</span><h3>{tr("选择一个 3D 部件")}</h3><p>{tr("点击 x86 工具、T113 服务、USB Hub、JTAG 下载器或 FPGA，查看脚本、接口、目录和证据边界。")}</p></div>
+              <div className="empty-inspector"><span>◎</span><h3>{tr("选择一个 3D 部件")}</h3><p>{tr("点击场景中的模块、函数或数据流，查看接口、目录、事务旅程和证据边界。")}</p></div>
             )}
 
             {selectedNode && (

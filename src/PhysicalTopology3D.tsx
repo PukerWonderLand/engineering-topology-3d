@@ -5,7 +5,9 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   type CSSProperties,
   type ReactNode,
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -15,7 +17,7 @@ import {
 import type { PointerEvent as ReactPointerEvent } from "react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { localizedProxy, translateText as tr } from "./i18n/locale-context";
+import { translateText as tr } from "./i18n/locale-context";
 import type { Locale } from "./i18n/types";
 import {
   distanceToFitPerspectiveBox,
@@ -27,37 +29,27 @@ import {
   resolveGlobalLabelCollisions,
   type GlobalLabelObstacle,
   type GlobalLabelLayoutMode,
-  type GlobalLabelSide,
   type GlobalModuleLabelLayout,
   type ProjectedGlobalModuleLabel,
 } from "./global-label-layout";
-import {
-  c2sEdgeIds,
-  driverCausalLayerMeta,
-  driverJourneyModuleRoleByNodeId,
-  driverJourneyRelationMeta,
-  driverJourneys,
-  focusModuleGroups,
-  functionInteractions,
-  laneMeta,
-  planeMeta,
-  s2cEdgeIds,
-  topologyEdges,
-  topologyNodes,
-  uartEdgeIds,
-  type EdgeKind,
-  type DriverCausalLayer,
-  type DriverContextLane,
-  type DriverJourney,
-  type DriverJourneyEdge,
-  type DriverJourneyId,
-  type DriverJourneyStep,
-  type DriverModuleRole,
-  type FlowLane,
-  type FunctionInteraction,
-  type TopologyNode,
-  type ViewKey,
-} from "./topology-data";
+import type {
+  DriverJourney,
+  DriverJourneyEdge,
+  DriverJourneyStep,
+  EnhancedSceneRuntime,
+  EnhancedTopologyNode as TopologyNode,
+  FunctionInteraction,
+  MacroZoneDefinition,
+} from "./enhanced-scene-types";
+
+type EdgeKind = string;
+type DriverCausalLayer = string;
+type DriverContextLane = string;
+type DriverJourneyId = string;
+type DriverModuleRole = string;
+type FlowLane = string;
+type ViewKey = string;
+type MacroZoneId = string;
 
 type V3 = [number, number, number];
 export type CameraPreset = "iso" | "front" | "top" | "depth";
@@ -106,8 +98,8 @@ function useSceneLabelDensity() {
     () => "panorama" as LabelDensity,
   );
 }
-
 interface PhysicalTopology3DProps {
+  scene: EnhancedSceneRuntime;
   locale: Locale;
   view: ViewKey;
   cameraPreset: CameraPreset;
@@ -164,48 +156,13 @@ interface ModuleBlockProps {
   labelOffset?: V3;
 }
 
-const nodeMap = new Map(topologyNodes.map((node) => [node.id, node]));
-const edgeMap = new Map(topologyEdges.map((edge) => [edge.id, edge]));
+const EnhancedSceneContext = createContext<EnhancedSceneRuntime | null>(null);
 
-const nodePositions: Record<string, V3> = {
-  "host-client": [-31, -2.2, 0.96],
-  "host-pcs": [-31, -1.1, 1.02],
-  "host-pcie-utils": [-31, 0, 1.08],
-  "host-sp37": [-31, 1.1, 1.14],
-  "host-root": [-31, 2.2, 1.2],
-  "fpga-host-ep": [-16, -3.05, 0.86],
-  "fpga-host-sp37": [-13.4, -1.7, 1.45],
-  "fpga-c2s": [-10.8, -0.35, 2.22],
-  "fpga-s2c": [-7.4, 2.25, 1.5],
-  "fpga-spu-sp37": [-7.4, -2.25, 1.5],
-  "fpga-spu-ep": [-5.2, 0, 1.5],
-  "spu-root": [-4.8, -0.9, 0.72],
-  "spu-pcs": [5.5, 0, 0.92],
-  "spu-sp37": [20, 3, 1.02],
-  "spu-pcie-utils": [20, -3, 1.02],
-  "spu-client": [36, 3.2, 1.18],
-  "spu-spug": [36, -3.2, 1.18],
-};
-
-type MacroZoneId = "x86" | "t113" | "hub" | "jtag" | "fpga";
-
-interface MacroZoneDefinition {
-  center: V3;
-  halfSize: V3;
-  nodeIds: string[];
+function useEnhancedScene() {
+  const scene = useContext(EnhancedSceneContext);
+  if (!scene) throw new Error("PhysicalTopology3D requires EnhancedSceneContext");
+  return scene;
 }
-
-const macroZoneDefinitions: Record<MacroZoneId, MacroZoneDefinition> = {
-  x86: { center: [-31, 0, 0], halfSize: [6.4, 3.8, 0.33], nodeIds: ["host-client", "host-pcs", "host-pcie-utils", "host-sp37", "host-root"] },
-  t113: { center: [-11, 0, 0], halfSize: [7.1, 4.7, 0.3], nodeIds: ["fpga-host-ep", "fpga-host-sp37", "fpga-c2s", "fpga-s2c", "fpga-spu-sp37", "fpga-spu-ep", "spu-root"] },
-  hub: { center: [5.5, 0, 0], halfSize: [3.6, 2.9, 0.36], nodeIds: ["spu-pcs"] },
-  jtag: { center: [20, 0, 0], halfSize: [4.4, 4.6, 0.36], nodeIds: ["spu-sp37", "spu-pcie-utils"] },
-  fpga: { center: [36, 0, 0], halfSize: [5.75, 5.1, 0.39], nodeIds: ["spu-client", "spu-spug"] },
-};
-
-const macroZoneByNodeId = new Map<string, MacroZoneId>(
-  Object.entries(macroZoneDefinitions).flatMap(([zoneId, definition]) => definition.nodeIds.map((nodeId) => [nodeId, zoneId as MacroZoneId])),
-);
 
 function smoothstep(minimum: number, maximum: number, value: number) {
   if (maximum <= minimum) return value >= maximum ? 1 : 0;
@@ -213,8 +170,8 @@ function smoothstep(minimum: number, maximum: number, value: number) {
   return normalized * normalized * (3 - 2 * normalized);
 }
 
-function macroZoneSurfaceDistance(cameraPosition: THREE.Vector3, zoneId: MacroZoneId) {
-  const zone = macroZoneDefinitions[zoneId];
+function macroZoneSurfaceDistance(cameraPosition: THREE.Vector3, zoneId: MacroZoneId, macroZones: Record<string, MacroZoneDefinition>) {
+  const zone = macroZones[zoneId];
   const dx = Math.max(Math.abs(cameraPosition.x - zone.center[0]) - zone.halfSize[0], 0);
   const dy = Math.max(Math.abs(cameraPosition.y - zone.center[1]) - zone.halfSize[1], 0);
   const dz = Math.max(Math.abs(cameraPosition.z - zone.center[2]) - zone.halfSize[2], 0);
@@ -229,63 +186,17 @@ function farVisibilityFactor(distance: number, farFadeStart: number) {
   return smoothstep(farFadeStart, 120, distance);
 }
 
-interface GlobalModuleLabelDefinition {
-  id: string;
-  color: string;
-  halfWidth: number;
-  moduleSide: GlobalLabelSide;
-  cameraSide: GlobalLabelSide;
-}
-
-const globalModuleLabelDefinitions: GlobalModuleLabelDefinition[] = [
-  { id: "host-root", color: "#366f9c", halfWidth: 2.8, moduleSide: "right", cameraSide: "left" },
-  { id: "host-sp37", color: "#6769bb", halfWidth: 2.8, moduleSide: "right", cameraSide: "left" },
-  { id: "host-pcie-utils", color: "#8767c7", halfWidth: 2.8, moduleSide: "right", cameraSide: "left" },
-  { id: "host-pcs", color: "#218c83", halfWidth: 2.8, moduleSide: "right", cameraSide: "left" },
-  { id: "host-client", color: "#22a7cf", halfWidth: 2.8, moduleSide: "right", cameraSide: "left" },
-  { id: "fpga-host-ep", color: "#4d8edb", halfWidth: 1.6, moduleSide: "left", cameraSide: "left" },
-  { id: "fpga-host-sp37", color: "#6969c4", halfWidth: 1.6, moduleSide: "left", cameraSide: "left" },
-  { id: "fpga-c2s", color: "#7558c7", halfWidth: 1.7, moduleSide: "left", cameraSide: "left" },
-  { id: "fpga-s2c", color: "#2f83e7", halfWidth: 1.15, moduleSide: "left", cameraSide: "left" },
-  { id: "fpga-spu-sp37", color: "#8a61d1", halfWidth: 1.15, moduleSide: "right", cameraSide: "right" },
-  { id: "fpga-spu-ep", color: "#13a681", halfWidth: 1.15, moduleSide: "right", cameraSide: "right" },
-  { id: "spu-root", color: "#287e75", halfWidth: 2.8, moduleSide: "right", cameraSide: "right" },
-  { id: "spu-pcs", color: "#287e75", halfWidth: 2.2, moduleSide: "right", cameraSide: "right" },
-  { id: "spu-sp37", color: "#2f83e7", halfWidth: 0.95, moduleSide: "left", cameraSide: "left" },
-  { id: "spu-pcie-utils", color: "#8a61d1", halfWidth: 0.95, moduleSide: "right", cameraSide: "right" },
-  { id: "spu-client", color: "#3abc9c", halfWidth: 1.45, moduleSide: "left", cameraSide: "left" },
-  { id: "spu-spug", color: "#7657c8", halfWidth: 1.45, moduleSide: "right", cameraSide: "right" },
-];
-
 function clampNumber(value: number, minimum: number, maximum: number) {
   if (maximum < minimum) return minimum;
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-const c2sNodeIds = [
-  "host-client", "host-pcs", "host-pcie-utils", "host-sp37", "host-root",
-  "fpga-host-ep", "fpga-host-sp37", "fpga-c2s", "fpga-s2c",
-  "spu-root", "spu-pcs", "spu-sp37", "spu-client",
-];
-
-const s2cNodeIds = [
-  "host-client", "host-pcs", "host-pcie-utils", "host-sp37", "host-root",
-  "fpga-host-ep", "fpga-host-sp37", "fpga-c2s", "fpga-spu-sp37",
-  "spu-root", "spu-pcs", "spu-pcie-utils", "spu-spug",
-];
-
-const uartNodeIds = [
-  "host-client", "host-pcs", "host-pcie-utils", "host-sp37", "host-root",
-  "fpga-host-ep", "fpga-host-sp37", "fpga-c2s", "fpga-spu-ep",
-  "spu-root", "spu-pcs", "spu-sp37", "spu-client",
-];
-
-function nodesFor(ids: string[]) {
+function nodesFor(ids: string[], nodeMap: ReadonlyMap<string, TopologyNode>) {
   return ids.map((id) => nodeMap.get(id)).filter(Boolean) as TopologyNode[];
 }
 
-function zoneOpacity(view: ViewKey, zone: "host" | "fpga" | "spu") {
-  if (view === "overview" || view === "c2s" || view === "s2c" || view === "spu") return 1;
+function zoneOpacity(view: ViewKey, zone: string, routeViews: ReadonlySet<string>) {
+  if (view === "overview" || routeViews.has(view)) return 1;
   return view === zone ? 1 : 0.22;
 }
 
@@ -326,6 +237,11 @@ function GlobalLabelProjectionTracker({
   obstacles: GlobalLabelObstacle[];
   onLayouts: (layouts: GlobalModuleLabelLayout[]) => void;
 }) {
+  const scene = useEnhancedScene();
+  const { globalModuleLabels: globalModuleLabelDefinitions, macroZones: macroZoneDefinitions, nodeById: nodeMap, nodePositions } = scene;
+  const macroZoneByNodeId = useMemo(() => new Map<string, MacroZoneId>(
+    Object.entries(macroZoneDefinitions).flatMap(([zoneId, definition]) => definition.nodeIds.map((nodeId) => [nodeId, zoneId])),
+  ), [macroZoneDefinitions]);
   const { camera, size } = useThree();
   const lastSignatureRef = useRef("");
 
@@ -347,7 +263,7 @@ function GlobalLabelProjectionTracker({
       const worldPosition = new THREE.Vector3(...position);
       const zoneId = macroZoneByNodeId.get(definition.id);
       if (!zoneId) return;
-      const zoneDistance = macroZoneSurfaceDistance(camera.position, zoneId);
+      const zoneDistance = macroZoneSurfaceDistance(camera.position, zoneId, macroZoneDefinitions);
       const visibility = definition.id === selectedId
         ? 1
         : labelVisibilityForDistance(zoneDistance, subLabelDistance, subLabelFadeRange);
@@ -493,7 +409,6 @@ function GlobalModuleLabelOverlay({
     </div>
   );
 }
-
 function FloatingLabel({
   position,
   priority = "normal",
@@ -532,6 +447,7 @@ function CameraRig({
   onGestureStart: () => void;
   onGestureEnd: (changed: boolean) => void;
 }) {
+  const scene = useEnhancedScene();
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const densityRef = useRef<Exclude<LabelDensity, "clean">>("panorama");
   const gestureActiveRef = useRef(false);
@@ -553,38 +469,53 @@ function CameraRig({
   }, [camera, focused, onDistanceBandChange]);
 
   useEffect(() => {
-    const centers: Record<ViewKey, THREE.Vector3> = {
-      overview: new THREE.Vector3(1.5, 0, 1.05),
-      host: new THREE.Vector3(-31, 0, 1.0),
-      fpga: new THREE.Vector3(-11, 0, 1.55),
-      c2s: new THREE.Vector3(1.5, 1.45, 1.25),
-      s2c: new THREE.Vector3(1.5, -1.45, 1.25),
-      spu: new THREE.Vector3(1.5, 0, 1.25),
+    const routeViews = new Set(Object.keys(scene.routeNodeIds));
+    const requestedNodeIds = new Set(scene.routeNodeIds[view] ?? []);
+    const visibleModules = scene.visuals.modules.filter((module) => (
+      view === "overview"
+      || routeViews.has(view)
+      || module.detailGroup === view
+      || requestedNodeIds.has(module.nodeId)
+    ));
+    const candidates = visibleModules.length > 0 ? visibleModules : scene.visuals.modules;
+    const bounds = new THREE.Box3();
+    candidates.forEach((module) => {
+      const center = new THREE.Vector3(...module.position);
+      const half = new THREE.Vector3(...module.size).multiplyScalar(0.5);
+      bounds.expandByPoint(center.clone().sub(half));
+      bounds.expandByPoint(center.clone().add(half));
+    });
+    scene.visuals.zones
+      .filter((zone) => view === "overview" || routeViews.has(view) || zone.detailGroup === view)
+      .forEach((zone) => {
+        const center = new THREE.Vector3(...zone.position);
+        const half = new THREE.Vector3(...zone.size).multiplyScalar(0.5);
+        bounds.expandByPoint(center.clone().sub(half));
+        bounds.expandByPoint(center.clone().add(half));
+      });
+    const derivedCenter = bounds.isEmpty() ? new THREE.Vector3() : bounds.getCenter(new THREE.Vector3());
+    const derivedSize = bounds.isEmpty() ? new THREE.Vector3(12, 8, 4) : bounds.getSize(new THREE.Vector3());
+    const frame = focusFrame ?? {
+      center: [derivedCenter.x, derivedCenter.y, derivedCenter.z] as V3,
+      size: [Math.max(derivedSize.x, 4), Math.max(derivedSize.y, 4), Math.max(derivedSize.z, 3)] as V3,
     };
     const mirror = view === "s2c" ? -1 : 1;
-    const offsets: Record<CameraPreset, THREE.Vector3> = {
-      iso: new THREE.Vector3(12.5 * mirror, 7.6, 20),
-      front: new THREE.Vector3(0, 0.8, 21),
-      top: new THREE.Vector3(0.01, 17.5, 11.5),
-      depth: new THREE.Vector3(18.5 * mirror, 2.8, 6.8),
+    const directions: Record<CameraPreset, THREE.Vector3> = {
+      iso: new THREE.Vector3(0.52 * mirror, 0.32, 0.79),
+      front: new THREE.Vector3(0, 0.04, 1),
+      top: new THREE.Vector3(0.001, 0.84, 0.54),
+      depth: new THREE.Vector3(0.93 * mirror, 0.14, 0.34),
     };
-    const center = focusFrame
-      ? new THREE.Vector3(...focusFrame.center)
-      : centers[view];
-    if (focusFrame) {
-      const direction = offsets[preset].normalize();
-      const verticalFov = camera instanceof THREE.PerspectiveCamera ? camera.fov : 40;
-      const fitDistance = distanceToFitPerspectiveBox(
-        focusFrame.size,
-        [direction.x, direction.y, direction.z],
-        verticalFov,
-        size.width / Math.max(1, size.height),
-      );
-      camera.position.copy(center).add(direction.multiplyScalar(fitDistance));
-    } else {
-      const scale = view === "overview" || view === "c2s" || view === "s2c" || view === "spu" ? 2.75 : view === "host" ? 0.72 : 0.88;
-      camera.position.copy(center.clone().add(offsets[preset].multiplyScalar(scale)));
-    }
+    const center = new THREE.Vector3(...frame.center);
+    const direction = directions[preset].normalize();
+    const verticalFov = camera instanceof THREE.PerspectiveCamera ? camera.fov : 40;
+    const fitDistance = distanceToFitPerspectiveBox(
+      frame.size,
+      [direction.x, direction.y, direction.z],
+      verticalFov,
+      size.width / Math.max(1, size.height),
+    );
+    camera.position.copy(center).add(direction.multiplyScalar(fitDistance));
     camera.up.set(0, 1, 0);
     camera.lookAt(center);
     if (controlsRef.current) {
@@ -593,7 +524,7 @@ function CameraRig({
     }
     reportDistanceBand(center);
     invalidate();
-  }, [camera, focusFrame, invalidate, preset, reportDistanceBand, size.height, size.width, view]);
+  }, [camera, focusFrame, invalidate, preset, reportDistanceBand, scene, size.height, size.width, view]);
 
   return (
     <OrbitControls
@@ -840,7 +771,12 @@ function ModuleBlock({
   showModuleCard = true,
   labelOffset,
 }: ModuleBlockProps) {
-  const nodes = nodesFor(nodeIds);
+  const scene = useEnhancedScene();
+  const { functionInteractions, macroZones, nodeById: nodeMap } = scene;
+  const macroZoneByNodeId = useMemo(() => new Map<string, MacroZoneId>(
+    Object.entries(macroZones).flatMap(([zoneId, definition]) => definition.nodeIds.map((nodeId) => [nodeId, zoneId])),
+  ), [macroZones]);
+  const nodes = nodesFor(nodeIds, nodeMap);
   const primary = nodes[0];
   const functions = nodes.flatMap((node) => (node.data.codeRefs ?? []).map((ref) => ({ nodeId: node.id, ref })));
   const interactions = primary ? functionInteractions[primary.id] ?? [] : [];
@@ -870,7 +806,7 @@ function ModuleBlock({
       materialRef.current.depthWrite = blockOpacity > 0.46;
       return;
     }
-    const distance = macroZoneSurfaceDistance(camera.position, zoneId);
+    const distance = macroZoneSurfaceDistance(camera.position, zoneId, macroZones);
     const farFactor = farVisibilityFactor(distance, farFadeStart);
     const effectiveOpacity = Math.max(
       farBlockOpacity,
@@ -1046,11 +982,12 @@ function MacroZoneShell({ nodeId, zoneId, eyebrow, title, summary, position, siz
   farBlockOpacity: number;
   onNodeClick: (id: string) => void;
 }) {
+  const { macroZones } = useEnhancedScene();
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
   const [lod, setLod] = useState<0 | 1 | 2>(0);
   const labelY = size[1] / 2 + 0.9;
   useFrame(({ camera }) => {
-    const distance = macroZoneSurfaceDistance(camera.position, zoneId);
+    const distance = macroZoneSurfaceDistance(camera.position, zoneId, macroZones);
     const nextLod: 0 | 1 | 2 = distance >= subLabelDistance
       ? 0
       : distance >= Math.max(0, subLabelDistance - subLabelFadeRange)
@@ -1082,213 +1019,89 @@ function MacroZoneShell({ nodeId, zoneId, eyebrow, title, summary, position, siz
   );
 }
 
-function ServerChassis({ opacity }: { opacity: number }) {
-  return (
-    <group>
-      <RoundedBox args={[12.8, 7.6, 0.66]} radius={0.15} smoothness={1} position={[-31, 0, 0]}>
-        <meshStandardMaterial color="#3f8db8" transparent opacity={0.19 * opacity} roughness={0.68} metalness={0.18} depthWrite={false} />
-        <Edges scale={1.006} color="#347da8" lineWidth={1.6} />
-      </RoundedBox>
-      {[-2.5, -1.25, 0, 1.25, 2.5].map((y) => (
-        <mesh key={y} position={[-36.55, y, 0.42]}>
-          <boxGeometry args={[0.65, 0.11, 0.12]} />
-          <meshStandardMaterial color="#256f9b" transparent opacity={0.7 * opacity} />
-        </mesh>
-      ))}
-      {Array.from({ length: 12 }, (_, index) => (
-        <mesh key={index} position={[-34.75 + index * 0.68, -3.55, 0.4]}>
-          <boxGeometry args={[0.42, 0.08, 0.1]} />
-          <meshStandardMaterial color="#82bdd5" transparent opacity={0.55 * opacity} />
-        </mesh>
-      ))}
-      <mesh position={[-31, 3.45, 0.5]}>
-        <boxGeometry args={[3.4, 0.16, 0.32]} />
-        <meshStandardMaterial color="#164f73" transparent opacity={0.82 * opacity} metalness={0.35} />
-      </mesh>
-    </group>
-  );
-}
-
-function GatewayRackHardware({ opacity }: { opacity: number }) {
-  return (
-    <group>
-      <RoundedBox args={[14.2, 9.4, 0.6]} radius={0.12} smoothness={1} position={[-11, 0, 0]}>
-        <meshStandardMaterial color="#5a65a8" transparent opacity={0.15 * opacity} roughness={0.7} depthWrite={false} />
-        <Edges scale={1.006} color="#7255be" lineWidth={1.6} />
-      </RoundedBox>
-      <mesh position={[-11, -4.25, 0.31]}>
-        <boxGeometry args={[4.2, 0.58, 0.18]} />
-        <meshStandardMaterial color="#183f61" metalness={0.32} roughness={0.42} />
-      </mesh>
-      {[
-        { x: -1.35, color: "#2f83e7" },
-        { x: 0, color: "#8a61d1" },
-        { x: 1.35, color: "#13a681" },
-      ].map((port) => (
-        <mesh key={port.x} position={[-11 + port.x, -4.25, 0.43]}>
-          <boxGeometry args={[0.86, 0.34, 0.06]} />
-          <meshStandardMaterial color={port.color} emissive={port.color} emissiveIntensity={0.25} metalness={0.4} />
-        </mesh>
-      ))}
-      <mesh position={[-17.45, 0, 0.34]}><boxGeometry args={[0.3, 8.2, 0.17]} /><meshStandardMaterial color="#8392c4" transparent opacity={0.5 * opacity} /></mesh>
-      <mesh position={[-4.55, 0, 0.34]}><boxGeometry args={[0.3, 8.2, 0.17]} /><meshStandardMaterial color="#8392c4" transparent opacity={0.5 * opacity} /></mesh>
-    </group>
-  );
-}
-
-function HostSystem({ selectedId, activeIds, onNodeClick, onModuleFocus, canActivateObject, opacity, showDetails, subLabelDistance, subLabelFadeRange, farFadeStart, farBlockOpacity }: {
+function DeclarativeTopology({
+  view,
+  selectedId,
+  activeIds,
+  onNodeClick,
+  onModuleFocus,
+  canActivateObject,
+  subLabelDistance,
+  subLabelFadeRange,
+  farFadeStart,
+  farBlockOpacity,
+}: {
+  view: ViewKey;
   selectedId: string;
   activeIds: Set<string>;
   onNodeClick: (id: string) => void;
   onModuleFocus: (id: string) => void;
   canActivateObject: () => boolean;
-  opacity: number;
-  showDetails: boolean;
   subLabelDistance: number;
   subLabelFadeRange: number;
   farFadeStart: number;
   farBlockOpacity: number;
 }) {
-  const props = { selectedId, activeIds, onNodeClick, onModuleFocus, canActivateObject, showDetails, opacity, farFadeStart, farBlockOpacity };
+  const scene = useEnhancedScene();
+  const routeViews = useMemo(() => new Set(Object.keys(scene.routeNodeIds)), [scene.routeNodeIds]);
+  const opacityFor = (detailGroup: string) => zoneOpacity(view, detailGroup, routeViews);
+  const detailsFor = (detailGroup: string) => view === "overview" || routeViews.has(view) || view === detailGroup;
   return (
     <group>
-      <ServerChassis opacity={opacity} />
-      <MacroZoneShell
-        nodeId="host-pcs"
-        zoneId="x86"
-        eyebrow="ZONE 01 · X86 FPGA TOOL STATION"
-        title={tr("局域网 FPGA 工具设备")}
-        summary={tr("Vivado · ProCISE · hw_server · 工程师 / CI")}
-        position={[-31, 0, 0]}
-        size={[12.8, 7.6, 0.66]}
-        color="#2878c7"
-        opacity={opacity}
-        subLabelDistance={subLabelDistance}
-        subLabelFadeRange={subLabelFadeRange}
-        farFadeStart={farFadeStart}
-        farBlockOpacity={farBlockOpacity}
-        onNodeClick={onNodeClick}
-      />
-      <LayerFrame title="x86 Ethernet / TCP Client" position={[-31, 2.2, 0.36]} size={[9.3, 0.58, 0.2]} color="#366f9c" showLabel={showDetails} />
-      <LayerFrame title="Trusted LAN / VLAN / ACL" position={[-31, 1.1, 0.36]} size={[9.3, 0.58, 0.2]} color="#6969bc" showLabel={showDetails} />
-      <LayerFrame title="Local hw_server / Gate Scripts" position={[-31, 0, 0.36]} size={[9.3, 0.58, 0.2]} color="#8b6bc5" showLabel={showDetails} />
-      <LayerFrame title="Vivado 2019.1 / ProCISE" position={[-31, -1.1, 0.36]} size={[9.3, 0.58, 0.2]} color="#218c83" showLabel={showDetails} />
-      <LayerFrame title="FPGA Engineer / CI" position={[-31, -2.2, 0.36]} size={[9.3, 0.58, 0.2]} color="#22a7cf" showLabel={showDetails} />
-      <ModuleBlock title={tr("x86 网口 / TCP 客户端")} eyebrow="L1 · XVC 10200 / 10201" nodeIds={["host-root"]} position={nodePositions["host-root"]} size={[6.6, 0.46, 0.32]} color="#366f9c" labelOffset={[4.35, 0.18, 0.58]} {...props} />
-      <ModuleBlock title={tr("可信实验室 LAN")} eyebrow="L2 · VLAN / ACL / VPN" nodeIds={["host-sp37"]} position={nodePositions["host-sp37"]} size={[6.6, 0.46, 0.34]} color="#6769bb" labelOffset={[4.35, 0.18, 0.62]} {...props} />
-      <ModuleBlock title={tr("本机 hw_server / 门禁脚本")} eyebrow="L3 · POWERSHELL / TCL" nodeIds={["host-pcie-utils"]} position={nodePositions["host-pcie-utils"]} size={[6.6, 0.46, 0.34]} color="#8767c7" labelOffset={[4.35, 0.18, 0.62]} {...props} />
-      <ModuleBlock title={tr("x86 FPGA 工具设备")} eyebrow="L4 · VIVADO / PROCISE" nodeIds={["host-pcs"]} position={nodePositions["host-pcs"]} size={[6.6, 0.46, 0.34]} color="#218c83" labelOffset={[4.35, 0.18, 0.62]} {...props} />
-      <ModuleBlock title={tr("FPGA 工程师 / CI 验收端")} eyebrow="L5 · OPERATOR / AUTOMATION" nodeIds={["host-client"]} position={nodePositions["host-client"]} size={[6.6, 0.46, 0.34]} color="#22a7cf" labelOffset={[4.35, 0.18, 0.62]} {...props} />
-    </group>
-  );
-}
-
-function SpuBoard({ selectedId, activeIds, onNodeClick, onModuleFocus, canActivateObject, fpgaOpacity, linuxOpacity, fpgaDetails, linuxDetails, subLabelDistance, subLabelFadeRange, farFadeStart, farBlockOpacity }: {
-  selectedId: string;
-  activeIds: Set<string>;
-  onNodeClick: (id: string) => void;
-  onModuleFocus: (id: string) => void;
-  canActivateObject: () => boolean;
-  fpgaOpacity: number;
-  linuxOpacity: number;
-  fpgaDetails: boolean;
-  linuxDetails: boolean;
-  subLabelDistance: number;
-  subLabelFadeRange: number;
-  farFadeStart: number;
-  farBlockOpacity: number;
-}) {
-  const fpgaProps = { selectedId, activeIds, onNodeClick, onModuleFocus, canActivateObject, showDetails: fpgaDetails, opacity: fpgaOpacity, farFadeStart, farBlockOpacity };
-  const linuxProps = { selectedId, activeIds, onNodeClick, onModuleFocus, canActivateObject, showDetails: linuxDetails, opacity: linuxOpacity, farFadeStart, farBlockOpacity };
-  const boardOpacity = Math.max(fpgaOpacity, linuxOpacity);
-  return (
-    <group>
-      <GatewayRackHardware opacity={boardOpacity} />
-      <MacroZoneShell
-        nodeId="fpga-host-sp37"
-        zoneId="t113"
-        eyebrow="ZONE 02 · ARM EDGE GATEWAY"
-        title={tr("T113 · Linux / XVC转换")}
-        summary="Buildroot · manager · getinfo / settck / shift · libusb"
-        position={[-11, 0, 0]}
-        size={[14.2, 9.4, 0.6]}
-        color="#7657c8"
-        opacity={boardOpacity}
-        subLabelDistance={subLabelDistance}
-        subLabelFadeRange={subLabelFadeRange}
-        farFadeStart={farFadeStart}
-        farBlockOpacity={farBlockOpacity}
-        onNodeClick={onNodeClick}
-      />
-
-      <LayerFrame title="T113 Linux / XVC Conversion Stack" position={[-11, 0, 0.34]} size={[13, 8.15, 0.22]} color="#7657c8" showLabel={fpgaDetails} />
-      <DepthGuide label="Z0 · ETHERNET / TCP / XVC" position={[-11, 0, 0.86]} size={[12.5, 7.75]} color="#4d8edb" showLabel={fpgaDetails} />
-      <DepthGuide label="Z1 · ARMV7 / BUILDROOT / USB" position={[-11, 0, 1.45]} size={[12.5, 7.75]} color="#6f6bc7" showLabel={fpgaDetails} />
-      <DepthGuide label="Z2 · MANAGER / TAP / MPSSE / HEALTH" position={[-11, 0, 2.22]} size={[12.5, 7.75]} color="#8a58cf" showLabel={fpgaDetails} />
-
-      <ModuleBlock title={tr("T113 以太网接口")} eyebrow="Z0 · EXAMPLE ADDRESS" nodeIds={["fpga-host-ep"]} position={nodePositions["fpga-host-ep"]} size={[2.7, 0.62, 0.36]} color="#4d8edb" labelOffset={[-3.15, 0.22, 0.62]} {...fpgaProps} />
-      <ModuleBlock title="TLT113-MiniEVM · ARMv7 Linux" eyebrow="Z1 · LINUX 5.4.61 / BUILDROOT" nodeIds={["fpga-host-sp37"]} position={nodePositions["fpga-host-sp37"]} size={[3.4, 0.68, 0.4]} color="#6969c4" labelOffset={[-3.65, 0.22, 0.66]} {...fpgaProps} />
-      <ModuleBlock title="multi-manager / supervisors" eyebrow="Z2 · SYSV / PID / LOCK / LOG" nodeIds={["fpga-c2s"]} position={nodePositions["fpga-c2s"]} size={[3.5, 0.78, 0.48]} color="#7558c7" labelOffset={[-3.75, 0.3, 0.76]} {...fpgaProps} />
-      <ModuleBlock title="openFPGALoader XVC A" eyebrow="Z3 · GETINFO / SETTCK / SHIFT" nodeIds={["fpga-s2c"]} position={nodePositions["fpga-s2c"]} size={[3.5, 0.82, 0.46]} color="#2f83e7" labelOffset={[-3.7, 0.28, 0.7]} {...fpgaProps} />
-      <ModuleBlock title={tr("XVC/JTAG B · 候选")} eyebrow="Z3 · TCP 10201 / 690T PENDING" nodeIds={["fpga-spu-sp37"]} position={nodePositions["fpga-spu-sp37"]} size={[3.5, 0.82, 0.46]} color="#8a61d1" labelOffset={[-3.7, 0.28, 0.7]} {...fpgaProps} />
-      <ModuleBlock title="native IDCODE health" eyebrow="Z3 · IDLE-ONLY / SERIAL REMATCH" nodeIds={["fpga-spu-ep"]} position={nodePositions["fpga-spu-ep"]} size={[2.8, 0.72, 0.42]} color="#13a681" labelOffset={[2.95, 0.28, 0.7]} {...fpgaProps} />
-      <ModuleBlock title="T113 USB Host Controller" eyebrow="Z1 · USBFS / LIBUSB / LIBFTDI" nodeIds={["spu-root"]} position={nodePositions["spu-root"]} size={[2.6, 0.62, 0.38]} color="#287e75" labelOffset={[2.85, 0.18, 0.58]} {...linuxProps} />
-
-      <MacroZoneShell
-        nodeId="spu-pcs"
-        zoneId="hub"
-        eyebrow="ZONE 03 · POWERED USB FABRIC"
-        title={tr("独立供电 USB 扩展坞")}
-        summary="USB upstream · Root Hub · Port A / Port B"
-        position={[5.5, 0, 0]}
-        size={[7.2, 5.8, 0.72]}
-        color="#168f7b"
-        opacity={linuxOpacity}
-        subLabelDistance={subLabelDistance}
-        subLabelFadeRange={subLabelFadeRange}
-        farFadeStart={farFadeStart}
-        farBlockOpacity={farBlockOpacity}
-        onNodeClick={onNodeClick}
-      />
-      <ModuleBlock title={tr("独立供电 USB 扩展坞")} eyebrow="H1 · UPSTREAM / ROOT HUB / POWER" nodeIds={["spu-pcs"]} position={nodePositions["spu-pcs"]} size={[5.2, 2.15, 0.78]} color="#287e75" labelOffset={[0, 2.05, 0.82]} {...linuxProps} />
-
-      <MacroZoneShell
-        nodeId="spu-sp37"
-        zoneId="jtag"
-        eyebrow="ZONE 04 · USB TO JTAG BRIDGE"
-        title={tr("JTAG 下载器")}
-        summary={tr("两只独立下载器 · serial绑定 · FTDI / MPSSE")}
-        position={[20, 0, 0]}
-        size={[8.8, 9.2, 0.72]}
-        color="#2f83e7"
-        opacity={linuxOpacity}
-        subLabelDistance={subLabelDistance}
-        subLabelFadeRange={subLabelFadeRange}
-        farFadeStart={farFadeStart}
-        farBlockOpacity={farBlockOpacity}
-        onNodeClick={onNodeClick}
-      />
-      <ModuleBlock title={tr("JTAG 下载器 A · Digilent")} eyebrow="H2 · PROBE A" nodeIds={["spu-sp37"]} position={nodePositions["spu-sp37"]} size={[5.6, 1.45, 0.72]} color="#2f83e7" labelOffset={[0, 1.55, 0.72]} {...linuxProps} />
-      <ModuleBlock title={tr("JTAG 下载器 B · 候选")} eyebrow="H2 · SERIAL MUST RE-PROBE" nodeIds={["spu-pcie-utils"]} position={nodePositions["spu-pcie-utils"]} size={[5.6, 1.45, 0.72]} color="#8a61d1" labelOffset={[0, -1.55, 0.72]} {...linuxProps} />
-
-      <MacroZoneShell
-        nodeId="spu-client"
-        zoneId="fpga"
-        eyebrow="ZONE 05 · FPGA TARGETS"
-        title={tr("FPGA 芯片 · KU15P / 690T")}
-        summary={tr("KU15P 已验证 · XC7VX690T 远程链待验证")}
-        position={[36, 0, 0]}
-        size={[11.5, 10.2, 0.78]}
-        color="#3abc9c"
-        opacity={linuxOpacity}
-        subLabelDistance={subLabelDistance}
-        subLabelFadeRange={subLabelFadeRange}
-        farFadeStart={farFadeStart}
-        farBlockOpacity={farBlockOpacity}
-        onNodeClick={onNodeClick}
-      />
-      <ModuleBlock title="Xilinx XCKU15P" eyebrow="H3 · VALIDATED / MT25QU512" nodeIds={["spu-client"]} position={nodePositions["spu-client"]} size={[7.2, 2.25, 1.0]} color="#3abc9c" labelOffset={[0, 2.05, 0.9]} {...linuxProps} />
-      <ModuleBlock title="Xilinx XC7VX690T" eyebrow="H3 · PROCISE / REMOTE NOT PROVEN" nodeIds={["spu-spug"]} position={nodePositions["spu-spug"]} size={[7.2, 2.25, 1.0]} color="#7657c8" labelOffset={[0, -2.05, 0.9]} {...linuxProps} />
+      {scene.visuals.zones.map((zone) => {
+        const opacity = opacityFor(zone.detailGroup);
+        return (
+          <group key={zone.id}>
+            <RoundedBox args={zone.size} radius={0.14} smoothness={1} position={zone.position}>
+              <meshStandardMaterial color={zone.color} transparent opacity={0.12 * opacity} roughness={0.72} depthWrite={false} />
+              <Edges scale={1.006} color={zone.color} lineWidth={1.5} />
+            </RoundedBox>
+            <MacroZoneShell
+              nodeId={zone.anchorNodeId}
+              zoneId={zone.id}
+              eyebrow={zone.eyebrow}
+              title={zone.title}
+              summary={zone.summary}
+              position={zone.position}
+              size={zone.size}
+              color={zone.color}
+              opacity={opacity}
+              subLabelDistance={subLabelDistance}
+              subLabelFadeRange={subLabelFadeRange}
+              farFadeStart={farFadeStart}
+              farBlockOpacity={farBlockOpacity}
+              onNodeClick={onNodeClick}
+            />
+          </group>
+        );
+      })}
+      {scene.visuals.layers.map((layer) => (
+        <LayerFrame key={layer.id} title={layer.title} position={layer.position} size={layer.size} color={layer.color} showLabel={detailsFor(layer.detailGroup)} />
+      ))}
+      {scene.visuals.depths.map((depth) => (
+        <DepthGuide key={depth.id} label={depth.label} position={depth.position} size={depth.size} color={depth.color} showLabel={detailsFor(depth.detailGroup)} />
+      ))}
+      {scene.visuals.modules.map((module) => (
+        <ModuleBlock
+          key={module.nodeId}
+          title={module.title}
+          eyebrow={module.eyebrow}
+          nodeIds={[module.nodeId]}
+          position={module.position}
+          size={module.size}
+          color={module.color}
+          labelOffset={module.labelOffset}
+          selectedId={selectedId}
+          activeIds={activeIds}
+          onNodeClick={onNodeClick}
+          onModuleFocus={onModuleFocus}
+          canActivateObject={canActivateObject}
+          showDetails={detailsFor(module.detailGroup)}
+          opacity={opacityFor(module.detailGroup)}
+          farFadeStart={farFadeStart}
+          farBlockOpacity={farBlockOpacity}
+        />
+      ))}
     </group>
   );
 }
@@ -1340,6 +1153,7 @@ function Pipe3D({ edgeId, points, selectedId, activeIds, enabledEdgeKinds, flowE
   onEdgeClick: (id: string) => void;
   showLabel: boolean;
 }) {
+  const { edgeById: edgeMap, laneMeta } = useEnhancedScene();
   const edge = edgeMap.get(edgeId);
   const curve = useMemo(() => new THREE.CatmullRomCurve3(points.map((point) => new THREE.Vector3(...point))), [points]);
   const tubeMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
@@ -1358,13 +1172,14 @@ function Pipe3D({ edgeId, points, selectedId, activeIds, enabledEdgeKinds, flowE
     if (arrowMaterialRef.current) arrowMaterialRef.current.opacity = effectiveOpacity;
   });
   if (!edge || !enabledEdgeKinds.has(edge.data.kind)) return null;
-  const color = laneMeta[edge.data.lane].color;
+  const color = laneMeta[edge.data.lane]?.color ?? edge.fill ?? "#4d8edb";
   const opacity = baseOpacity;
   const arrowPoint = curve.getPointAt(0.76);
   const tangent = curve.getTangentAt(0.76).normalize();
   const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
   const midpoint = curve.getPointAt(0.52);
-  const labelSide = edge.data.lane === "KU15P" ? -1 : 1;
+  const laneIndex = Math.max(0, Object.keys(laneMeta).indexOf(edge.data.lane));
+  const labelSide = laneIndex % 2 === 0 ? -1 : 1;
   const labelAnchor: V3 = [midpoint.x + labelSide * 1.45, midpoint.y + 0.08, midpoint.z + 0.5];
   const tubeRadius = (selected ? 0.055 : 0.034) * lineThickness;
   const arrowScale = Math.min(3.8, Math.max(1, lineThickness * 0.75));
@@ -1395,13 +1210,16 @@ function Pipe3D({ edgeId, points, selectedId, activeIds, enabledEdgeKinds, flowE
   );
 }
 
-function edgePoints(edgeId: string, lineThickness: number): V3[] {
+function edgePoints(edgeId: string, lineThickness: number, scene: EnhancedSceneRuntime): V3[] {
+  const { edgeById: edgeMap, nodePositions } = scene;
   const edge = edgeMap.get(edgeId);
   if (!edge) return [[0, 0, 0], [0, 0, 0]];
   const source = nodePositions[edge.source];
   const target = nodePositions[edge.target];
   const laneSpacing = 0.15 + Math.min(lineThickness, 6) * 0.045;
-  const laneOffset = edge.data.lane === "KU15P" ? laneSpacing : edge.data.lane === "X690T" ? -laneSpacing : 0;
+  const laneIds = Object.keys(scene.laneMeta);
+  const laneIndex = Math.max(0, laneIds.indexOf(edge.data.lane));
+  const laneOffset = (laneIndex - (laneIds.length - 1) / 2) * laneSpacing;
   const start: V3 = [source[0], source[1] + laneOffset, source[2] + 0.22];
   const end: V3 = [target[0], target[1] + laneOffset, target[2] + 0.22];
   const horizontalDistance = Math.abs(start[0] - end[0]);
@@ -1422,8 +1240,6 @@ function edgePoints(edgeId: string, lineThickness: number): V3[] {
   return [start, midpoint, end];
 }
 
-const labelledEdges = new Set([...c2sEdgeIds, ...s2cEdgeIds, ...uartEdgeIds]);
-
 function DirectionCard({ lane, position, origin, selected, onClick }: {
   lane: FlowLane;
   position: V3;
@@ -1431,7 +1247,8 @@ function DirectionCard({ lane, position, origin, selected, onClick }: {
   selected: boolean;
   onClick: () => void;
 }) {
-  const meta = laneMeta[lane];
+  const { laneMeta } = useEnhancedScene();
+  const meta = laneMeta[lane] ?? { color: "#4d8edb", label: lane, summary: lane };
   if (CAMERA_LOCKED_LABELS) return null;
   const lineEnd: V3 = [position[0] + (position[0] < 0 ? 0.9 : -0.9), position[1] - 0.15, position[2] - 0.1];
   return (
@@ -1439,40 +1256,33 @@ function DirectionCard({ lane, position, origin, selected, onClick }: {
       <Line points={[origin, lineEnd]} color={meta.color} lineWidth={selected ? 1.8 : 1.05} transparent opacity={0.82} />
       <FloatingLabel position={position} priority={selected ? "high" : "normal"} tier="system">
         <button type="button" className={`scene-pcie-link-card direction-card ${selected ? "selected" : ""}`} style={accentStyle(meta.color)} onClick={onClick}>
-          <span>ARM-XVC REMOTE DEBUG PATH</span>
+          <span>ENGINEERING TRANSACTION PATH</span>
           <strong>{meta.label}</strong>
-          <span className="scene-pcie-link-lanes"><em><b>→</b>{meta.summary}</em><em><b>GW</b>{tr("T113 · 独立实例")}</em></span>
-          <small>x86 tool → trusted LAN → T113 → XVC/health → USB Hub → JTAG → FPGA</small>
+          <span className="scene-pcie-link-lanes"><em><b>→</b>{meta.summary}</em><em><b>3D</b>SCENE</em></span>
+          <small>{meta.summary}</small>
         </button>
       </FloatingLabel>
     </group>
   );
 }
 
-const driverContextLaneMeta = localizedProxy<Record<DriverContextLane, { label: string; y: number; color: string }>>({
-  IPC: { label: "x86 工程工具 / CI", y: 2.55, color: "#22a7cf" },
-  PCS_TX: { label: "XVC TCP / Trusted LAN", y: 1.7, color: "#218c83" },
-  PCS_RX: { label: "验证结果 / 返回", y: 1.15, color: "#168f7b" },
-  SYSCALL: { label: "T113 ARM 用户态", y: 0.35, color: "#8064c8" },
-  KERNEL: { label: "Buildroot / SysV / Manager", y: -0.55, color: "#6869bd" },
-  IRQ: { label: "USB / FTDI / Hub", y: -1.45, color: "#e84855" },
-  FPGA: { label: "JTAG TAP / FPGA / Flash", y: -2.35, color: "#f29a1f" },
-});
+const contextLaneColors = ["#22a7cf", "#218c83", "#168f7b", "#8064c8", "#6869bd", "#e84855", "#f29a1f", "#3abc9c"];
 
-const driverRoleLabels: Record<DriverModuleRole, string> = {
-  CLIENT: "X86 CLIENT / TOOLS",
-  PCS: "TRUSTED LAN",
-  PCIE_UTILS: "T113 PLATFORM",
-  SP37: "MANAGER / XVC / HEALTH",
-  FPGA: "USB HUB / JTAG / FPGA",
-};
+function buildContextLaneMeta(journey: DriverJourney) {
+  const laneIds = [...new Set(journey.steps.map((step) => step.contextLane))];
+  const top = 2.55;
+  const bottom = -2.35;
+  return Object.fromEntries(laneIds.map((lane, index) => [lane, {
+    label: lane.replaceAll("_", " "),
+    y: laneIds.length === 1 ? 0 : top + ((bottom - top) * index) / (laneIds.length - 1),
+    color: contextLaneColors[index % contextLaneColors.length],
+  }])) as Record<string, { label: string; y: number; color: string }>;
+}
 
-const journeyLayerZ: Record<DriverCausalLayer, number> = {
-  payload: 0.48,
-  control: 1.22,
-  sync: 1.96,
-  lifecycle: 2.7,
-};
+function journeyLayerZ(layer: DriverCausalLayer, layerIds: string[]) {
+  const index = Math.max(0, layerIds.indexOf(layer));
+  return 0.48 + index * 0.74;
+}
 
 function JourneyFlowToken({ curve, color, phase }: { curve: THREE.CatmullRomCurve3; color: string; phase: number }) {
   const ref = useRef<THREE.Group>(null);
@@ -1505,7 +1315,8 @@ function JourneyEdge3D({
   flowEnabled: boolean;
   onSelect: () => void;
 }) {
-  const meta = driverJourneyRelationMeta[edge.relation];
+  const { driverJourneyRelationMeta } = useEnhancedScene();
+  const meta = driverJourneyRelationMeta[edge.relation] ?? { color: "#708090", label: edge.relation, dashed: false };
   const color = edge.relation === "PAYLOAD"
     ? journey.id === "receive" ? "#13a681" : "#2f83e7"
     : meta.color;
@@ -1588,8 +1399,9 @@ function JourneyStepNode({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { driverCausalLayerMeta } = useEnhancedScene();
   const primaryLayer = step.layers[0];
-  const color = driverCausalLayerMeta[primaryLayer].color;
+  const color = driverCausalLayerMeta[primaryLayer]?.color ?? "#4d8edb";
   const activeModule = step.moduleRole === focusedRole;
   const opacity = selected ? 1 : activeModule ? 0.98 : 0.62;
   const labelLift = 0.49 + (index % 3) * 0.13;
@@ -1611,7 +1423,7 @@ function JourneyStepNode({
           onClick={onSelect}
           title={step.title}
         >
-          <span>{driverRoleLabels[step.moduleRole]} · {step.evidence}</span>
+          <span>{step.moduleRole.replaceAll("_", " ")} · {step.evidence}</span>
           <strong>{step.shortTitle}</strong>
         </button>
       </Html>
@@ -1620,8 +1432,10 @@ function JourneyStepNode({
 }
 
 function JourneyLayerPlane({ layer, width }: { layer: DriverCausalLayer; width: number }) {
-  const meta = driverCausalLayerMeta[layer];
-  const z = journeyLayerZ[layer];
+  const { driverCausalLayerMeta } = useEnhancedScene();
+  const layerIds = Object.keys(driverCausalLayerMeta);
+  const meta = driverCausalLayerMeta[layer] ?? { color: "#4d8edb", short: layer, label: layer, description: layer };
+  const z = journeyLayerZ(layer, layerIds);
   return (
     <group position={[0, 0, z]}>
       <mesh>
@@ -1653,6 +1467,9 @@ function DriverJourneyStage({
   onStepFocus: (id: string) => void;
   canActivateObject: () => boolean;
 }) {
+  const { driverCausalLayerMeta } = useEnhancedScene();
+  const driverContextLaneMeta = useMemo(() => buildContextLaneMeta(journey), [journey]);
+  const layerIds = useMemo(() => Object.keys(driverCausalLayerMeta), [driverCausalLayerMeta]);
   const { moduleWidth: width } = journeyFocusFrame(journey.steps.length);
   const visibleSteps = journey.steps.filter((step) => step.layers.some((layer) => enabledLayers.has(layer)));
   const positions = useMemo(() => {
@@ -1661,12 +1478,12 @@ function DriverJourneyStage({
     journey.steps.forEach((step, index) => {
       const x = journey.steps.length === 1 ? 0 : -span / 2 + (span * index) / (journey.steps.length - 1);
       const activeLayer = step.layers.find((layer) => enabledLayers.has(layer)) ?? step.layers[0];
-      result.set(step.id, [x, driverContextLaneMeta[step.contextLane].y, journeyLayerZ[activeLayer]]);
+      result.set(step.id, [x, driverContextLaneMeta[step.contextLane]?.y ?? 0, journeyLayerZ(activeLayer, layerIds)]);
     });
     return result;
-  }, [enabledLayers, journey.steps, width]);
+  }, [driverContextLaneMeta, enabledLayers, journey.steps, layerIds, width]);
   const visibleStepIds = new Set(visibleSteps.map((step) => step.id));
-  const usedLanes = (["IPC", "PCS_TX", "PCS_RX", "SYSCALL", "KERNEL", "IRQ", "FPGA"] as DriverContextLane[])
+  const usedLanes = Object.keys(driverContextLaneMeta)
     .filter((lane) => visibleSteps.some((step) => step.contextLane === lane));
   const activate = (id: string) => {
     if (canActivateObject()) onStepFocus(id);
@@ -1733,11 +1550,14 @@ function FocusedModuleStage({ moduleId, selectedId, focusedFunctionIndex, focuse
   onJourneyStepFocus: (id: string) => void;
   canActivateObject: () => boolean;
 }) {
+  const scene = useEnhancedScene();
+  const { driverJourneyModuleRoleByNodeId, driverJourneys, focusModuleGroups, nodeById: nodeMap, planeMeta } = scene;
   const focusedRole = driverJourneyModuleRoleByNodeId[moduleId];
-  if (focusedRole) {
+  const focusedJourney = driverJourneys[focusedJourneyId];
+  if (focusedRole && focusedJourney) {
     return (
       <DriverJourneyStage
-        journey={driverJourneys[focusedJourneyId]}
+        journey={focusedJourney}
         focusedRole={focusedRole}
         enabledLayers={enabledCausalLayers}
         selectedStepId={focusedJourneyStepId}
@@ -1748,13 +1568,13 @@ function FocusedModuleStage({ moduleId, selectedId, focusedFunctionIndex, focuse
     );
   }
   const nodeIds = focusModuleGroups[moduleId] ?? [moduleId];
-  const nodes = nodesFor(nodeIds);
+  const nodes = nodesFor(nodeIds, nodeMap);
   const primary = nodes[0];
   const functionCount = nodes.reduce((count, node) => count + (node.data.codeRefs?.length ?? 0), 0);
   const activeIds = new Set(nodeIds);
   if (!primary) return null;
   const { moduleWidth: width } = moduleFocusFrame(functionCount);
-  const color = planeMeta[primary.data.plane].color;
+  const color = planeMeta[primary.data.plane]?.color ?? "#4d8edb";
   return (
     <group>
       <DepthGuide label="" position={[0, 0, 0.72]} size={[width + 0.9, 3]} color={color} showLabel={false} />
@@ -1782,15 +1602,6 @@ function FocusedModuleStage({ moduleId, selectedId, focusedFunctionIndex, focuse
   );
 }
 
-const cameraHudViews = localizedProxy<Record<ViewKey, { eyebrow: string; title: string; detail: string }>>({
-  overview: { eyebrow: "X86 / TRUSTED LAN / T113 / PHYSICAL JTAG", title: "T113 ARM-XVC 远程 FPGA 调试架构", detail: "x86 工具保留 · ARM 网关服务化 · USB/JTAG 独立故障域" },
-  host: { eyebrow: "X86 FPGA TOOL STATION", title: "Engineer → Vivado / ProCISE → local gates → LAN", detail: "KU15P 用 Vivado · 690T 正式工具为 ProCISE" },
-  fpga: { eyebrow: "T113 ARMV7 XVC GATEWAY", title: "Ethernet → Buildroot → manager → XVC / health", detail: "Linux 5.4.61 · ARM EABI5 · 232 MiB · UBIFS" },
-  c2s: { eyebrow: "VALIDATED · XVC TCP 10200", title: "x86 Vivado → T113 → Digilent → XCKU15P", detail: "probe A · example IDCODE" },
-  s2c: { eyebrow: "BOUNDARY · 690T NOT PROVEN", title: "x86 ProCISE → T113 candidate → XC7VX690T", detail: "当前复盘实证是双 KU15P；690T 远程协议需重做门禁" },
-  spu: { eyebrow: "HEALTH / RECOVERY CONTROL", title: "manager → native IDCODE → USB Hub → single instance", detail: "活跃会话跳过探测 · serial 稳定绑定 · 独立恢复" },
-});
-
 function CameraHudOverlay({ view, selectedId, lineThickness, hudDistance, density }: {
   view: ViewKey;
   selectedId: string;
@@ -1798,9 +1609,10 @@ function CameraHudOverlay({ view, selectedId, lineThickness, hudDistance, densit
   hudDistance: number;
   density: Exclude<LabelDensity, "clean">;
 }) {
+  const { cameraHudViews: cameraHudViews, edgeById: edgeMap, laneMeta, nodeById: nodeMap, planeMeta } = useEnhancedScene();
   const selectedNode = nodeMap.get(selectedId);
   const selectedEdge = edgeMap.get(selectedId);
-  const viewMeta = cameraHudViews[view];
+  const viewMeta = cameraHudViews[view] ?? cameraHudViews.overview ?? { eyebrow: view, title: view, detail: "" };
   const functions = selectedNode?.data.codeRefs ?? [];
   const hudScale = Math.max(0.82, Math.min(1.18, 1.18 - (hudDistance - 0.6) * 0.2));
   const hudStyle = {
@@ -1817,11 +1629,13 @@ function CameraHudOverlay({ view, selectedId, lineThickness, hudDistance, densit
         <span>{viewMeta.eyebrow}</span>
         <strong>{viewMeta.title}</strong>
         <p>{viewMeta.detail}</p>
-        <div className="camera-hud-lanes"><em>10200</em><i /><em>690T PENDING</em><i /><em>HEALTH</em></div>
+        <div className="camera-hud-lanes">
+          {Object.values(laneMeta).slice(0, 3).map((lane) => <em key={lane.label}>{lane.label}</em>)}
+        </div>
       </section>
 
       <section className={`camera-hud-card camera-hud-selection ${selectedNode || selectedEdge ? "has-selection" : "empty"}`}>
-        <span>{selectedNode ? `${planeMeta[selectedNode.data.plane].short} · ${selectedNode.data.layer}` : selectedEdge ? `${selectedEdge.data.lane} · ${selectedEdge.data.kind}` : "SELECTION HUD"}</span>
+        <span>{selectedNode ? `${planeMeta[selectedNode.data.plane]?.short ?? selectedNode.data.plane} · ${selectedNode.data.layer}` : selectedEdge ? `${selectedEdge.data.lane} · ${selectedEdge.data.kind}` : "SELECTION HUD"}</span>
         <strong>{selectedNode?.data.title ?? selectedEdge?.data.protocol ?? tr("短点一个模块或主管道")}</strong>
         <p>{selectedNode?.data.description ?? selectedEdge?.data.description ?? tr("选中后，真实函数、RTL 或协议名称会固定显示在这里，不再使用无信息编号。")}</p>
         {functions.length > 0 && (
@@ -1874,7 +1688,7 @@ function PhysicalScene({
   canActivateObject,
   onGlobalLabelLayouts,
   globalLabelObstacles,
-}: Omit<PhysicalTopology3DProps, "onCanvasClick" | "hudDistance" | "labelLineThickness" | "focusAnnotationScale"> & {
+}: Omit<PhysicalTopology3DProps, "scene" | "onCanvasClick" | "hudDistance" | "labelLineThickness" | "focusAnnotationScale"> & {
   onDistanceBandChange: (density: Exclude<LabelDensity, "clean">) => void;
   onCameraGestureStart: () => void;
   onCameraGestureEnd: (changed: boolean) => void;
@@ -1882,38 +1696,37 @@ function PhysicalScene({
   onGlobalLabelLayouts: (layouts: GlobalModuleLabelLayout[]) => void;
   globalLabelObstacles: GlobalLabelObstacle[];
 }) {
+  const scene = useEnhancedScene();
+  const {
+    directionCards,
+    driverJourneyModuleRoleByNodeId,
+    driverJourneys,
+    focusModuleGroups,
+    nodeById: nodeMap,
+    routeNodeIds,
+    topologyEdges,
+  } = scene;
+  const routeViewIds = useMemo(() => new Set(Object.keys(routeNodeIds)), [routeNodeIds]);
+  const routeNodes = routeNodeIds[view] ?? [];
+  const routeNodeSet = useMemo(() => new Set(routeNodes), [routeNodes]);
   const activeIds = useMemo(() => {
     const ids = new Set(activeIdList);
-    if (view === "c2s") {
-      c2sEdgeIds.forEach((id) => ids.add(id));
-      c2sNodeIds.forEach((id) => ids.add(id));
-    }
-    if (view === "s2c") {
-      s2cEdgeIds.forEach((id) => ids.add(id));
-      s2cNodeIds.forEach((id) => ids.add(id));
-    }
-    if (view === "spu") {
-      uartEdgeIds.forEach((id) => ids.add(id));
-      uartNodeIds.forEach((id) => ids.add(id));
-    }
+    routeNodes.forEach((id) => ids.add(id));
+    topologyEdges.filter((edge) => routeNodeSet.has(edge.source) && routeNodeSet.has(edge.target)).forEach((edge) => ids.add(edge.id));
     return ids;
-  }, [activeIdList, view]);
-  const routeView = view === "c2s" || view === "s2c" || view === "spu";
-  const hostDetails = view === "host" || routeView;
-  const fpgaDetails = view === "fpga" || routeView;
-  const spuDetails = routeView;
+  }, [activeIdList, routeNodeSet, routeNodes, topologyEdges]);
   const focusFrame = useMemo(() => {
     if (!focusedModuleId) return null;
-    if (driverJourneyModuleRoleByNodeId[focusedModuleId]) {
+    if (driverJourneyModuleRoleByNodeId[focusedModuleId] && driverJourneys[focusedJourneyId]) {
       return journeyFocusFrame(driverJourneys[focusedJourneyId].steps.length);
     }
     const nodeIds = focusModuleGroups[focusedModuleId] ?? [focusedModuleId];
-    const functionCount = nodesFor(nodeIds).reduce(
+    const functionCount = nodesFor(nodeIds, nodeMap).reduce(
       (count, node) => count + (node.data.codeRefs?.length ?? 0),
       0,
     );
     return moduleFocusFrame(functionCount);
-  }, [focusedJourneyId, focusedModuleId]);
+  }, [driverJourneyModuleRoleByNodeId, driverJourneys, focusModuleGroups, focusedJourneyId, focusedModuleId, nodeMap]);
   return (
     <>
       <CameraRig view={view} preset={cameraPreset} focusFrame={focusFrame} onDistanceBandChange={onDistanceBandChange} onGestureStart={onCameraGestureStart} onGestureEnd={onCameraGestureEnd} />
@@ -1953,48 +1766,28 @@ function PhysicalScene({
         />
       ) : (
         <>
-          <HostSystem
+          <DeclarativeTopology
+            view={view}
             selectedId={selectedId}
             activeIds={activeIds}
             onNodeClick={onNodeClick}
             onModuleFocus={onModuleFocus}
             canActivateObject={canActivateObject}
-            opacity={zoneOpacity(view, "host")}
-            showDetails={hostDetails}
-            subLabelDistance={subLabelDistance}
-            subLabelFadeRange={subLabelFadeRange}
-            farFadeStart={farFadeStart}
-            farBlockOpacity={farBlockOpacity}
-          />
-          <SpuBoard
-            selectedId={selectedId}
-            activeIds={activeIds}
-            onNodeClick={onNodeClick}
-            onModuleFocus={onModuleFocus}
-            canActivateObject={canActivateObject}
-            fpgaOpacity={zoneOpacity(view, "fpga")}
-            linuxOpacity={zoneOpacity(view, "spu")}
-            fpgaDetails={fpgaDetails}
-            linuxDetails={spuDetails}
             subLabelDistance={subLabelDistance}
             subLabelFadeRange={subLabelFadeRange}
             farFadeStart={farFadeStart}
             farBlockOpacity={farBlockOpacity}
           />
 
-          <DirectionCard lane="KU15P" position={[-6.25, 5.85, 2.8]} origin={[-2.2, 1.34, 1.85]} selected={view === "c2s"} onClick={() => onEdgeClick("ku15p-manager-xvc")} />
-          <DirectionCard lane="X690T" position={[0, 6.25, 2.8]} origin={[0, 1.34, 1.85]} selected={view === "s2c"} onClick={() => onEdgeClick("x690t-manager-service")} />
-          <DirectionCard lane="HEALTH" position={[6.25, 5.85, 2.8]} origin={[2.2, 1.34, 1.85]} selected={view === "spu"} onClick={() => onEdgeClick("health-manager-check")} />
+          {directionCards.map((card) => (
+            <DirectionCard key={card.lane} lane={card.lane} position={card.position} origin={card.origin} selected={view === card.view} onClick={() => onEdgeClick(card.edgeId)} />
+          ))}
 
-          {topologyEdges.filter((edge) => (
-            view === "c2s" ? edge.data.lane === "KU15P" :
-              view === "s2c" ? edge.data.lane === "X690T" :
-                view === "spu" ? edge.data.lane === "HEALTH" : true
-          )).map((edge) => (
+          {topologyEdges.filter((edge) => !routeViewIds.has(view) || (routeNodeSet.has(edge.source) && routeNodeSet.has(edge.target))).map((edge) => (
             <Pipe3D
               key={edge.id}
               edgeId={edge.id}
-              points={edgePoints(edge.id, lineThickness)}
+              points={edgePoints(edge.id, lineThickness, scene)}
               selectedId={selectedId}
               activeIds={activeIds}
               enabledEdgeKinds={enabledEdgeKinds}
@@ -2003,7 +1796,7 @@ function PhysicalScene({
               farFadeStart={farFadeStart}
               farFlowOpacity={farFlowOpacity}
               onEdgeClick={onEdgeClick}
-              showLabel={(view === "c2s" && edge.data.lane === "KU15P" || view === "s2c" && edge.data.lane === "X690T" || view === "spu" && edge.data.lane === "HEALTH") && labelledEdges.has(edge.id)}
+              showLabel={routeViewIds.has(view)}
             />
           ))}
 
@@ -2015,6 +1808,7 @@ function PhysicalScene({
 }
 
 export default function PhysicalTopology3D({
+  scene,
   locale,
   view,
   cameraPreset,
@@ -2213,6 +2007,7 @@ export default function PhysicalTopology3D({
   const guardedCanvasClick = useCallback(() => { if (canActivateObject()) onCanvasClick(); }, [canActivateObject, onCanvasClick]);
 
   return (
+    <EnhancedSceneContext.Provider value={scene}>
     <div
       ref={sceneShellRef}
       className={`physical-scene-shell ${focusedModuleId ? "focus-mode" : ""} label-${effectiveLabelDensity}`}
@@ -2280,14 +2075,15 @@ export default function PhysicalTopology3D({
         </>
       )}
       <div className="scene-axis" aria-hidden="true">
-        <span className="axis-x">X · X86 TOOL → TRUSTED LAN → T113 → USB HUB → JTAG → FPGA</span>
-        <span className="axis-y">Y · KU15P VALIDATED / 690T PENDING PARALLEL BRANCHES</span>
-        <span className="axis-z">Z · TCP → SERVICE → USB / TAP / HARDWARE EVIDENCE</span>
+        <span className="axis-x">X · {scene.visuals.zones.map((zone) => zone.title).join(" → ")}</span>
+        <span className="axis-y">Y · {Object.values(scene.laneMeta).map((lane) => lane.label).join(" / ")}</span>
+        <span className="axis-z">Z · DATA → CONTROL → SYNC → LIFECYCLE</span>
       </div>
       <div className="scene-live-note target-mode static-boundary-note">
         <span className="live-pulse" />
-        <div><strong>REVIEW PACKAGE + EVIDENCE-BOUNDED MODEL</strong><small>{tr("双 KU15P 已验证 · 690T/ProCISE 远程链路仅为目标架构 · 冷启动当前 PASS 1/3")}</small></div>
+        <div><strong>{scene.sceneId.toUpperCase()} · EVIDENCE-BOUNDED MODEL</strong><small>{scene.description}</small></div>
       </div>
     </div>
+    </EnhancedSceneContext.Provider>
   );
 }
