@@ -11,7 +11,7 @@
     "build": "vite build",
     "lint": "tsc --noEmit",
     "validate:scenes": "node scripts/validate-scenes.mjs",
-    "test": "npm run validate:scenes && npm run build && node --test tests/*.test.mjs",
+    "test": "pnpm run validate:scenes && pnpm run build && node --test tests/*.test.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4314"
   },
   "dependencies": {
