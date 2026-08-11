@@ -1,6 +1,6 @@
 {
   "name": "engineering-topology-3d",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Evidence-aware 3D framework for engineering systems and causal data flows.",
   "private": false,
   "license": "Apache-2.0",
@@ -10,16 +10,19 @@
     "dev": "vite --host 127.0.0.1 --port 4314",
     "build": "vite build",
     "lint": "tsc --noEmit",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "validate:scenes": "node scripts/validate-scenes.mjs",
+    "test": "npm run validate:scenes && npm run build && node --test tests/*.test.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4314"
   },
   "dependencies": {
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.7.0",
+    "ajv": "8.20.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "three": "0.184.0",
-    "three-stdlib": "2.36.1"
+    "three-stdlib": "2.36.1",
+    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@types/node": "22.19.19",
