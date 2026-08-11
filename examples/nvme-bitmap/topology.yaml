@@ -1,0 +1,2352 @@
+schemaVersion: "2.0"
+id: nvme-bitmap
+title:
+  zhCN: NVMe Bitmap 透明加解密架构
+  enUS: NVMe Bitmap Transparent Crypto Topology
+description:
+  zhCN: Host 保留 NVMe 控制权，SPU/FPGA 根据登记的 DMA/IOVA 页面处理 PCIe payload。
+  enUS: The host retains NVMe control while SPU/FPGA processes PCIe payload for registered DMA/IOVA pages.
+evidence: INFERRED
+locales:
+  default: zh-CN
+  supported:
+    - zh-CN
+    - en-US
+zones:
+  - id: host-userspace
+    title: &a27
+      zhCN: Host 用户态
+      enUS: Host Userspace
+    eyebrow: &a26
+      zhCN: 区域 01 · 控制面
+      enUS: ZONE 01 · CONTROL PLANE
+    summary: &a28
+      zhCN: 应用 / 管理 / 策略
+      enUS: Application / management / policy
+    color: "#22a7cf"
+    nodeIds: &a4
+      - nvme-app
+      - bitmap-manager
+  - id: host-kernel
+    title: &a31
+      zhCN: Host Linux 内核
+      enUS: Host Linux Kernel
+    eyebrow: &a30
+      zhCN: 区域 02 · NVMe 与 DMA
+      enUS: ZONE 02 · NVME AND DMA
+    summary: &a32
+      zhCN: nvme.ko / DMA 映射 / Bitmap 登记
+      enUS: nvme.ko / DMA mapping / Bitmap registration
+    color: "#7657c8"
+    nodeIds: &a5
+      - nvme-driver
+      - dma-map
+      - bitmap-register
+  - id: pcie-path
+    title: &a35
+      zhCN: PCIe 数据路径
+      enUS: PCIe Data Path
+    eyebrow: &a34
+      zhCN: 区域 03 · 事务层
+      enUS: ZONE 03 · TRANSACTION LAYER
+    summary: &a36
+      zhCN: NVMe payload 与地址信息
+      enUS: NVMe payload and address information
+    color: "#2f83e7"
+    nodeIds: &a6
+      - pcie-root
+      - pcie-payload
+  - id: spu-fpga
+    title: &a39
+      zhCN: SPU / FPGA Bitmap 引擎
+      enUS: SPU / FPGA Bitmap Engine
+    eyebrow: &a38
+      zhCN: 区域 04 · 数据面
+      enUS: ZONE 04 · DATA PLANE
+    summary: &a40
+      zhCN: 页面命中 / 透明加解密 / 转发
+      enUS: Page match / transparent crypto / forwarding
+    color: "#168f7b"
+    nodeIds: &a7
+      - bitmap-table
+      - crypto-engine
+      - pcie-forward
+  - id: nvme-device
+    title: &a43
+      zhCN: 物理 NVMe 设备
+      enUS: Physical NVMe Device
+    eyebrow: &a42
+      zhCN: 区域 05 · 存储端
+      enUS: ZONE 05 · STORAGE TARGET
+    summary: &a44
+      zhCN: 控制器 / Namespace / NAND
+      enUS: Controller / Namespace / NAND
+    color: "#7fae3f"
+    nodeIds: &a8
+      - nvme-controller
+      - nvme-media
+nodes:
+  - id: nvme-app
+    zoneId: host-userspace
+    title: &a46
+      zhCN: NVMe 应用
+      enUS: NVMe Application
+    description:
+      zhCN: 发起块设备 I/O。
+      enUS: Issues block I/O.
+    kind: application
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+  - id: bitmap-manager
+    zoneId: host-userspace
+    title: &a48
+      zhCN: Bitmap 策略管理
+      enUS: Bitmap Policy Manager
+    description:
+      zhCN: 决定哪些 DMA 页面进入保护范围。
+      enUS: Selects DMA pages covered by protection.
+    kind: service
+    evidence: INFERRED
+    color: "#218c83"
+  - id: nvme-driver
+    zoneId: host-kernel
+    title: &a50
+      zhCN: Host nvme.ko
+      enUS: Host nvme.ko
+    description:
+      zhCN: Host 保留 NVMe 队列与控制器所有权。
+      enUS: The host retains NVMe queue and controller ownership.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#7657c8"
+    sources:
+      - path: drivers/nvme/host/pci.c
+        note: Host NVMe PCI data path entry.
+  - id: dma-map
+    zoneId: host-kernel
+    title: &a52
+      zhCN: DMA / IOVA 映射
+      enUS: DMA / IOVA Mapping
+    description:
+      zhCN: 建立设备可见地址及映射生命周期。
+      enUS: Creates device-visible addresses and mapping lifetime.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#6969c4"
+  - id: bitmap-register
+    zoneId: host-kernel
+    title: &a54
+      zhCN: Bitmap 页面登记
+      enUS: Bitmap Page Registration
+    description:
+      zhCN: 在门铃前登记、解除映射前释放。
+      enUS: Register before doorbell and release before DMA unmap.
+    kind: state
+    evidence: CODE_PROVEN
+    color: "#8a61d1"
+  - id: pcie-root
+    zoneId: pcie-path
+    title: &a56
+      zhCN: Host PCIe Root Complex
+      enUS: Host PCIe Root Complex
+    description:
+      zhCN: 承载 NVMe TLP。
+      enUS: Carries NVMe TLPs.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#366f9c"
+  - id: pcie-payload
+    zoneId: pcie-path
+    title: &a58
+      zhCN: PCIe Payload
+      enUS: PCIe Payload
+    description:
+      zhCN: 命令相关数据，不代表 SPU 接管 NVMe 协议。
+      enUS: Command-related data; it does not imply SPU ownership of NVMe protocol.
+    kind: data
+    evidence: INFERRED
+    color: "#2f83e7"
+  - id: bitmap-table
+    zoneId: spu-fpga
+    title: &a60
+      zhCN: Bitmap / 地址命中表
+      enUS: Bitmap / Address Match Table
+    description:
+      zhCN: 依据登记页面判断是否处理 payload。
+      enUS: Matches registered pages to decide payload handling.
+    kind: state
+    evidence: INFERRED
+    color: "#13a681"
+  - id: crypto-engine
+    zoneId: spu-fpga
+    title: &a62
+      zhCN: 透明加解密引擎
+      enUS: Transparent Crypto Engine
+    description:
+      zhCN: 对命中页面的数据透明处理。
+      enUS: Transparently processes data for matched pages.
+    kind: hardware
+    evidence: INFERRED
+    color: "#168f7b"
+  - id: pcie-forward
+    zoneId: spu-fpga
+    title: &a64
+      zhCN: PCIe 转发
+      enUS: PCIe Forwarding
+    description:
+      zhCN: 保持事务路径继续到物理设备。
+      enUS: Forwards transactions toward the physical device.
+    kind: hardware
+    evidence: INFERRED
+    color: "#3abc9c"
+  - id: nvme-controller
+    zoneId: nvme-device
+    title: &a66
+      zhCN: NVMe 控制器
+      enUS: NVMe Controller
+    description:
+      zhCN: 执行 NVMe 命令并访问介质。
+      enUS: Executes NVMe commands and accesses media.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#7fae3f"
+  - id: nvme-media
+    zoneId: nvme-device
+    title: &a68
+      zhCN: Namespace / NAND
+      enUS: Namespace / NAND
+    description:
+      zhCN: 最终持久化介质。
+      enUS: Final persistent media.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#9dbd5d"
+edges:
+  - id: app-driver
+    source: nvme-app
+    target: nvme-driver
+    title:
+      zhCN: 块 I/O
+      enUS: Block I/O
+    description:
+      zhCN: 系统调用与块层请求。
+      enUS: System call and block request.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#708090"
+    lane: CONTROL
+  - id: manager-register
+    source: bitmap-manager
+    target: bitmap-register
+    title:
+      zhCN: 策略
+      enUS: Policy
+    description:
+      zhCN: 登记保护范围。
+      enUS: Registers protected scope.
+    kind: control
+    evidence: INFERRED
+    color: "#8a61d1"
+    dashed: true
+    lane: CONTROL
+  - id: driver-dma
+    source: nvme-driver
+    target: dma-map
+    title:
+      zhCN: DMA 映射
+      enUS: DMA map
+    description:
+      zhCN: 获得设备可见地址。
+      enUS: Obtains a device-visible address.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#e14b72"
+    lane: LIFECYCLE
+  - id: dma-bitmap
+    source: dma-map
+    target: bitmap-register
+    title:
+      zhCN: IOVA 页面
+      enUS: IOVA pages
+    description:
+      zhCN: 登记页粒度地址。
+      enUS: Registers page-granular addresses.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#8a61d1"
+    lane: CONTROL
+  - id: driver-root
+    source: nvme-driver
+    target: pcie-root
+    title:
+      zhCN: Doorbell / TLP
+      enUS: Doorbell / TLP
+    description:
+      zhCN: 登记完成后启动设备事务。
+      enUS: Starts device transactions after registration.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#f4a62a"
+    lane: CONTROL
+  - id: root-payload
+    source: pcie-root
+    target: pcie-payload
+    title:
+      zhCN: PCIe 数据
+      enUS: PCIe data
+    description:
+      zhCN: 数据进入链路。
+      enUS: Data enters the link.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    lane: PRIMARY
+  - id: payload-match
+    source: pcie-payload
+    target: bitmap-table
+    title:
+      zhCN: 地址匹配
+      enUS: Address match
+    description:
+      zhCN: 查询页面命中状态。
+      enUS: Checks page match state.
+    kind: payload
+    evidence: INFERRED
+    color: "#13a681"
+    dashed: true
+    lane: PRIMARY
+  - id: match-crypto
+    source: bitmap-table
+    target: crypto-engine
+    title:
+      zhCN: 命中页面
+      enUS: Matched page
+    description:
+      zhCN: 只处理命中数据。
+      enUS: Processes matched data only.
+    kind: payload
+    evidence: INFERRED
+    color: "#168f7b"
+    dashed: true
+    lane: PRIMARY
+  - id: crypto-forward
+    source: crypto-engine
+    target: pcie-forward
+    title:
+      zhCN: 处理后 payload
+      enUS: Processed payload
+    description:
+      zhCN: 透明转发。
+      enUS: Transparent forwarding.
+    kind: payload
+    evidence: INFERRED
+    color: "#3abc9c"
+    dashed: true
+    lane: PRIMARY
+  - id: forward-controller
+    source: pcie-forward
+    target: nvme-controller
+    title:
+      zhCN: NVMe PCIe
+      enUS: NVMe PCIe
+    description:
+      zhCN: 到达物理控制器。
+      enUS: Reaches the physical controller.
+    kind: physical
+    evidence: INFERRED
+    color: "#5f86df"
+    dashed: true
+    lane: PHYSICAL
+  - id: controller-media
+    source: nvme-controller
+    target: nvme-media
+    title:
+      zhCN: 介质访问
+      enUS: Media access
+    description:
+      zhCN: 控制器访问 Namespace/NAND。
+      enUS: Controller accesses Namespace/NAND.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#7fae3f"
+    lane: PRIMARY
+functions:
+  - id: bitmap-prepare
+    moduleId: bitmap-register
+    name: bitmap_prepare_dma_pages
+    description: Register DMA/IOVA pages before device submission.
+    evidence: CODE_PROVEN
+    contract: &a1
+      trigger: NVMe request prepared
+      context: host kernel process/submit context
+      consumes: DMA mapped pages
+      produces: Bitmap registration
+      stateResource: page ownership and mapping lifetime
+      completionError: registered or fail closed
+      hardwareEffect: Bitmap visible before doorbell
+  - id: bitmap-release
+    moduleId: bitmap-register
+    name: bitmap_release_dma_pages
+    description: Remove registration before DMA unmap.
+    evidence: CODE_PROVEN
+    contract: &a3
+      trigger: request completion or rollback
+      context: host completion/error context
+      consumes: registered pages
+      produces: released Bitmap state
+      stateResource: page ownership and mapping lifetime
+      completionError: released before unmap
+  - id: nvme-submit
+    moduleId: nvme-driver
+    name: nvme_queue_rq
+    description: Representative host NVMe request submission station.
+    evidence: CODE_PROVEN
+    sources:
+      - path: drivers/nvme/host/pci.c
+        note: Representative Linux NVMe PCI submission path.
+    contract: &a2
+      trigger: blk-mq request
+      context: host kernel submission context
+      consumes: NVMe request and mapped buffers
+      produces: queue entry / doorbell
+      stateResource: submission queue and DMA mapping
+      completionError: submitted, resource, or path error
+      hardwareEffect: NVMe doorbell
+journeys:
+  - id: protected-write
+    title:
+      zhCN: 受保护写路径
+      enUS: Protected Write Path
+    summary:
+      zhCN: Host 准备映射和 Bitmap，再触发 NVMe；SPU/FPGA 只处理命中 payload。
+      enUS: The host prepares mappings and Bitmap before NVMe submission; SPU/FPGA handles matched payload only.
+    caveat:
+      zhCN: FPGA 如何匹配和处理页面仍需 RTL 或运行观测证明。
+      enUS: FPGA page matching and processing still require RTL or runtime evidence.
+    steps:
+      - id: write-app
+        nodeId: nvme-app
+        title:
+          zhCN: 发起写入
+          enUS: Issue write
+        evidence: CODE_PROVEN
+      - id: write-prepare
+        functionId: bitmap-prepare
+        title:
+          zhCN: 登记页面
+          enUS: Register pages
+        evidence: CODE_PROVEN
+      - id: write-submit
+        functionId: nvme-submit
+        title:
+          zhCN: 提交 NVMe
+          enUS: Submit NVMe
+        evidence: CODE_PROVEN
+      - id: write-crypto
+        nodeId: crypto-engine
+        title:
+          zhCN: 命中后处理
+          enUS: Process after match
+        evidence: INFERRED
+      - id: write-media
+        nodeId: nvme-media
+        title:
+          zhCN: 介质持久化
+          enUS: Persist to media
+        evidence: CODE_PROVEN
+    edgeIds:
+      - app-driver
+      - driver-dma
+      - dma-bitmap
+      - driver-root
+      - root-payload
+      - payload-match
+      - match-crypto
+      - crypto-forward
+      - forward-controller
+      - controller-media
+  - id: completion-release
+    title:
+      zhCN: 完成与释放
+      enUS: Completion and Release
+    summary:
+      zhCN: 请求结束时先解除 Bitmap 登记，再解除 DMA 映射。
+      enUS: At completion, Bitmap registration is released before DMA unmap.
+    steps:
+      - id: release-bitmap
+        functionId: bitmap-release
+        title:
+          zhCN: 释放登记
+          enUS: Release registration
+        evidence: CODE_PROVEN
+      - id: release-dma
+        nodeId: dma-map
+        title:
+          zhCN: 解除 DMA 映射
+          enUS: Unmap DMA
+        evidence: CODE_PROVEN
+    edgeIds:
+      - dma-bitmap
+layout:
+  camera:
+    position:
+      - 0
+      - 15
+      - 58
+    target:
+      - 0
+      - 0
+      - 0
+    fov: 42
+  labelDistance: 36
+  farBlockOpacity: 0.24
+  farFlowOpacity: 0.2
+  zones:
+    - zoneId: host-userspace
+      position: &a21
+        - -28
+        - 0
+        - 0
+      size: &a29
+        - 10
+        - 10
+        - 0.8
+      backdrop: server
+    - zoneId: host-kernel
+      position: &a22
+        - -14
+        - 0
+        - 0
+      size: &a33
+        - 11
+        - 12
+        - 0.8
+      backdrop: server
+    - zoneId: pcie-path
+      position: &a23
+        - 0
+        - 0
+        - 0
+      size: &a37
+        - 9
+        - 10
+        - 0.8
+      backdrop: fabric
+    - zoneId: spu-fpga
+      position: &a24
+        - 14
+        - 0
+        - 0
+      size: &a41
+        - 11
+        - 12
+        - 0.8
+      backdrop: board
+    - zoneId: nvme-device
+      position: &a25
+        - 29
+        - 0
+        - 0
+      size: &a45
+        - 10
+        - 10
+        - 0.8
+      backdrop: device
+  nodes:
+    - nodeId: nvme-app
+      position: &a9
+        - -28
+        - 2.4
+        - 1
+      size: &a47
+        - 7
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: bitmap-manager
+      position: &a10
+        - -28
+        - -2.4
+        - 1
+      size: &a49
+        - 7
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: nvme-driver
+      position: &a11
+        - -14
+        - 3.2
+        - 1
+      size: &a51
+        - 7.5
+        - 1.4
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: dma-map
+      position: &a12
+        - -14
+        - 0
+        - 1
+      size: &a53
+        - 7.5
+        - 1.4
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: bitmap-register
+      position: &a13
+        - -14
+        - -3.2
+        - 1
+      size: &a55
+        - 7.5
+        - 1.4
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: pcie-root
+      position: &a14
+        - 0
+        - 2.2
+        - 1
+      size: &a57
+        - 6
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: pcie-payload
+      position: &a15
+        - 0
+        - -2.2
+        - 1
+      size: &a59
+        - 6
+        - 1.5
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: bitmap-table
+      position: &a16
+        - 14
+        - 3.2
+        - 1
+      size: &a61
+        - 7.5
+        - 1.4
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: crypto-engine
+      position: &a17
+        - 14
+        - 0
+        - 1
+      size: &a63
+        - 7.5
+        - 1.4
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: pcie-forward
+      position: &a18
+        - 14
+        - -3.2
+        - 1
+      size: &a65
+        - 7.5
+        - 1.4
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: nvme-controller
+      position: &a19
+        - 29
+        - 2.4
+        - 1
+      size: &a67
+        - 7
+        - 1.8
+        - 0.95
+      moduleSide: left
+      cameraSide: left
+    - nodeId: nvme-media
+      position: &a20
+        - 29
+        - -2.4
+        - 1
+      size: &a69
+        - 7
+        - 1.8
+        - 0.95
+      moduleSide: right
+      cameraSide: right
+enhanced:
+  defaultView: overview
+  content:
+    zhCN:
+      planeMeta:
+        host-userspace:
+          label: Host 用户态
+          short: Host 用户态
+          color: "#22a7cf"
+        host-kernel:
+          label: Host Linux 内核
+          short: Host Linux 内核
+          color: "#7657c8"
+        pcie-path:
+          label: PCIe 数据路径
+          short: PCIe 数据路径
+          color: "#2f83e7"
+        spu-fpga:
+          label: SPU / FPGA Bitmap 引擎
+          short: SPU / FPGA Bitmap 引擎
+          color: "#168f7b"
+        nvme-device:
+          label: 物理 NVMe 设备
+          short: 物理 NVMe 设备
+          color: "#7fae3f"
+      edgeMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+        DATA:
+          color: "#7657c8"
+          label: DATA
+        PHYSICAL:
+          color: "#168f7b"
+          label: PHYSICAL
+      laneMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+          summary: CONTROL
+        LIFECYCLE:
+          color: "#7657c8"
+          label: LIFECYCLE
+          summary: LIFECYCLE
+        PRIMARY:
+          color: "#168f7b"
+          label: PRIMARY
+          summary: PRIMARY
+        PHYSICAL:
+          color: "#2f83e7"
+          label: PHYSICAL
+          summary: PHYSICAL
+      functionInteractions:
+        nvme-app: []
+        bitmap-manager: []
+        nvme-driver: []
+        dma-map: []
+        bitmap-register: []
+        pcie-root: []
+        pcie-payload: []
+        bitmap-table: []
+        crypto-engine: []
+        pcie-forward: []
+        nvme-controller: []
+        nvme-media: []
+      driverCausalLayerMeta:
+        payload:
+          label: 数据与所有权
+          short: DATA
+          color: "#4d8edb"
+          description: payload
+        control:
+          label: 控制执行
+          short: CTRL
+          color: "#708090"
+          description: control
+        sync:
+          label: 同步与完成
+          short: SYNC
+          color: "#e5b534"
+          description: sync
+        lifecycle:
+          label: 生命周期与回滚
+          short: LIFE
+          color: "#e14b72"
+          description: lifecycle
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#708090"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#22b8cf"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#8a61d1"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a62a"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#e14b72"
+          label: IRQ
+          dashed: false
+        WAIT:
+          color: "#e5b534"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#c13f5c"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#e14b72"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        protected-write:
+          id: protected-write
+          title: 受保护写路径
+          shortTitle: 受保护写路径
+          summary: Host 准备映射和 Bitmap，再触发 NVMe；SPU/FPGA 只处理命中 payload。
+          caveat: FPGA 如何匹配和处理页面仍需 RTL 或运行观测证明。
+          steps:
+            - id: write-app
+              title: 发起写入
+              shortTitle: 发起写入
+              moduleRole: nvme-app
+              contextLane: host-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: write-prepare
+              title: 登记页面
+              shortTitle: bitmap_prepare_dma_pages
+              moduleRole: bitmap-register
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a1
+            - id: write-submit
+              title: 提交 NVMe
+              shortTitle: nvme_queue_rq
+              moduleRole: nvme-driver
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: drivers/nvme/host/pci.c
+              contract: *a2
+            - id: write-crypto
+              title: 命中后处理
+              shortTitle: 命中后处理
+              moduleRole: crypto-engine
+              contextLane: spu-fpga
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+            - id: write-media
+              title: 介质持久化
+              shortTitle: 介质持久化
+              moduleRole: nvme-media
+              contextLane: nvme-device
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: write-app
+              target: write-prepare
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: write-prepare
+              target: write-submit
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: write-submit
+              target: write-crypto
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: write-crypto
+              target: write-media
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        completion-release:
+          id: completion-release
+          title: 完成与释放
+          shortTitle: 完成与释放
+          summary: 请求结束时先解除 Bitmap 登记，再解除 DMA 映射。
+          caveat: ""
+          steps:
+            - id: release-bitmap
+              title: 释放登记
+              shortTitle: bitmap_release_dma_pages
+              moduleRole: bitmap-register
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a3
+            - id: release-dma
+              title: 解除 DMA 映射
+              shortTitle: 解除 DMA 映射
+              moduleRole: dma-map
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: release-bitmap
+              target: release-dma
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+      topologyNodes:
+        - id: nvme-app
+          label: NVMe 应用
+          fill: "#22a7cf"
+          data:
+            title: NVMe 应用
+            plane: host-userspace
+            layer: 区域 01 · 控制面
+            kind: client
+            description: 发起块设备 I/O。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-userspace
+              - protected-write
+        - id: bitmap-manager
+          label: Bitmap 策略管理
+          fill: "#218c83"
+          data:
+            title: Bitmap 策略管理
+            plane: host-userspace
+            layer: 区域 01 · 控制面
+            kind: service
+            description: 决定哪些 DMA 页面进入保护范围。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-userspace
+        - id: nvme-driver
+          label: Host nvme.ko
+          fill: "#7657c8"
+          data:
+            title: Host nvme.ko
+            plane: host-kernel
+            layer: 区域 02 · NVMe 与 DMA
+            kind: service
+            description: Host 保留 NVMe 队列与控制器所有权。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: Host nvme.ko
+                path: drivers/nvme/host/pci.c
+                note: Host NVMe PCI data path entry.
+              - name: nvme_queue_rq
+                path: drivers/nvme/host/pci.c
+                note: Representative Linux NVMe PCI submission path.
+            views:
+              - overview
+              - host-kernel
+              - protected-write
+        - id: dma-map
+          label: DMA / IOVA 映射
+          fill: "#6969c4"
+          data:
+            title: DMA / IOVA 映射
+            plane: host-kernel
+            layer: 区域 02 · NVMe 与 DMA
+            kind: service
+            description: 建立设备可见地址及映射生命周期。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-kernel
+              - completion-release
+        - id: bitmap-register
+          label: Bitmap 页面登记
+          fill: "#8a61d1"
+          data:
+            title: Bitmap 页面登记
+            plane: host-kernel
+            layer: 区域 02 · NVMe 与 DMA
+            kind: service
+            description: 在门铃前登记、解除映射前释放。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-kernel
+              - protected-write
+              - completion-release
+        - id: pcie-root
+          label: Host PCIe Root Complex
+          fill: "#366f9c"
+          data:
+            title: Host PCIe Root Complex
+            plane: pcie-path
+            layer: 区域 03 · 事务层
+            kind: target
+            description: 承载 NVMe TLP。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - pcie-path
+        - id: pcie-payload
+          label: PCIe Payload
+          fill: "#2f83e7"
+          data:
+            title: PCIe Payload
+            plane: pcie-path
+            layer: 区域 03 · 事务层
+            kind: device
+            description: 命令相关数据，不代表 SPU 接管 NVMe 协议。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - pcie-path
+        - id: bitmap-table
+          label: Bitmap / 地址命中表
+          fill: "#13a681"
+          data:
+            title: Bitmap / 地址命中表
+            plane: spu-fpga
+            layer: 区域 04 · 数据面
+            kind: service
+            description: 依据登记页面判断是否处理 payload。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spu-fpga
+        - id: crypto-engine
+          label: 透明加解密引擎
+          fill: "#168f7b"
+          data:
+            title: 透明加解密引擎
+            plane: spu-fpga
+            layer: 区域 04 · 数据面
+            kind: target
+            description: 对命中页面的数据透明处理。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spu-fpga
+              - protected-write
+        - id: pcie-forward
+          label: PCIe 转发
+          fill: "#3abc9c"
+          data:
+            title: PCIe 转发
+            plane: spu-fpga
+            layer: 区域 04 · 数据面
+            kind: target
+            description: 保持事务路径继续到物理设备。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spu-fpga
+        - id: nvme-controller
+          label: NVMe 控制器
+          fill: "#7fae3f"
+          data:
+            title: NVMe 控制器
+            plane: nvme-device
+            layer: 区域 05 · 存储端
+            kind: device
+            description: 执行 NVMe 命令并访问介质。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - nvme-device
+        - id: nvme-media
+          label: Namespace / NAND
+          fill: "#9dbd5d"
+          data:
+            title: Namespace / NAND
+            plane: nvme-device
+            layer: 区域 05 · 存储端
+            kind: target
+            description: 最终持久化介质。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - nvme-device
+              - protected-write
+      topologyEdges:
+        - id: app-driver
+          source: nvme-app
+          target: nvme-driver
+          label: 块 I/O
+          fill: "#708090"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 系统调用与块层请求。
+            evidence: code
+        - id: manager-register
+          source: bitmap-manager
+          target: bitmap-register
+          label: 策略
+          fill: "#8a61d1"
+          dashed: true
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 登记保护范围。
+            evidence: inference
+        - id: driver-dma
+          source: nvme-driver
+          target: dma-map
+          label: DMA 映射
+          fill: "#e14b72"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: 获得设备可见地址。
+            evidence: code
+        - id: dma-bitmap
+          source: dma-map
+          target: bitmap-register
+          label: IOVA 页面
+          fill: "#8a61d1"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 登记页粒度地址。
+            evidence: code
+        - id: driver-root
+          source: nvme-driver
+          target: pcie-root
+          label: Doorbell / TLP
+          fill: "#f4a62a"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 登记完成后启动设备事务。
+            evidence: code
+        - id: root-payload
+          source: pcie-root
+          target: pcie-payload
+          label: PCIe 数据
+          fill: "#2f83e7"
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: 数据进入链路。
+            evidence: code
+        - id: payload-match
+          source: pcie-payload
+          target: bitmap-table
+          label: 地址匹配
+          fill: "#13a681"
+          dashed: true
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: 查询页面命中状态。
+            evidence: inference
+        - id: match-crypto
+          source: bitmap-table
+          target: crypto-engine
+          label: 命中页面
+          fill: "#168f7b"
+          dashed: true
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: 只处理命中数据。
+            evidence: inference
+        - id: crypto-forward
+          source: crypto-engine
+          target: pcie-forward
+          label: 处理后 payload
+          fill: "#3abc9c"
+          dashed: true
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: 透明转发。
+            evidence: inference
+        - id: forward-controller
+          source: pcie-forward
+          target: nvme-controller
+          label: NVMe PCIe
+          fill: "#5f86df"
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: 到达物理控制器。
+            evidence: inference
+        - id: controller-media
+          source: nvme-controller
+          target: nvme-media
+          label: 介质访问
+          fill: "#7fae3f"
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: 控制器访问 Namespace/NAND。
+            evidence: code
+      viewOptions:
+        - id: overview
+          label: 物理全景
+          hint: Host 保留 NVMe 控制权，SPU/FPGA 根据登记的 DMA/IOVA 页面处理 PCIe payload。
+        - id: host-userspace
+          label: Host 用户态
+          hint: 应用 / 管理 / 策略
+        - id: host-kernel
+          label: Host Linux 内核
+          hint: nvme.ko / DMA 映射 / Bitmap 登记
+        - id: pcie-path
+          label: PCIe 数据路径
+          hint: NVMe payload 与地址信息
+        - id: spu-fpga
+          label: SPU / FPGA Bitmap 引擎
+          hint: 页面命中 / 透明加解密 / 转发
+        - id: nvme-device
+          label: 物理 NVMe 设备
+          hint: 控制器 / Namespace / NAND
+        - id: protected-write
+          label: 受保护写路径
+          hint: Host 准备映射和 Bitmap，再触发 NVMe；SPU/FPGA 只处理命中 payload。
+        - id: completion-release
+          label: 完成与释放
+          hint: 请求结束时先解除 Bitmap 登记，再解除 DMA 映射。
+      systemTree:
+        - label: Host 用户态
+          plane: host-userspace
+          nodes: *a4
+        - label: Host Linux 内核
+          plane: host-kernel
+          nodes: *a5
+        - label: PCIe 数据路径
+          plane: pcie-path
+          nodes: *a6
+        - label: SPU / FPGA Bitmap 引擎
+          plane: spu-fpga
+          nodes: *a7
+        - label: 物理 NVMe 设备
+          plane: nvme-device
+          nodes: *a8
+      storageTrees:
+        - id: nvme-driver-sources
+          label: Host nvme.ko
+          plane: host-kernel
+          roots:
+            - path: drivers/nvme/host/pci.c
+              role: Host NVMe PCI data path entry.
+              nodeId: nvme-driver
+      runtimeFacts:
+        - label: 证据等级
+          value: INFERRED
+          tone: warn
+      cameraHudViews:
+        overview:
+          eyebrow: NVME-BITMAP
+          title: 物理全景
+          detail: Host 保留 NVMe 控制权，SPU/FPGA 根据登记的 DMA/IOVA 页面处理 PCIe payload。
+        host-userspace:
+          eyebrow: NVME-BITMAP
+          title: Host 用户态
+          detail: 应用 / 管理 / 策略
+        host-kernel:
+          eyebrow: NVME-BITMAP
+          title: Host Linux 内核
+          detail: nvme.ko / DMA 映射 / Bitmap 登记
+        pcie-path:
+          eyebrow: NVME-BITMAP
+          title: PCIe 数据路径
+          detail: NVMe payload 与地址信息
+        spu-fpga:
+          eyebrow: NVME-BITMAP
+          title: SPU / FPGA Bitmap 引擎
+          detail: 页面命中 / 透明加解密 / 转发
+        nvme-device:
+          eyebrow: NVME-BITMAP
+          title: 物理 NVMe 设备
+          detail: 控制器 / Namespace / NAND
+        protected-write:
+          eyebrow: NVME-BITMAP
+          title: 受保护写路径
+          detail: Host 准备映射和 Bitmap，再触发 NVMe；SPU/FPGA 只处理命中 payload。
+        completion-release:
+          eyebrow: NVME-BITMAP
+          title: 完成与释放
+          detail: 请求结束时先解除 Bitmap 登记，再解除 DMA 映射。
+    enUS:
+      planeMeta:
+        host-userspace:
+          label: Host Userspace
+          short: Host Userspace
+          color: "#22a7cf"
+        host-kernel:
+          label: Host Linux Kernel
+          short: Host Linux Kernel
+          color: "#7657c8"
+        pcie-path:
+          label: PCIe Data Path
+          short: PCIe Data Path
+          color: "#2f83e7"
+        spu-fpga:
+          label: SPU / FPGA Bitmap Engine
+          short: SPU / FPGA Bitmap Engine
+          color: "#168f7b"
+        nvme-device:
+          label: Physical NVMe Device
+          short: Physical NVMe Device
+          color: "#7fae3f"
+      edgeMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+        DATA:
+          color: "#7657c8"
+          label: DATA
+        PHYSICAL:
+          color: "#168f7b"
+          label: PHYSICAL
+      laneMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+          summary: CONTROL
+        LIFECYCLE:
+          color: "#7657c8"
+          label: LIFECYCLE
+          summary: LIFECYCLE
+        PRIMARY:
+          color: "#168f7b"
+          label: PRIMARY
+          summary: PRIMARY
+        PHYSICAL:
+          color: "#2f83e7"
+          label: PHYSICAL
+          summary: PHYSICAL
+      functionInteractions:
+        nvme-app: []
+        bitmap-manager: []
+        nvme-driver: []
+        dma-map: []
+        bitmap-register: []
+        pcie-root: []
+        pcie-payload: []
+        bitmap-table: []
+        crypto-engine: []
+        pcie-forward: []
+        nvme-controller: []
+        nvme-media: []
+      driverCausalLayerMeta:
+        payload:
+          label: Payload and ownership
+          short: DATA
+          color: "#4d8edb"
+          description: payload
+        control:
+          label: Control execution
+          short: CTRL
+          color: "#708090"
+          description: control
+        sync:
+          label: Synchronization
+          short: SYNC
+          color: "#e5b534"
+          description: sync
+        lifecycle:
+          label: Lifecycle and rollback
+          short: LIFE
+          color: "#e14b72"
+          description: lifecycle
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#708090"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#22b8cf"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#8a61d1"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a62a"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#e14b72"
+          label: IRQ
+          dashed: false
+        WAIT:
+          color: "#e5b534"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#c13f5c"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#e14b72"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        protected-write:
+          id: protected-write
+          title: Protected Write Path
+          shortTitle: Protected Write Path
+          summary: The host prepares mappings and Bitmap before NVMe submission; SPU/FPGA handles matched payload only.
+          caveat: FPGA page matching and processing still require RTL or runtime evidence.
+          steps:
+            - id: write-app
+              title: Issue write
+              shortTitle: Issue write
+              moduleRole: nvme-app
+              contextLane: host-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: write-prepare
+              title: Register pages
+              shortTitle: bitmap_prepare_dma_pages
+              moduleRole: bitmap-register
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a1
+            - id: write-submit
+              title: Submit NVMe
+              shortTitle: nvme_queue_rq
+              moduleRole: nvme-driver
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: drivers/nvme/host/pci.c
+              contract: *a2
+            - id: write-crypto
+              title: Process after match
+              shortTitle: Process after match
+              moduleRole: crypto-engine
+              contextLane: spu-fpga
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+            - id: write-media
+              title: Persist to media
+              shortTitle: Persist to media
+              moduleRole: nvme-media
+              contextLane: nvme-device
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: write-app
+              target: write-prepare
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: write-prepare
+              target: write-submit
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: write-submit
+              target: write-crypto
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: write-crypto
+              target: write-media
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        completion-release:
+          id: completion-release
+          title: Completion and Release
+          shortTitle: Completion and Release
+          summary: At completion, Bitmap registration is released before DMA unmap.
+          caveat: ""
+          steps:
+            - id: release-bitmap
+              title: Release registration
+              shortTitle: bitmap_release_dma_pages
+              moduleRole: bitmap-register
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a3
+            - id: release-dma
+              title: Unmap DMA
+              shortTitle: Unmap DMA
+              moduleRole: dma-map
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: release-bitmap
+              target: release-dma
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+      topologyNodes:
+        - id: nvme-app
+          label: NVMe Application
+          fill: "#22a7cf"
+          data:
+            title: NVMe Application
+            plane: host-userspace
+            layer: ZONE 01 · CONTROL PLANE
+            kind: client
+            description: Issues block I/O.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-userspace
+              - protected-write
+        - id: bitmap-manager
+          label: Bitmap Policy Manager
+          fill: "#218c83"
+          data:
+            title: Bitmap Policy Manager
+            plane: host-userspace
+            layer: ZONE 01 · CONTROL PLANE
+            kind: service
+            description: Selects DMA pages covered by protection.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-userspace
+        - id: nvme-driver
+          label: Host nvme.ko
+          fill: "#7657c8"
+          data:
+            title: Host nvme.ko
+            plane: host-kernel
+            layer: ZONE 02 · NVME AND DMA
+            kind: service
+            description: The host retains NVMe queue and controller ownership.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: Host nvme.ko
+                path: drivers/nvme/host/pci.c
+                note: Host NVMe PCI data path entry.
+              - name: nvme_queue_rq
+                path: drivers/nvme/host/pci.c
+                note: Representative Linux NVMe PCI submission path.
+            views:
+              - overview
+              - host-kernel
+              - protected-write
+        - id: dma-map
+          label: DMA / IOVA Mapping
+          fill: "#6969c4"
+          data:
+            title: DMA / IOVA Mapping
+            plane: host-kernel
+            layer: ZONE 02 · NVME AND DMA
+            kind: service
+            description: Creates device-visible addresses and mapping lifetime.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-kernel
+              - completion-release
+        - id: bitmap-register
+          label: Bitmap Page Registration
+          fill: "#8a61d1"
+          data:
+            title: Bitmap Page Registration
+            plane: host-kernel
+            layer: ZONE 02 · NVME AND DMA
+            kind: service
+            description: Register before doorbell and release before DMA unmap.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-kernel
+              - protected-write
+              - completion-release
+        - id: pcie-root
+          label: Host PCIe Root Complex
+          fill: "#366f9c"
+          data:
+            title: Host PCIe Root Complex
+            plane: pcie-path
+            layer: ZONE 03 · TRANSACTION LAYER
+            kind: target
+            description: Carries NVMe TLPs.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - pcie-path
+        - id: pcie-payload
+          label: PCIe Payload
+          fill: "#2f83e7"
+          data:
+            title: PCIe Payload
+            plane: pcie-path
+            layer: ZONE 03 · TRANSACTION LAYER
+            kind: device
+            description: Command-related data; it does not imply SPU ownership of NVMe protocol.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - pcie-path
+        - id: bitmap-table
+          label: Bitmap / Address Match Table
+          fill: "#13a681"
+          data:
+            title: Bitmap / Address Match Table
+            plane: spu-fpga
+            layer: ZONE 04 · DATA PLANE
+            kind: service
+            description: Matches registered pages to decide payload handling.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spu-fpga
+        - id: crypto-engine
+          label: Transparent Crypto Engine
+          fill: "#168f7b"
+          data:
+            title: Transparent Crypto Engine
+            plane: spu-fpga
+            layer: ZONE 04 · DATA PLANE
+            kind: target
+            description: Transparently processes data for matched pages.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spu-fpga
+              - protected-write
+        - id: pcie-forward
+          label: PCIe Forwarding
+          fill: "#3abc9c"
+          data:
+            title: PCIe Forwarding
+            plane: spu-fpga
+            layer: ZONE 04 · DATA PLANE
+            kind: target
+            description: Forwards transactions toward the physical device.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spu-fpga
+        - id: nvme-controller
+          label: NVMe Controller
+          fill: "#7fae3f"
+          data:
+            title: NVMe Controller
+            plane: nvme-device
+            layer: ZONE 05 · STORAGE TARGET
+            kind: device
+            description: Executes NVMe commands and accesses media.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - nvme-device
+        - id: nvme-media
+          label: Namespace / NAND
+          fill: "#9dbd5d"
+          data:
+            title: Namespace / NAND
+            plane: nvme-device
+            layer: ZONE 05 · STORAGE TARGET
+            kind: target
+            description: Final persistent media.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - nvme-device
+              - protected-write
+      topologyEdges:
+        - id: app-driver
+          source: nvme-app
+          target: nvme-driver
+          label: Block I/O
+          fill: "#708090"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: System call and block request.
+            evidence: code
+        - id: manager-register
+          source: bitmap-manager
+          target: bitmap-register
+          label: Policy
+          fill: "#8a61d1"
+          dashed: true
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Registers protected scope.
+            evidence: inference
+        - id: driver-dma
+          source: nvme-driver
+          target: dma-map
+          label: DMA map
+          fill: "#e14b72"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: Obtains a device-visible address.
+            evidence: code
+        - id: dma-bitmap
+          source: dma-map
+          target: bitmap-register
+          label: IOVA pages
+          fill: "#8a61d1"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Registers page-granular addresses.
+            evidence: code
+        - id: driver-root
+          source: nvme-driver
+          target: pcie-root
+          label: Doorbell / TLP
+          fill: "#f4a62a"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Starts device transactions after registration.
+            evidence: code
+        - id: root-payload
+          source: pcie-root
+          target: pcie-payload
+          label: PCIe data
+          fill: "#2f83e7"
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: Data enters the link.
+            evidence: code
+        - id: payload-match
+          source: pcie-payload
+          target: bitmap-table
+          label: Address match
+          fill: "#13a681"
+          dashed: true
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: Checks page match state.
+            evidence: inference
+        - id: match-crypto
+          source: bitmap-table
+          target: crypto-engine
+          label: Matched page
+          fill: "#168f7b"
+          dashed: true
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: Processes matched data only.
+            evidence: inference
+        - id: crypto-forward
+          source: crypto-engine
+          target: pcie-forward
+          label: Processed payload
+          fill: "#3abc9c"
+          dashed: true
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: Transparent forwarding.
+            evidence: inference
+        - id: forward-controller
+          source: pcie-forward
+          target: nvme-controller
+          label: NVMe PCIe
+          fill: "#5f86df"
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: Reaches the physical controller.
+            evidence: inference
+        - id: controller-media
+          source: nvme-controller
+          target: nvme-media
+          label: Media access
+          fill: "#7fae3f"
+          data:
+            kind: DATA
+            lane: PRIMARY
+            description: Controller accesses Namespace/NAND.
+            evidence: code
+      viewOptions:
+        - id: overview
+          label: Overview
+          hint: The host retains NVMe control while SPU/FPGA processes PCIe payload for registered DMA/IOVA pages.
+        - id: host-userspace
+          label: Host Userspace
+          hint: Application / management / policy
+        - id: host-kernel
+          label: Host Linux Kernel
+          hint: nvme.ko / DMA mapping / Bitmap registration
+        - id: pcie-path
+          label: PCIe Data Path
+          hint: NVMe payload and address information
+        - id: spu-fpga
+          label: SPU / FPGA Bitmap Engine
+          hint: Page match / transparent crypto / forwarding
+        - id: nvme-device
+          label: Physical NVMe Device
+          hint: Controller / Namespace / NAND
+        - id: protected-write
+          label: Protected Write Path
+          hint: The host prepares mappings and Bitmap before NVMe submission; SPU/FPGA handles matched payload only.
+        - id: completion-release
+          label: Completion and Release
+          hint: At completion, Bitmap registration is released before DMA unmap.
+      systemTree:
+        - label: Host Userspace
+          plane: host-userspace
+          nodes: *a4
+        - label: Host Linux Kernel
+          plane: host-kernel
+          nodes: *a5
+        - label: PCIe Data Path
+          plane: pcie-path
+          nodes: *a6
+        - label: SPU / FPGA Bitmap Engine
+          plane: spu-fpga
+          nodes: *a7
+        - label: Physical NVMe Device
+          plane: nvme-device
+          nodes: *a8
+      storageTrees:
+        - id: nvme-driver-sources
+          label: Host nvme.ko
+          plane: host-kernel
+          roots:
+            - path: drivers/nvme/host/pci.c
+              role: Host NVMe PCI data path entry.
+              nodeId: nvme-driver
+      runtimeFacts:
+        - label: Evidence level
+          value: INFERRED
+          tone: warn
+      cameraHudViews:
+        overview:
+          eyebrow: NVME-BITMAP
+          title: Overview
+          detail: The host retains NVMe control while SPU/FPGA processes PCIe payload for registered DMA/IOVA pages.
+        host-userspace:
+          eyebrow: NVME-BITMAP
+          title: Host Userspace
+          detail: Application / management / policy
+        host-kernel:
+          eyebrow: NVME-BITMAP
+          title: Host Linux Kernel
+          detail: nvme.ko / DMA mapping / Bitmap registration
+        pcie-path:
+          eyebrow: NVME-BITMAP
+          title: PCIe Data Path
+          detail: NVMe payload and address information
+        spu-fpga:
+          eyebrow: NVME-BITMAP
+          title: SPU / FPGA Bitmap Engine
+          detail: Page match / transparent crypto / forwarding
+        nvme-device:
+          eyebrow: NVME-BITMAP
+          title: Physical NVMe Device
+          detail: Controller / Namespace / NAND
+        protected-write:
+          eyebrow: NVME-BITMAP
+          title: Protected Write Path
+          detail: The host prepares mappings and Bitmap before NVMe submission; SPU/FPGA handles matched payload only.
+        completion-release:
+          eyebrow: NVME-BITMAP
+          title: Completion and Release
+          detail: At completion, Bitmap registration is released before DMA unmap.
+  common:
+    focusModuleGroups:
+      nvme-app:
+        - nvme-app
+      bitmap-manager:
+        - bitmap-manager
+      nvme-driver:
+        - nvme-driver
+      dma-map:
+        - dma-map
+      bitmap-register:
+        - bitmap-register
+      pcie-root:
+        - pcie-root
+      pcie-payload:
+        - pcie-payload
+      bitmap-table:
+        - bitmap-table
+      crypto-engine:
+        - crypto-engine
+      pcie-forward:
+        - pcie-forward
+      nvme-controller:
+        - nvme-controller
+      nvme-media:
+        - nvme-media
+    driverJourneyModuleRoleByNodeId:
+      nvme-app: nvme-app
+      bitmap-manager: bitmap-manager
+      nvme-driver: nvme-driver
+      dma-map: dma-map
+      bitmap-register: bitmap-register
+      pcie-root: pcie-root
+      pcie-payload: pcie-payload
+      bitmap-table: bitmap-table
+      crypto-engine: crypto-engine
+      pcie-forward: pcie-forward
+      nvme-controller: nvme-controller
+      nvme-media: nvme-media
+    driverJourneyOrder:
+      - protected-write
+      - completion-release
+    nodePositions:
+      nvme-app: *a9
+      bitmap-manager: *a10
+      nvme-driver: *a11
+      dma-map: *a12
+      bitmap-register: *a13
+      pcie-root: *a14
+      pcie-payload: *a15
+      bitmap-table: *a16
+      crypto-engine: *a17
+      pcie-forward: *a18
+      nvme-controller: *a19
+      nvme-media: *a20
+    macroZones:
+      host-userspace:
+        center: *a21
+        halfSize:
+          - 5
+          - 5
+          - 0.4
+        nodeIds: *a4
+      host-kernel:
+        center: *a22
+        halfSize:
+          - 5.5
+          - 6
+          - 0.4
+        nodeIds: *a5
+      pcie-path:
+        center: *a23
+        halfSize:
+          - 4.5
+          - 5
+          - 0.4
+        nodeIds: *a6
+      spu-fpga:
+        center: *a24
+        halfSize:
+          - 5.5
+          - 6
+          - 0.4
+        nodeIds: *a7
+      nvme-device:
+        center: *a25
+        halfSize:
+          - 5
+          - 5
+          - 0.4
+        nodeIds: *a8
+    globalModuleLabels:
+      - id: nvme-app
+        color: "#22a7cf"
+        halfWidth: 3.5
+        moduleSide: left
+        cameraSide: left
+      - id: bitmap-manager
+        color: "#218c83"
+        halfWidth: 3.5
+        moduleSide: left
+        cameraSide: left
+      - id: nvme-driver
+        color: "#7657c8"
+        halfWidth: 3.75
+        moduleSide: left
+        cameraSide: left
+      - id: dma-map
+        color: "#6969c4"
+        halfWidth: 3.75
+        moduleSide: left
+        cameraSide: left
+      - id: bitmap-register
+        color: "#8a61d1"
+        halfWidth: 3.75
+        moduleSide: right
+        cameraSide: right
+      - id: pcie-root
+        color: "#366f9c"
+        halfWidth: 3
+        moduleSide: left
+        cameraSide: left
+      - id: pcie-payload
+        color: "#2f83e7"
+        halfWidth: 3
+        moduleSide: right
+        cameraSide: right
+      - id: bitmap-table
+        color: "#13a681"
+        halfWidth: 3.75
+        moduleSide: left
+        cameraSide: left
+      - id: crypto-engine
+        color: "#168f7b"
+        halfWidth: 3.75
+        moduleSide: right
+        cameraSide: right
+      - id: pcie-forward
+        color: "#3abc9c"
+        halfWidth: 3.75
+        moduleSide: right
+        cameraSide: right
+      - id: nvme-controller
+        color: "#7fae3f"
+        halfWidth: 3.5
+        moduleSide: left
+        cameraSide: left
+      - id: nvme-media
+        color: "#9dbd5d"
+        halfWidth: 3.5
+        moduleSide: right
+        cameraSide: right
+    routeNodeIds:
+      protected-write:
+        - nvme-app
+        - bitmap-register
+        - nvme-driver
+        - crypto-engine
+        - nvme-media
+      completion-release:
+        - bitmap-register
+        - dma-map
+    directionCards: []
+    visuals:
+      zones:
+        - id: host-userspace
+          anchorNodeId: nvme-app
+          eyebrow: *a26
+          title: *a27
+          summary: *a28
+          position: *a21
+          size: *a29
+          color: "#22a7cf"
+          detailGroup: host-userspace
+          backdrop: server
+        - id: host-kernel
+          anchorNodeId: nvme-driver
+          eyebrow: *a30
+          title: *a31
+          summary: *a32
+          position: *a22
+          size: *a33
+          color: "#7657c8"
+          detailGroup: host-kernel
+          backdrop: server
+        - id: pcie-path
+          anchorNodeId: pcie-root
+          eyebrow: *a34
+          title: *a35
+          summary: *a36
+          position: *a23
+          size: *a37
+          color: "#2f83e7"
+          detailGroup: pcie-path
+          backdrop: generic
+        - id: spu-fpga
+          anchorNodeId: bitmap-table
+          eyebrow: *a38
+          title: *a39
+          summary: *a40
+          position: *a24
+          size: *a41
+          color: "#168f7b"
+          detailGroup: spu-fpga
+          backdrop: gateway
+        - id: nvme-device
+          anchorNodeId: nvme-controller
+          eyebrow: *a42
+          title: *a43
+          summary: *a44
+          position: *a25
+          size: *a45
+          color: "#7fae3f"
+          detailGroup: nvme-device
+          backdrop: generic
+      modules:
+        - nodeId: nvme-app
+          title: *a46
+          eyebrow: *a26
+          position: *a9
+          size: *a47
+          color: "#22a7cf"
+          labelOffset:
+            - 4.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: host-userspace
+        - nodeId: bitmap-manager
+          title: *a48
+          eyebrow: *a26
+          position: *a10
+          size: *a49
+          color: "#218c83"
+          labelOffset:
+            - 4.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: host-userspace
+        - nodeId: nvme-driver
+          title: *a50
+          eyebrow: *a30
+          position: *a11
+          size: *a51
+          color: "#7657c8"
+          labelOffset:
+            - 4.75
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: host-kernel
+        - nodeId: dma-map
+          title: *a52
+          eyebrow: *a30
+          position: *a12
+          size: *a53
+          color: "#6969c4"
+          labelOffset:
+            - 4.75
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: host-kernel
+        - nodeId: bitmap-register
+          title: *a54
+          eyebrow: *a30
+          position: *a13
+          size: *a55
+          color: "#8a61d1"
+          labelOffset:
+            - 4.75
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: host-kernel
+        - nodeId: pcie-root
+          title: *a56
+          eyebrow: *a34
+          position: *a14
+          size: *a57
+          color: "#366f9c"
+          labelOffset:
+            - 4
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: pcie-path
+        - nodeId: pcie-payload
+          title: *a58
+          eyebrow: *a34
+          position: *a15
+          size: *a59
+          color: "#2f83e7"
+          labelOffset:
+            - 4
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: pcie-path
+        - nodeId: bitmap-table
+          title: *a60
+          eyebrow: *a38
+          position: *a16
+          size: *a61
+          color: "#13a681"
+          labelOffset:
+            - 4.75
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: spu-fpga
+        - nodeId: crypto-engine
+          title: *a62
+          eyebrow: *a38
+          position: *a17
+          size: *a63
+          color: "#168f7b"
+          labelOffset:
+            - 4.75
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: spu-fpga
+        - nodeId: pcie-forward
+          title: *a64
+          eyebrow: *a38
+          position: *a18
+          size: *a65
+          color: "#3abc9c"
+          labelOffset:
+            - 4.75
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: spu-fpga
+        - nodeId: nvme-controller
+          title: *a66
+          eyebrow: *a42
+          position: *a19
+          size: *a67
+          color: "#7fae3f"
+          labelOffset:
+            - 4.5
+            - 0.2
+            - 1.35
+          detailGroup: nvme-device
+        - nodeId: nvme-media
+          title: *a68
+          eyebrow: *a42
+          position: *a20
+          size: *a69
+          color: "#9dbd5d"
+          labelOffset:
+            - 4.5
+            - 0.2
+            - 1.35
+          detailGroup: nvme-device
+      layers: []
+      depths: []
+  displayDefaults:
+    pipeThickness: 4.5
+    hudDistance: 1.2
+    moduleLabelDistance: 1.2
+    labelLayoutMode: module
+    labelLineThickness: 1.5
+    moduleLabelScale: 1
+    focusAnnotationScale: 1
+    focusHudTextScale: 1
+    subLabelDistance: 30
+    subLabelFadeRange: 8
+    farFadeStart: 48
+    farBlockOpacity: 0.24
+    farFlowOpacity: 0.2
