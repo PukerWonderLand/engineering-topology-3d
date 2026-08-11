@@ -1252,3 +1252,47 @@ html[data-locale="en-US"] .module-info p { -webkit-line-clamp: 3; line-clamp: 3;
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Schema-driven scene explorer. This layer is intentionally independent from the
+   richer reference-page selectors so a new YAML scene does not modify src/. */
+.generic-explorer { width: 100vw; height: 100vh; overflow: hidden; background: #edf5f9; color: #18304a; font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif; }
+.generic-header { height: 112px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 24px; background: rgba(255,255,255,.94); border-bottom: 1px solid #cbdce8; }
+.generic-header small, .generic-sidebar small { font: 700 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; color: #62809b; }
+.generic-header h1 { margin: 3px 0; font-size: 27px; }
+.generic-header p { margin: 0; color: #62778b; }
+.generic-header-controls { display: flex; align-items: end; gap: 10px; }
+.generic-header-controls label { display: grid; gap: 4px; font-size: 12px; color: #62778b; }
+.generic-header-controls select, .generic-header-controls button, .generic-journeys button { border: 1px solid #afc7d8; border-radius: 9px; background: white; color: #244460; padding: 9px 12px; font-weight: 700; }
+.generic-workspace { height: calc(100vh - 112px); display: grid; grid-template-columns: 250px minmax(0,1fr) 330px; }
+.generic-canvas { position: relative; min-width: 0; border-inline: 1px solid #cbdce8; }
+.generic-sidebar { overflow: auto; padding: 18px; background: rgba(248,252,254,.96); }
+.generic-sidebar h2 { margin: 5px 0 16px; }
+.generic-index-zone { display: grid; gap: 5px; margin-bottom: 18px; }
+.generic-index-zone > strong { margin-bottom: 4px; }
+.generic-index-zone button { border: 0; border-left: 3px solid transparent; background: transparent; text-align: left; padding: 7px 9px; color: #536d82; border-radius: 5px; }
+.generic-index-zone button.active { background: #deebf6; border-left-color: #2878c7; color: #174f84; font-weight: 700; }
+.generic-zone-label { width: 220px; padding: 10px 13px; border: 2px solid; border-radius: 12px; background: rgba(255,255,255,.92); box-shadow: 0 10px 30px rgba(40,78,103,.16); display: grid; gap: 3px; pointer-events: none; }
+.generic-zone-label small { font: 700 9px/1.3 ui-monospace, monospace; letter-spacing: .1em; color: #71869a; }
+.generic-zone-label strong { font-size: 16px; }
+.generic-zone-label span { font-size: 11px; color: #62778b; }
+.generic-node-label { min-width: 130px; max-width: 190px; display: grid; gap: 2px; padding: 7px 9px; border: 1px solid; border-radius: 8px; background: rgba(255,255,255,.9); color: #1c3954; box-shadow: 0 5px 18px rgba(32,68,94,.14); }
+.generic-node-label small { font: 700 7px/1.2 ui-monospace, monospace; color: #6c8195; text-transform: uppercase; }
+.generic-node-label strong { font-size: 10px; }
+.generic-node-label.selected { outline: 2px solid white; box-shadow: 0 0 0 4px #2f83e7, 0 0 24px #fff; }
+.generic-journeys { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 7px; padding: 7px; border: 1px solid #bfd2df; border-radius: 12px; background: rgba(255,255,255,.9); }
+.generic-journeys button { font-size: 11px; padding: 7px 10px; }
+.generic-journeys button.active { background: #2878c7; border-color: #2878c7; color: white; }
+.generic-sidebar.right h3 { margin-top: 24px; border-top: 1px solid #d3e1ea; padding-top: 16px; }
+.generic-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.generic-tags span { padding: 4px 7px; border-radius: 6px; background: #dfedf5; font-size: 11px; }
+.generic-function-card, .generic-journey-card { margin-top: 12px; padding: 12px; border: 1px solid #c7d9e5; border-radius: 10px; background: white; }
+.generic-function-card > small { float: right; }
+.generic-function-card dl { display: grid; grid-template-columns: 95px 1fr; gap: 5px 8px; margin: 12px 0 0; font-size: 11px; }
+.generic-function-card dt { font-weight: 800; color: #557087; }
+.generic-function-card dd { margin: 0; color: #334f66; }
+.generic-journey-card { border-left: 4px solid #2f83e7; }
+.generic-journey-card strong { display: block; margin: 4px 0; }
+.generic-journey-card em { display: block; color: #a06415; font-size: 11px; }
+.generic-empty { color: #7b8d9d; font-size: 12px; }
+.generic-error { padding: 40px; }
+@media (max-width: 1100px) { .generic-workspace { grid-template-columns: 210px minmax(0,1fr); } .generic-sidebar.right { display: none; } }

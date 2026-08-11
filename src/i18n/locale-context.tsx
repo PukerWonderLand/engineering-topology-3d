@@ -15,8 +15,6 @@ import { DEFAULT_LOCALE, isLocale, LOCALE_STORAGE_KEY, type Locale } from "./typ
 let activeLocale: Locale = DEFAULT_LOCALE;
 const proxyCache = new WeakMap<object, object>();
 const reverseEnglish = new Map(Object.entries(enUS).map(([zh, en]) => [en.toLowerCase(), zh]));
-const pageTitle = "T113 ARM-XVC 远程 FPGA 调试架构";
-const pageDescription = "交互式 3D 展示 x86 FPGA 工具设备、可信局域网、T113 ARMv7 XVC 网关、USB 扩展坞、JTAG 下载器、KU15P 与 690T 的物理链路和证据边界。";
 
 export function setActiveLocale(locale: Locale) {
   activeLocale = locale;
@@ -80,9 +78,6 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale;
     document.documentElement.dataset.locale = locale;
-    document.title = translateText(pageTitle, locale);
-    document.querySelector<HTMLMetaElement>('meta[name="description"]')
-      ?.setAttribute("content", translateText(pageDescription, locale));
 
     // Re-measure camera-facing cards after English/Chinese text changes.
     let secondFrame = 0;
