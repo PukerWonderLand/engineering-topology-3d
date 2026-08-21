@@ -1,0 +1,43 @@
+[Unit]
+Description=Engineering Topology 3D static site
+Documentation=https://github.com/PukerWonderLand/engineering-topology-3d/blob/main/docs/deployment.md
+Wants=network-online.target
+After=network-online.target
+ConditionPathIsDirectory=/var/www/engineering-topology-3d
+
+[Service]
+Type=simple
+DynamicUser=yes
+Environment=ET3D_BIND=127.0.0.1
+Environment=ET3D_PORT=4314
+ExecStartPre=/usr/bin/test -r /var/www/engineering-topology-3d/index.html
+ExecStart=/usr/bin/python3 -m http.server ${ET3D_PORT} --bind ${ET3D_BIND} --directory /var/www/engineering-topology-3d
+Restart=on-failure
+RestartSec=3
+UMask=0027
+
+AmbientCapabilities=
+CapabilityBoundingSet=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectProc=invisible
+ProtectSystem=strict
+RemoveIPC=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

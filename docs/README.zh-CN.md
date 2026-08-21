@@ -2,7 +2,7 @@
 
 一个带证据等级的 3D 工程拓扑框架，用于直接在浏览器中呈现物理系统、软件栈、因果旅程和工程数据流。
 
-[在线演示](https://pukerwonderland.github.io/engineering-topology-3d/) · [English README](../README.md) · [AI 场景编写](ai-authoring.md) · [功能保护基线](feature-preservation-checklist.md) · [架构说明](architecture.md) · [安全边界](security-boundary.md)
+[在线演示](https://pukerwonderland.github.io/engineering-topology-3d/) · [English README](../README.md) · [部署说明](deployment.md) · [AI 场景编写](ai-authoring.md) · [功能保护基线](feature-preservation-checklist.md) · [架构说明](architecture.md) · [安全边界](security-boundary.md)
 
 ## 项目为什么存在
 
@@ -26,6 +26,7 @@
 - 证据等级：`CODE_PROVEN`、`RTL_PROVEN`、`RUNTIME_OBSERVED` 和 `INFERRED`。
 - 中文和英文界面切换。
 - 可部署到 GitHub Pages、Nginx 或任意对象存储的纯静态产物。
+- 支持在构建时选择根页面默认场景，同时保留 `?scene=<scene-id>` URL 覆盖能力。
 - 带版本号的 `SceneDefinition` Schema，以及 YAML 解析、关系校验和通用场景渲染器。
 - 自动发现 `examples/<scene-id>/topology.yaml` 中的场景；通过 `?scene=<scene-id>` 打开。
 
@@ -92,10 +93,12 @@ pnpm build
 engineering-topology-3d/
 ├── .github/                 # 工作流和社区模板
 ├── demo/                    # 浏览器入口
+├── deploy/                  # 可移植的服务管理器模板
 ├── docs/                    # 架构、证据和部署说明
 ├── examples/
 │   ├── t113-arm-xvc/        # 匿名化参考模型和验收说明
-│   └── nvme-bitmap/         # Schema 驱动的跨领域示例
+│   ├── nvme-bitmap/         # Schema 驱动的跨领域示例
+│   └── eg942h-g30-r2-m4/    # 脱敏后的远程启动与 BMC 管理场景
 ├── public/                  # 公共静态资源
 ├── scripts/                 # 场景校验命令
 ├── spec/                    # 带版本号的 SceneDefinition JSON Schema
@@ -119,6 +122,12 @@ pnpm dev
 
 打开 `http://127.0.0.1:4314/`。
 
+如需让另一个 SceneDefinition 2.0 场景成为某次构建的根页面默认场景，可以设置 `VITE_DEFAULT_SCENE`；URL 查询参数仍具有更高优先级：
+
+```bash
+VITE_DEFAULT_SCENE=eg942h-g30-r2-m4 pnpm build
+```
+
 ## 构建与检查
 
 ```bash
@@ -128,6 +137,8 @@ pnpm test
 ```
 
 静态网站会输出到 `dist/`。资源地址使用相对路径，因此同一份输出可以部署在 GitHub 项目 Pages 的子路径下。
+
+经过安全加固的 Linux systemd 部署方法、默认回环监听和显式局域网覆盖方式，请参阅[部署说明](deployment.md)。
 
 ## 参考示例边界
 
