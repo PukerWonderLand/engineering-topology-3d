@@ -36,6 +36,18 @@ const DEFAULT_FAR_FADE_START = 48;
 const DEFAULT_FAR_BLOCK_OPACITY = 0.22;
 const DEFAULT_FAR_FLOW_OPACITY = 0.55;
 
+function resolvePlaneMeta(meta: EnhancedSceneRuntime["planeMeta"], id: string) {
+  return meta[id] ?? { color: "#4d8edb", label: id, short: id };
+}
+
+function resolveEdgeMeta(meta: EnhancedSceneRuntime["edgeMeta"], id: string) {
+  return meta[id] ?? { color: "#708090", label: id };
+}
+
+function resolveCausalLayerMeta(meta: EnhancedSceneRuntime["driverCausalLayerMeta"], id: string) {
+  return meta[id] ?? { color: "#4d8edb", label: id, short: id.toUpperCase(), description: id };
+}
+
 function defaultJourneyStepId(journey: DriverJourney) {
   return journey.steps.find((step) => step.kind === "function")?.id ?? journey.steps[0]?.id ?? "";
 }
@@ -193,7 +205,7 @@ function SystemIndexContent({
             {systemTree.map((group) => (
               <details key={group.label} open>
                 <summary>
-                  <span className="plane-dot" style={{ background: planeMeta[group.plane].color }} />
+                  <span className="plane-dot" style={{ background: resolvePlaneMeta(planeMeta, group.plane).color }} />
                   <strong>{group.label}</strong>
                   <em>{group.nodes.length}</em>
                 </summary>
@@ -217,7 +229,7 @@ function SystemIndexContent({
             {storageTrees.map((tree) => (
               <details key={tree.id} open>
                 <summary>
-                  <span className="plane-dot" style={{ background: planeMeta[tree.plane].color }} />
+                  <span className="plane-dot" style={{ background: resolvePlaneMeta(planeMeta, tree.plane).color }} />
                   <strong>{tree.label}</strong>
                   <em>{tree.roots.length}</em>
                 </summary>
@@ -546,8 +558,8 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
       consumes: sourceTitles.length > 0 ? sourceTitles.join(locale === "en-US" ? ", " : "、") : tr("无上游 payload；由外部事件触发。"),
       produces: targetTitles.length > 0 ? targetTitles.join(locale === "en-US" ? ", " : "、") : tr("事务完成或进入错误出口。"),
       stateResource: locale === "en-US"
-        ? `${focusedJourneyStep.kind} node; participates in ${focusedJourneyStep.layers.map((layer) => driverCausalLayerMeta[layer].label).join(" / ")}.`
-        : `${focusedJourneyStep.kind} 节点；参与 ${focusedJourneyStep.layers.map((layer) => driverCausalLayerMeta[layer].label).join(" / ")}。`,
+        ? `${focusedJourneyStep.kind} node; participates in ${focusedJourneyStep.layers.map((layer) => resolveCausalLayerMeta(driverCausalLayerMeta, layer).label).join(" / ")}.`
+        : `${focusedJourneyStep.kind} 节点；参与 ${focusedJourneyStep.layers.map((layer) => resolveCausalLayerMeta(driverCausalLayerMeta, layer).label).join(" / ")}。`,
       completionError: locale === "en-US"
         ? `${tr(journeyEvidenceLabels[focusedJourneyStep.evidence])}; ${outgoing.length > 0 ? outgoing.map((edge) => `${edge.relation}: ${edge.label}`).join("; ") : tr("无后继边")}.`
         : `${tr(journeyEvidenceLabels[focusedJourneyStep.evidence])}；${outgoing.length > 0 ? outgoing.map((edge) => `${edge.relation}: ${edge.label}`).join("；") : tr("无后继边")}。`,
@@ -722,7 +734,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
 
   const focusHudStyle = focusedModule
     ? ({
-        "--focus-accent": planeMeta[focusedModule.data.plane].color,
+        "--focus-accent": resolvePlaneMeta(planeMeta, focusedModule.data.plane).color,
         "--focus-hud-text-scale": focusHudTextScale,
       } as CSSProperties)
     : undefined;
@@ -776,7 +788,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             <div className="search-results">
               {searchResults.map((node) => (
                 <button key={node.id} onClick={() => { selectNode(node.id); setQuery(""); }}>
-                  <span style={{ background: planeMeta[node.data.plane].color }} />
+                  <span style={{ background: resolvePlaneMeta(planeMeta, node.data.plane).color }} />
                   <div><strong>{node.data.title}</strong><small>{node.data.codeRefs?.[0]?.name ?? node.data.layer}</small></div>
                 </button>
               ))}
@@ -933,7 +945,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                 <button type="button" onClick={exitFocus} title={tr("退出隔离聚焦 (Esc)")}>
                   <span aria-hidden="true">←</span> {tr("返回全景")}
                 </button>
-                <span>{planeMeta[focusedModule.data.plane].short} · ISOLATED</span>
+                <span>{resolvePlaneMeta(planeMeta, focusedModule.data.plane).short} · ISOLATED</span>
               </div>
               <div className="focus-hud-title">
                 <p>{focusedModule.data.layer}</p>
@@ -963,7 +975,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                   </div>
                   <div className="focus-hud-causal-layers" aria-label={tr("四层因果图开关")}>
                     {allDriverCausalLayers.map((layer) => {
-                      const meta = driverCausalLayerMeta[layer];
+                      const meta = resolveCausalLayerMeta(driverCausalLayerMeta, layer);
                       const enabled = enabledCausalLayers.has(layer);
                       return (
                         <button
@@ -988,7 +1000,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                         type="button"
                         key={step.id}
                         className={focusedJourneyStep?.id === step.id ? "active" : ""}
-                        style={{ "--step-color": driverCausalLayerMeta[step.layers[0]].color } as CSSProperties}
+                        style={{ "--step-color": resolveCausalLayerMeta(driverCausalLayerMeta, step.layers[0] ?? "payload").color } as CSSProperties}
                         onClick={() => setFocusedJourneyStepId(step.id)}
                         title={step.title}
                       >
@@ -1437,7 +1449,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
           <div className="canvas-legend">
             {allEdgeKinds.map((kind) => (
               <button className={edgeKinds.has(kind) ? "enabled" : "disabled"} key={kind} onClick={() => toggleEdgeKind(kind)}>
-                <span style={{ background: edgeMeta[kind].color }} />{edgeMeta[kind].label}
+                <span style={{ background: resolveEdgeMeta(edgeMeta, kind).color }} />{resolveEdgeMeta(edgeMeta, kind).label}
               </button>
             ))}
           </div>
@@ -1458,7 +1470,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             {selectedNode && (
               <article className="node-details">
                 <div className="detail-kicker">
-                  <span style={{ color: planeMeta[selectedNode.data.plane].color }}>{planeMeta[selectedNode.data.plane].short}</span>
+                  <span style={{ color: resolvePlaneMeta(planeMeta, selectedNode.data.plane).color }}>{resolvePlaneMeta(planeMeta, selectedNode.data.plane).short}</span>
                   <span className={`evidence-badge evidence-${selectedNode.data.evidence}`}>{tr(evidenceLabels[selectedNode.data.evidence])}</span>
                 </div>
                 <h3>{selectedNode.data.title}</h3>
@@ -1507,7 +1519,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                   <div className="neighbor-list">
                     {adjacentNodes.slice(0, 10).map((node) => (
                       <button key={node.id} onClick={() => selectNode(node.id)}>
-                        <span style={{ background: planeMeta[node.data.plane].color }} />{node.data.title}
+                        <span style={{ background: resolvePlaneMeta(planeMeta, node.data.plane).color }} />{node.data.title}
                       </button>
                     ))}
                   </div>
@@ -1529,10 +1541,10 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             {selectedEdge && (
               <article className="node-details edge-details">
                 <div className="detail-kicker">
-                  <span style={{ color: edgeMeta[selectedEdge.data.kind].color }}>{selectedEdge.data.kind}</span>
+                  <span style={{ color: resolveEdgeMeta(edgeMeta, selectedEdge.data.kind).color }}>{selectedEdge.data.kind}</span>
                   <span className={`evidence-badge evidence-${selectedEdge.data.evidence}`}>{tr(evidenceLabels[selectedEdge.data.evidence])}</span>
                 </div>
-                <h3>{edgeMeta[selectedEdge.data.kind].label}</h3>
+                <h3>{resolveEdgeMeta(edgeMeta, selectedEdge.data.kind).label}</h3>
                 <p className="node-id">{selectedEdge.source} → {selectedEdge.target}</p>
                 <p className="detail-description">{selectedEdge.data.description}</p>
                 {selectedEdge.data.protocol && <div className="runtime-note protocol-note"><strong>{tr("协议合同")}</strong><p>{selectedEdge.data.protocol}</p></div>}
@@ -1541,7 +1553,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                   <div className="neighbor-list">
                     {[selectedEdge.source, selectedEdge.target].map((id) => {
                       const node = nodeMap.get(id)!;
-                      return <button key={id} onClick={() => selectNode(id)}><span style={{ background: planeMeta[node.data.plane].color }} />{node.data.title}</button>;
+                      return <button key={id} onClick={() => selectNode(id)}><span style={{ background: resolvePlaneMeta(planeMeta, node.data.plane).color }} />{node.data.title}</button>;
                     })}
                   </div>
                 </section>

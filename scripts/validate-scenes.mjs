@@ -34,6 +34,61 @@ for (const directory of directories) {
       if (step.functionId && !functionIds.has(step.functionId)) problems.push(`journey ${journey.id} -> missing function ${step.functionId}`);
     });
   });
+
+  const validateEnhancedLocale = (localeName, content) => {
+    const enhancedNodeIds = ids(content.topologyNodes);
+    const enhancedEdgeIds = ids(content.topologyEdges);
+    const journeyIds = new Set(Object.keys(content.driverJourneys));
+    const planeIds = new Set(Object.keys(content.planeMeta));
+    const edgeKinds = new Set(Object.keys(content.edgeMeta));
+    const laneIds = new Set(Object.keys(content.laneMeta));
+    const causalLayers = new Set(Object.keys(content.driverCausalLayerMeta));
+    const journeyRelations = new Set(Object.keys(content.driverJourneyRelationMeta));
+    const moduleRoles = new Set(Object.values(scene.enhanced.common.driverJourneyModuleRoleByNodeId));
+
+    content.topologyNodes.forEach((node) => {
+      if (!planeIds.has(node.data.plane)) problems.push(`${localeName} node ${node.id} -> missing planeMeta ${node.data.plane}`);
+    });
+    content.topologyEdges.forEach((edge) => {
+      if (!enhancedNodeIds.has(edge.source) || !enhancedNodeIds.has(edge.target)) problems.push(`${localeName} enhanced edge ${edge.id} has a dangling endpoint`);
+      if (!edgeKinds.has(edge.data.kind)) problems.push(`${localeName} edge ${edge.id} -> missing edgeMeta ${edge.data.kind}`);
+      if (!laneIds.has(edge.data.lane)) problems.push(`${localeName} edge ${edge.id} -> missing laneMeta ${edge.data.lane}`);
+    });
+    content.systemTree.forEach((group) => {
+      if (!planeIds.has(group.plane)) problems.push(`${localeName} systemTree ${group.label} -> missing planeMeta ${group.plane}`);
+      group.nodes.forEach((id) => { if (!enhancedNodeIds.has(id)) problems.push(`${localeName} systemTree ${group.label} -> missing node ${id}`); });
+    });
+    content.storageTrees.forEach((tree) => {
+      if (!planeIds.has(tree.plane)) problems.push(`${localeName} storageTree ${tree.id} -> missing planeMeta ${tree.plane}`);
+      tree.roots.forEach((root) => { if (!enhancedNodeIds.has(root.nodeId)) problems.push(`${localeName} storageTree ${tree.id} -> missing node ${root.nodeId}`); });
+    });
+    Object.entries(content.driverJourneys).forEach(([journeyId, journey]) => {
+      const stepIds = ids(journey.steps);
+      journey.steps.forEach((step) => {
+        if (!moduleRoles.has(step.moduleRole)) problems.push(`${localeName} journey ${journeyId} step ${step.id} -> unknown module role ${step.moduleRole}`);
+        step.layers.forEach((layer) => { if (!causalLayers.has(layer)) problems.push(`${localeName} journey ${journeyId} step ${step.id} -> missing driverCausalLayerMeta ${layer}`); });
+      });
+      journey.edges.forEach((edge) => {
+        if (!stepIds.has(edge.source) || !stepIds.has(edge.target)) problems.push(`${localeName} journey ${journeyId} relation has a dangling step`);
+        if (!causalLayers.has(edge.layer)) problems.push(`${localeName} journey ${journeyId} relation -> missing driverCausalLayerMeta ${edge.layer}`);
+        if (!journeyRelations.has(edge.relation)) problems.push(`${localeName} journey ${journeyId} relation -> missing driverJourneyRelationMeta ${edge.relation}`);
+      });
+    });
+    content.viewOptions.forEach((view) => {
+      if (!content.cameraHudViews[view.id]) problems.push(`${localeName} view ${view.id} -> missing cameraHudViews entry`);
+    });
+    if (enhancedEdgeIds.size !== content.topologyEdges.length) problems.push(`${localeName} enhanced topology edges contain duplicate ids`);
+    return journeyIds;
+  };
+
+  const zhJourneyIds = validateEnhancedLocale("zhCN", scene.enhanced.content.zhCN);
+  const enJourneyIds = validateEnhancedLocale("enUS", scene.enhanced.content.enUS);
+  scene.enhanced.common.driverJourneyOrder.forEach((id) => {
+    if (!zhJourneyIds.has(id) || !enJourneyIds.has(id)) problems.push(`driverJourneyOrder -> missing bilingual journey ${id}`);
+  });
+  if (!scene.enhanced.content.zhCN.cameraHudViews[scene.enhanced.defaultView] || !scene.enhanced.content.enUS.cameraHudViews[scene.enhanced.defaultView]) {
+    problems.push(`defaultView ${scene.enhanced.defaultView} -> missing bilingual cameraHudViews entry`);
+  }
   const nodeLayouts = new Set(scene.layout.nodes.map((item) => item.nodeId));
   const zoneLayouts = new Set(scene.layout.zones.map((item) => item.zoneId));
   scene.nodes.forEach((node) => { if (!nodeLayouts.has(node.id)) problems.push(`node ${node.id} has no layout`); });
