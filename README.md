@@ -2,7 +2,7 @@
 
 An evidence-aware 3D framework for visualizing physical systems, software stacks, causal journeys, and engineering data flows directly in the browser.
 
-[Live demo](https://pukerwonderland.github.io/engineering-topology-3d/) · [中文说明](docs/README.zh-CN.md) · [AI authoring](docs/ai-authoring.md) · [Feature baseline](docs/feature-preservation-checklist.md) · [Architecture](docs/architecture.md) · [Security boundary](docs/security-boundary.md)
+[Live demo](https://pukerwonderland.github.io/engineering-topology-3d/) · [中文说明](docs/README.zh-CN.md) · [Deployment](docs/deployment.md) · [AI authoring](docs/ai-authoring.md) · [Feature baseline](docs/feature-preservation-checklist.md) · [Architecture](docs/architecture.md) · [Security boundary](docs/security-boundary.md)
 
 ## Why this project exists
 
@@ -26,6 +26,7 @@ The current `v0.2` release uses one SceneDefinition 2.0 enhanced renderer for ev
 - Evidence levels: `CODE_PROVEN`, `RTL_PROVEN`, `RUNTIME_OBSERVED`, and `INFERRED`.
 - Chinese and English interface switching.
 - Pure static output suitable for GitHub Pages, Nginx, or any object store.
+- Build-time default-scene selection while preserving `?scene=<scene-id>` URL overrides.
 - Versioned `SceneDefinition` schema with YAML parsing, relational validation, and a generic scene renderer.
 - Drop-in scene discovery from `examples/<scene-id>/topology.yaml`; open it with `?scene=<scene-id>`.
 
@@ -90,10 +91,12 @@ checklist scope, validation results, unverified items and whether src/ changed.
 engineering-topology-3d/
 ├── .github/                 # workflows and community templates
 ├── demo/                    # browser entry point
+├── deploy/                  # portable service-manager templates
 ├── docs/                    # architecture, evidence and deployment notes
 ├── examples/
 │   ├── t113-arm-xvc/        # anonymized reference model and acceptance notes
-│   └── nvme-bitmap/         # schema-driven cross-domain example
+│   ├── nvme-bitmap/         # schema-driven cross-domain example
+│   └── eg942h-g30-r2-m4/    # sanitized remote-boot and BMC management scene
 ├── public/                  # static public assets
 ├── scripts/                 # scene validation commands
 ├── spec/                    # versioned SceneDefinition JSON Schema
@@ -117,6 +120,12 @@ pnpm dev
 
 Open `http://127.0.0.1:4314/`.
 
+To make another SceneDefinition 2.0 scene the root-page default for one build, set `VITE_DEFAULT_SCENE`. A URL query still takes precedence:
+
+```bash
+VITE_DEFAULT_SCENE=eg942h-g30-r2-m4 pnpm build
+```
+
 ## Build and check
 
 ```bash
@@ -126,6 +135,8 @@ pnpm test
 ```
 
 The static site is emitted to `dist/`. Asset URLs are relative, so the same output works under a GitHub project Pages subpath.
+
+For the hardened Linux systemd deployment, including loopback-first defaults and an explicit LAN override, see [Deployment](docs/deployment.md).
 
 ## Reference example boundary
 
