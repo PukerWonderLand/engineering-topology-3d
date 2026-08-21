@@ -15,6 +15,7 @@ const localized = (value, locale) => value?.[locale] ?? "";
 const evidenceToLegacy = { CODE_PROVEN: "code", RTL_PROVEN: "target", RUNTIME_OBSERVED: "target", INFERRED: "inference" };
 const nodeKindToLegacy = { actor: "client", application: "client", service: "service", driver: "service", protocol: "network", buffer: "device", device: "device", hardware: "target", data: "device", state: "service" };
 const edgeKindToLegacy = { payload: "DATA", control: "CONTROL", sync: "CONTROL", lifecycle: "CONTROL", physical: "PHYSICAL" };
+const edgeKindToCausalLayer = { payload: "payload", control: "control", sync: "sync", lifecycle: "lifecycle", physical: "payload" };
 const palette = ["#2878c7", "#7657c8", "#168f7b", "#2f83e7", "#7fae3f", "#e14b72"];
 
 const zoneById = new Map(scene.zones.map((zone) => [zone.id, zone]));
@@ -64,16 +65,18 @@ function localeContent(locale) {
     shortTitle: localized(journey.title, locale),
     summary: localized(journey.summary, locale),
     caveat: localized(journey.caveat, locale),
-    steps: journey.steps.map((step) => {
+    steps: journey.steps.map((step, stepIndex) => {
       const fn = step.functionId ? functionById.get(step.functionId) : undefined;
       const moduleId = step.nodeId ?? fn?.moduleId ?? scene.nodes[0].id;
+      const journeyEdgeId = journey.edgeIds[Math.min(stepIndex, Math.max(0, journey.edgeIds.length - 1))];
+      const journeyEdgeKind = scene.edges.find((edge) => edge.id === journeyEdgeId)?.kind ?? "control";
       return {
         id: step.id,
         title: localized(step.title, locale),
         shortTitle: fn?.name ?? localized(step.title, locale),
         moduleRole: moduleId,
         contextLane: nodeById.get(moduleId)?.zoneId ?? "default",
-        layers: [scene.edges.find((edge) => journey.edgeIds.includes(edge.id))?.kind ?? "control"],
+        layers: [edgeKindToCausalLayer[journeyEdgeKind] ?? "control"],
         kind: fn ? "function" : "data",
         evidence: step.evidence,
         source: fn?.sources?.[0]?.path,

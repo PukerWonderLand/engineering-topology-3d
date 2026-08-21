@@ -1,0 +1,5934 @@
+schemaVersion: "2.0"
+id: eg942h-g30-r2-m4
+title:
+  zhCN: EG942H-G30 R2-M4 远程启动与 BMC 管理架构
+  enUS: EG942H-G30 R2-M4 Remote Boot and BMC Management Architecture
+description:
+  zhCN: 从浏览器、管理节点、BMC 管理网络到服务器主板侧带链路、UEFI、虚拟介质及 A10/NVMe 测试设备的证据分层拓扑。
+  enUS: Evidence-tiered topology from browser and management node through BMC networking, board sideband links, UEFI, virtual media, and the A10/NVMe test devices.
+evidence: RUNTIME_OBSERVED
+locales:
+  default: zh-CN
+  supported:
+    - zh-CN
+    - en-US
+zones:
+  - id: operator-source
+    title: &a72
+      zhCN: 操作端与镜像源
+      enUS: Operator and Image Source
+    eyebrow: &a71
+      zhCN: 区域 01 · 人与源数据
+      enUS: ZONE 01 · ACTOR AND SOURCE
+    summary: &a73
+      zhCN: 浏览器、Windows 同步副本与公司 NAS
+      enUS: Browser, Windows working copy, and company NAS
+    color: "#22a7cf"
+    nodeIds: &a28
+      - operator-browser
+      - windows-copy
+      - nas-iso
+  - id: management-node
+    title: &a76
+      zhCN: 独立管理节点
+      enUS: Independent Management Node
+    eyebrow: &a75
+      zhCN: 区域 02 · 自动化与留痕
+      enUS: ZONE 02 · AUTOMATION AND EVIDENCE
+    summary: &a77
+      zhCN: 黑匣子、事件存储、BMC 适配器、启动编排与镜像网关
+      enUS: Black box, event store, BMC adapter, boot orchestration, and media gateway
+    color: "#7657c8"
+    nodeIds: &a29
+      - blackbox-web
+      - event-store
+      - bmc-adapter
+      - boot-orchestrator
+      - media-gateway
+      - iso-cache
+  - id: management-network
+    title: &a80
+      zhCN: 管理网络
+      enUS: Management Network
+    eyebrow: &a79
+      zhCN: 区域 03 · 以太网管理面
+      enUS: ZONE 03 · ETHERNET MANAGEMENT PLANE
+    summary: &a81
+      zhCN: 管理交换网络与 BMC 专用/共享管理端口
+      enUS: Management switching and BMC dedicated/shared interfaces
+    color: "#2f83e7"
+    nodeIds: &a30
+      - mgmt-switch
+      - bmc-dedicated-lan
+      - bmc-shared-lan
+  - id: bmc-domain
+    title: &a84
+      zhCN: BMC 独立管理域
+      enUS: BMC Independent Management Domain
+    eyebrow: &a83
+      zhCN: 区域 04 · MegaRAC BMC
+      enUS: ZONE 04 · MEGARAC BMC
+    summary: &a85
+      zhCN: BMC SoC、固件存储、工作内存与内置管理服务
+      enUS: BMC SoC, firmware storage, working memory, and built-in services
+    color: "#168f7b"
+    nodeIds: &a31
+      - bmc-soc
+      - bmc-flash
+      - bmc-dram
+      - bmc-services
+  - id: board-sideband
+    title: &a88
+      zhCN: 主板侧带链路
+      enUS: Board Sideband Links
+    eyebrow: &a87
+      zhCN: 区域 05 · BMC 到 Host
+      enUS: ZONE 05 · BMC TO HOST
+    summary: &a89
+      zhCN: UART、USB、视频、传感器和电源/POST 控制
+      enUS: UART, USB, video, sensors, and power/POST control
+    color: "#e58b2a"
+    nodeIds: &a32
+      - host-uart
+      - usb-emulation
+      - video-capture
+      - sensor-bus
+      - power-post-control
+  - id: host-platform
+    title: &a92
+      zhCN: EG942H-G30 Host 平台
+      enUS: EG942H-G30 Host Platform
+    eyebrow: &a91
+      zhCN: 区域 06 · 固件与操作系统
+      enUS: ZONE 06 · FIRMWARE AND OPERATING SYSTEM
+    summary: &a93
+      zhCN: UEFI、虚拟光驱、CPU/DRAM、Ubuntu 与业务网口
+      enUS: UEFI, virtual CD, CPU/DRAM, Ubuntu, and production NIC
+    color: "#7fae3f"
+    nodeIds: &a33
+      - host-uefi
+      - virtual-cdrom
+      - host-cpu-dram
+      - ubuntu-host
+      - host-lom
+      - sensors-fru
+  - id: pcie-devices
+    title: &a96
+      zhCN: PCIe 测试设备
+      enUS: PCIe Test Devices
+    eyebrow: &a95
+      zhCN: 区域 07 · GDS 准备环境
+      enUS: ZONE 07 · GDS PREPARATION
+    summary: &a97
+      zhCN: 当前声明安装的 NVIDIA A10 与本地 NVMe
+      enUS: Currently declared NVIDIA A10 and local NVMe
+    color: "#e14b72"
+    nodeIds: &a34
+      - nvidia-a10
+      - local-nvme
+nodes:
+  - id: operator-browser
+    zoneId: operator-source
+    title: &a99
+      zhCN: 运维浏览器
+      enUS: Operator Browser
+    description:
+      zhCN: 查看黑匣子记录和 3D 拓扑，并通过已有 BMC 页面/KVM 进行人工操作。
+      enUS: Views black-box records and 3D topology and uses the existing BMC web/KVM UI for manual operations.
+    kind: actor
+    evidence: RUNTIME_OBSERVED
+    color: "#22a7cf"
+    interfaces: &a12
+      - HTTPS
+      - HTTP
+  - id: windows-copy
+    zoneId: operator-source
+    title: &a101
+      zhCN: Windows 同步副本
+      enUS: Windows Synced Copy
+    description:
+      zhCN: E 盘中的本仓库副本，可在 Windows 本地启动相同场景。
+      enUS: This repository copy on the E drive can render the same scene locally on Windows.
+    kind: data
+    evidence: RUNTIME_OBSERVED
+    color: "#49bad8"
+  - id: nas-iso
+    zoneId: operator-source
+    title: &a103
+      zhCN: 公司 NAS / ISO 源
+      enUS: Company NAS / ISO Source
+    description:
+      zhCN: 通过 SMB2/3 保存 Ubuntu ISO；场景仅使用别名，不保存地址或凭据。
+      enUS: Stores the Ubuntu ISO over SMB2/3; this scene uses aliases and stores no addresses or credentials.
+    kind: device
+    evidence: RUNTIME_OBSERVED
+    color: "#2c91bb"
+    interfaces: &a13
+      - SMB2
+      - SMB3
+  - id: blackbox-web
+    zoneId: management-node
+    title: &a105
+      zhCN: 启动监控黑匣子 Web
+      enUS: Boot Black-Box Web
+    description:
+      zhCN: 展示按启动会话分割的 SOL、POST、SEL 与元数据。
+      enUS: Presents SOL, POST, SEL, and metadata grouped by boot session.
+    kind: application
+    evidence: CODE_PROVEN
+    color: "#7657c8"
+    sources:
+      - path: external/eg942h-g30-boot-web/boot_web.py
+        note: Existing black-box web service on the management node; not bundled in this public scene.
+  - id: event-store
+    zoneId: management-node
+    title: &a107
+      zhCN: 启动会话与事件存储
+      enUS: Boot Session and Event Store
+    description:
+      zhCN: 保存原始串口、带时间戳文本、JSONL 和会话元数据，并执行保留策略。
+      enUS: Stores raw serial, timestamped text, JSONL, and session metadata with retention policy.
+    kind: data
+    evidence: CODE_PROVEN
+    color: "#8a61d1"
+  - id: bmc-adapter
+    zoneId: management-node
+    title: &a109
+      zhCN: BMC 适配层
+      enUS: BMC Adapter Layer
+    description:
+      zhCN: 封装 IPMI lanplus、SOL、SEL/FRU、POST 与厂商 MegaRAC HTTPS API。
+      enUS: Wraps IPMI lanplus, SOL, SEL/FRU, POST, and the vendor MegaRAC HTTPS API.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#6957b8"
+    interfaces: &a14
+      - IPMI v2.0
+      - RMCP+
+      - SOL
+      - MegaRAC HTTPS
+    sources:
+      - path: external/eg942h-g30-boot-recorder/bmc_boot_recorder.py
+        note: Existing recorder/adapter implementation on the management node.
+  - id: boot-orchestrator
+    zoneId: management-node
+    title: &a111
+      zhCN: 启动编排器
+      enUS: Boot Orchestrator
+    description:
+      zhCN: 编排远程介质、一次性启动、上下电与启动状态机；不在 BMC 内运行自定义程序。
+      enUS: Orchestrates remote media, one-time boot, power control, and boot state; custom code does not run inside the BMC.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#8566c9"
+  - id: media-gateway
+    zoneId: management-node
+    title: &a113
+      zhCN: 镜像中继网关
+      enUS: Image Relay Gateway
+    description:
+      zhCN: 从 NAS 获取 ISO，校验 SHA-256，并向旧 BMC 提供只读 NFSv3；HTTP Range 为备选。
+      enUS: Fetches ISO from NAS, verifies SHA-256, and exposes restricted read-only NFSv3 to the legacy BMC; HTTP Range is a fallback.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#9c78d0"
+    interfaces: &a15
+      - SMB2
+      - SMB3
+      - NFSv3
+      - HTTP Range
+  - id: iso-cache
+    zoneId: management-node
+    title: &a115
+      zhCN: 本地 ISO 缓存
+      enUS: Local ISO Cache
+    description:
+      zhCN: 保存经校验的 ISO 与硬链接，隔离 NAS 协议和 BMC 兼容性差异。
+      enUS: Holds verified ISO files and hard links, isolating NAS protocol from BMC compatibility constraints.
+    kind: buffer
+    evidence: RUNTIME_OBSERVED
+    color: "#a88ad0"
+  - id: mgmt-switch
+    zoneId: management-network
+    title: &a117
+      zhCN: 局域网管理交换网络
+      enUS: LAN Management Switching
+    description:
+      zhCN: 承载浏览器、管理节点、NAS 与 BMC 管理面流量；实际 VLAN/交换机端口尚未全部固化。
+      enUS: Carries browser, management-node, NAS, and BMC management traffic; exact VLAN and switch-port mapping is not fully documented.
+    kind: hardware
+    evidence: RUNTIME_OBSERVED
+    color: "#2f83e7"
+  - id: bmc-dedicated-lan
+    zoneId: management-network
+    title: &a119
+      zhCN: BMC 专用管理网口
+      enUS: BMC Dedicated Management LAN
+    description:
+      zhCN: 独立 RJ45 管理接口，当前通过 DHCP 可达；真实 IP/MAC 保留在受控环境文件中。
+      enUS: Dedicated RJ45 management interface currently reachable through DHCP; real IP/MAC remain in controlled environment records.
+    kind: device
+    evidence: RUNTIME_OBSERVED
+    color: "#397ad6"
+    interfaces: &a16
+      - 1GbE RJ45
+      - RMCP+ UDP 623
+      - HTTPS
+  - id: bmc-shared-lan
+    zoneId: management-network
+    title: &a121
+      zhCN: BMC 共享管理端口逻辑端点
+      enUS: BMC Shared-LAN Logical Endpoint
+    description:
+      zhCN: BMC 报告存在共享通道，但未配置地址；其与具体 Host LOM 的 NC-SI 物理绑定尚待板级确认。
+      enUS: The BMC reports a shared channel without an address; its NC-SI physical binding to a specific Host LOM remains to be confirmed.
+    kind: device
+    evidence: RUNTIME_OBSERVED
+    color: "#5591dc"
+    interfaces: &a17
+      - NC-SI candidate
+  - id: bmc-soc
+    zoneId: bmc-domain
+    title: &a123
+      zhCN: BMC SoC
+      enUS: BMC SoC
+    description:
+      zhCN: 在 Host 关闭或业务网络失效时仍独立运行，承载管理固件与各侧带控制器。
+      enUS: Runs independently while the Host is off or production networking fails and hosts management firmware and sideband controllers.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#168f7b"
+  - id: bmc-flash
+    zoneId: bmc-domain
+    title: &a125
+      zhCN: BMC 固件 SPI Flash
+      enUS: BMC Firmware SPI Flash
+    description:
+      zhCN: 典型 BMC 固件持久化介质；本机具体芯片型号、容量与分区尚未拆机或读取确认。
+      enUS: Typical persistent BMC firmware medium; exact chip, capacity, and partitioning are not yet confirmed on this server.
+    kind: hardware
+    evidence: INFERRED
+    color: "#3a9f89"
+  - id: bmc-dram
+    zoneId: bmc-domain
+    title: &a127
+      zhCN: BMC 独立 DRAM
+      enUS: BMC Dedicated DRAM
+    description:
+      zhCN: 供 BMC 固件、视频缓冲和服务运行；具体容量与连接方式待芯片资料确认。
+      enUS: Serves BMC firmware, video buffering, and services; capacity and exact attachment await silicon documentation.
+    kind: hardware
+    evidence: INFERRED
+    color: "#4caf91"
+  - id: bmc-services
+    zoneId: bmc-domain
+    title: &a129
+      zhCN: MegaRAC 内置管理服务
+      enUS: Built-in MegaRAC Services
+    description:
+      zhCN: 提供 Web/KVM、IPMI、SOL、传感器、远程介质和厂商 API；当前未证明可部署任意自定义程序。
+      enUS: Provides Web/KVM, IPMI, SOL, sensors, remote media, and vendor APIs; arbitrary custom program deployment is not established.
+    kind: service
+    evidence: RUNTIME_OBSERVED
+    color: "#20a68d"
+    interfaces: &a18
+      - HTTPS
+      - IPMI 2.0
+      - SOL
+      - Virtual Media
+      - KVM
+  - id: host-uart
+    zoneId: board-sideband
+    title: &a131
+      zhCN: Host UART ↔ BMC SOL
+      enUS: Host UART ↔ BMC SOL
+    description:
+      zhCN: 传送文本控制台；Ubuntu ttyS0 和内核 console 已用于无业务网络登录。精确 UART 控制器/走线待原理图确认。
+      enUS: Carries the text console; Ubuntu ttyS0 and kernel console provide login without production networking. Exact UART controller and trace await schematic confirmation.
+    kind: protocol
+    evidence: RUNTIME_OBSERVED
+    color: "#e58b2a"
+    interfaces: &a19
+      - 115200 8N1
+  - id: usb-emulation
+    zoneId: board-sideband
+    title: &a133
+      zhCN: BMC USB 设备仿真链路
+      enUS: BMC USB Device-Emulation Link
+    description:
+      zhCN: 向 Host 暴露虚拟 CDROM 和 KVM 键鼠；功能已观察，具体 USB 控制器与拓扑待确认。
+      enUS: Exposes virtual CDROM and KVM keyboard/mouse to the Host; functionality is observed while exact USB controller topology awaits confirmation.
+    kind: protocol
+    evidence: RUNTIME_OBSERVED
+    color: "#e99b43"
+    interfaces: &a20
+      - USB gadget
+      - USB mass storage
+      - HID
+  - id: video-capture
+    zoneId: board-sideband
+    title: &a135
+      zhCN: Host 视频捕获链路
+      enUS: Host Video Capture Link
+    description:
+      zhCN: 将 POST、UEFI 和 OS 图形画面送入 BMC KVM；精确 VGA/PCIe/帧缓冲路径待硬件资料确认。
+      enUS: Delivers POST, UEFI, and OS graphics to BMC KVM; exact VGA/PCIe/framebuffer path awaits hardware documentation.
+    kind: protocol
+    evidence: RUNTIME_OBSERVED
+    color: "#efad5e"
+  - id: sensor-bus
+    zoneId: board-sideband
+    title: &a137
+      zhCN: I²C/SMBus/IPMB 管理总线
+      enUS: I²C/SMBus/IPMB Management Bus
+    description:
+      zhCN: 典型连接温度、电压、风扇、PSU 与 FRU；本机可读取相应信息，但每条板级总线尚未逐一验证。
+      enUS: Typically connects temperature, voltage, fans, PSU, and FRU; corresponding data are readable, but each board-level bus has not been individually traced.
+    kind: protocol
+    evidence: INFERRED
+    color: "#f0b76d"
+    interfaces: &a21
+      - I2C
+      - SMBus
+      - IPMB
+  - id: power-post-control
+    zoneId: board-sideband
+    title: &a139
+      zhCN: 电源/复位/POST 侧带控制
+      enUS: Power / Reset / POST Sideband Control
+    description:
+      zhCN: BMC 可控制 Host 上下电、复位并读取 POST 状态；具体 GPIO/eSPI/LPC 组合待主板原理图确认。
+      enUS: The BMC controls Host power/reset and reads POST state; the exact GPIO/eSPI/LPC combination awaits the board schematic.
+    kind: protocol
+    evidence: RUNTIME_OBSERVED
+    color: "#e48a28"
+    interfaces: &a22
+      - GPIO candidate
+      - eSPI candidate
+      - LPC candidate
+  - id: host-uefi
+    zoneId: host-platform
+    title: &a141
+      zhCN: Host UEFI / BIOS
+      enUS: Host UEFI / BIOS
+    description:
+      zhCN: 枚举 BMC 虚拟光驱和 PCIe 设备，执行一次性 UEFI CD 启动并产生 POST。
+      enUS: Enumerates the BMC virtual CD and PCIe devices, performs one-time UEFI CD boot, and emits POST progress.
+    kind: service
+    evidence: RUNTIME_OBSERVED
+    color: "#7fae3f"
+  - id: virtual-cdrom
+    zoneId: host-platform
+    title: &a143
+      zhCN: BMC Virtual CDROM0/1
+      enUS: BMC Virtual CDROM0/1
+    description:
+      zhCN: BMC 向 Host 模拟的 USB 光驱，承载远程 Ubuntu ISO。
+      enUS: USB optical drives emulated by the BMC to carry the remote Ubuntu ISO.
+    kind: device
+    evidence: RUNTIME_OBSERVED
+    color: "#94bd55"
+    interfaces: &a23
+      - USB mass storage
+      - UEFI boot
+  - id: host-cpu-dram
+    zoneId: host-platform
+    title: &a145
+      zhCN: 双路海光 CPU 与 DRAM
+      enUS: Dual Hygon CPUs and DRAM
+    description:
+      zhCN: EG942H-G30 4U Host 计算平台；产品能力与当前平台类型已有资料佐证。
+      enUS: EG942H-G30 4U Host compute platform; platform class and product capabilities are documented.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#6f9e35"
+  - id: ubuntu-host
+    zoneId: host-platform
+    title: &a147
+      zhCN: Ubuntu Host 系统
+      enUS: Ubuntu Host OS
+    description:
+      zhCN: 通过业务网卡 SSH，也可经 ttyS0/SOL 登录；当前远程 ISO 仅进入 Live 环境，未写系统盘。
+      enUS: Reachable through production-network SSH or ttyS0/SOL; the remote ISO reached a live environment without writing the system disk.
+    kind: application
+    evidence: RUNTIME_OBSERVED
+    color: "#85ad49"
+    interfaces: &a24
+      - SSH
+      - ttyS0
+  - id: host-lom
+    zoneId: host-platform
+    title: &a149
+      zhCN: Host 业务网口 / LOM
+      enUS: Host Production NIC / LOM
+    description:
+      zhCN: 承载 Ubuntu 业务网络，与 BMC 专用管理口逻辑隔离；共享 BMC 的准确 NC-SI 绑定待确认。
+      enUS: Carries Ubuntu production networking and is logically separate from the dedicated BMC port; exact shared-BMC NC-SI binding awaits confirmation.
+    kind: device
+    evidence: RUNTIME_OBSERVED
+    color: "#a3c56b"
+    interfaces: &a25
+      - Ethernet
+  - id: sensors-fru
+    zoneId: host-platform
+    title: &a151
+      zhCN: 传感器 / 风扇 / PSU / FRU
+      enUS: Sensors / Fans / PSU / FRU
+    description:
+      zhCN: 为 BMC 提供温度、电压、风扇、电源和资产信息。
+      enUS: Supplies temperature, voltage, fan, power, and asset information to the BMC.
+    kind: hardware
+    evidence: RUNTIME_OBSERVED
+    color: "#b0ca7a"
+  - id: nvidia-a10
+    zoneId: pcie-devices
+    title: &a153
+      zhCN: NVIDIA A10 GPU
+      enUS: NVIDIA A10 GPU
+    description:
+      zhCN: 用户声明已安装的 GDS 测试 GPU；拓扑和 P2P 能力仍需在 Host 上用 lspci/CUDA 工具实测。
+      enUS: User-declared GDS test GPU; topology and P2P capability still require Host-side lspci/CUDA verification.
+    kind: device
+    evidence: INFERRED
+    color: "#e14b72"
+    interfaces: &a26
+      - PCIe
+  - id: local-nvme
+    zoneId: pcie-devices
+    title: &a155
+      zhCN: 本地 NVMe 测试盘
+      enUS: Local NVMe Test Drive
+    description:
+      zhCN: 用户声明已接入的本地测试盘；型号、PCIe 根端口、IOMMU 分组和数据安全边界需现场确认。
+      enUS: User-declared local test drive; model, PCIe root port, IOMMU group, and data-safety boundary require live verification.
+    kind: device
+    evidence: INFERRED
+    color: "#d66184"
+    interfaces: &a27
+      - PCIe
+      - NVMe
+edges:
+  - id: browser-blackbox
+    source: operator-browser
+    target: blackbox-web
+    title:
+      zhCN: 查看启动记录
+      enUS: View boot records
+    description:
+      zhCN: 局域网 HTTP 访问黑匣子页面。
+      enUS: LAN HTTP access to the black-box web page.
+    kind: control
+    evidence: RUNTIME_OBSERVED
+    lane: UI
+    protocol: HTTP
+  - id: windows-scene
+    source: windows-copy
+    target: operator-browser
+    title:
+      zhCN: 本地 3D 渲染
+      enUS: Local 3D rendering
+    description:
+      zhCN: Windows 启动 Vite 后由浏览器加载本场景。
+      enUS: The browser loads this scene after Vite starts on Windows.
+    kind: payload
+    evidence: CODE_PROVEN
+    lane: UI
+    protocol: HTTP
+  - id: nas-gateway
+    source: nas-iso
+    target: media-gateway
+    title:
+      zhCN: 获取 ISO
+      enUS: Fetch ISO
+    description:
+      zhCN: 管理节点使用现代 SMB 客户端读取镜像。
+      enUS: The management node reads the image using a modern SMB client.
+    kind: payload
+    evidence: RUNTIME_OBSERVED
+    lane: MEDIA
+    protocol: SMB2/3
+  - id: blackbox-store
+    source: event-store
+    target: blackbox-web
+    title:
+      zhCN: 会话查询
+      enUS: Session query
+    description:
+      zhCN: Web 层读取按启动会话组织的事件。
+      enUS: The web layer reads events grouped by boot session.
+    kind: payload
+    evidence: CODE_PROVEN
+    lane: TELEMETRY
+  - id: adapter-store
+    source: bmc-adapter
+    target: event-store
+    title:
+      zhCN: 写入事件
+      enUS: Persist events
+    description:
+      zhCN: 记录 SOL、POST、SEL 和采集器状态。
+      enUS: Records SOL, POST, SEL, and collector status.
+    kind: payload
+    evidence: CODE_PROVEN
+    lane: TELEMETRY
+  - id: orchestrator-adapter
+    source: boot-orchestrator
+    target: bmc-adapter
+    title:
+      zhCN: 调用 BMC 能力
+      enUS: Invoke BMC capabilities
+    description:
+      zhCN: 编排器通过适配层执行厂商 API 与 IPMI 操作。
+      enUS: The orchestrator uses the adapter for vendor API and IPMI operations.
+    kind: control
+    evidence: CODE_PROVEN
+    lane: CONTROL
+  - id: gateway-cache
+    source: media-gateway
+    target: iso-cache
+    title:
+      zhCN: 校验并缓存
+      enUS: Verify and cache
+    description:
+      zhCN: SHA-256 校验后保存可导出的本地文件。
+      enUS: Persists an exportable local file after SHA-256 verification.
+    kind: lifecycle
+    evidence: RUNTIME_OBSERVED
+    lane: MEDIA
+  - id: cache-bmc
+    source: iso-cache
+    target: bmc-services
+    title:
+      zhCN: BMC 拉取 ISO
+      enUS: BMC fetches ISO
+    description:
+      zhCN: BMC 内置 NFS 客户端从受限只读 NFSv3 导出读取镜像。
+      enUS: The BMC built-in NFS client reads the image from a restricted read-only NFSv3 export.
+    kind: payload
+    evidence: RUNTIME_OBSERVED
+    lane: MEDIA
+    protocol: NFSv3
+  - id: adapter-switch
+    source: bmc-adapter
+    target: mgmt-switch
+    title:
+      zhCN: 管理协议流量
+      enUS: Management protocol traffic
+    description:
+      zhCN: 管理节点经局域网访问 BMC。
+      enUS: The management node reaches the BMC over the LAN.
+    kind: physical
+    evidence: RUNTIME_OBSERVED
+    lane: MGMT_NETWORK
+    protocol: Ethernet
+  - id: switch-dedicated
+    source: mgmt-switch
+    target: bmc-dedicated-lan
+    title:
+      zhCN: 专用管理以太网
+      enUS: Dedicated management Ethernet
+    description:
+      zhCN: 当前已验证的主要带外管理路径。
+      enUS: Currently verified primary out-of-band management path.
+    kind: physical
+    evidence: RUNTIME_OBSERVED
+    lane: MGMT_NETWORK
+    protocol: 1GbE
+  - id: switch-shared
+    source: mgmt-switch
+    target: bmc-shared-lan
+    title:
+      zhCN: 共享管理入口候选
+      enUS: Shared-management ingress candidate
+    description:
+      zhCN: 共享通道存在，但当前未配置 IP，也未证实连接到哪一个 Host LOM。
+      enUS: A shared channel exists but has no configured IP and is not yet mapped to a specific Host LOM.
+    kind: physical
+    evidence: INFERRED
+    lane: MGMT_NETWORK
+    protocol: Ethernet / NC-SI
+    dashed: true
+  - id: dedicated-soc
+    source: bmc-dedicated-lan
+    target: bmc-soc
+    title:
+      zhCN: BMC MAC/网络控制器
+      enUS: BMC MAC/network controller
+    description:
+      zhCN: 将专用管理口流量送入 BMC SoC。
+      enUS: Carries dedicated-port traffic into the BMC SoC.
+    kind: physical
+    evidence: RTL_PROVEN
+    lane: MGMT_NETWORK
+  - id: shared-soc
+    source: bmc-shared-lan
+    target: bmc-soc
+    title:
+      zhCN: 共享通道逻辑连接
+      enUS: Shared-channel logical attachment
+    description:
+      zhCN: BMC 通道存在已观察，内部具体 MAC/NC-SI 路径待确认。
+      enUS: The BMC channel is observed; its exact internal MAC/NC-SI path awaits confirmation.
+    kind: physical
+    evidence: INFERRED
+    lane: MGMT_NETWORK
+    dashed: true
+  - id: soc-flash
+    source: bmc-flash
+    target: bmc-soc
+    title:
+      zhCN: 固件启动
+      enUS: Firmware boot
+    description:
+      zhCN: BMC 从独立非易失存储加载固件；本机实现细节待确认。
+      enUS: The BMC loads firmware from independent nonvolatile storage; implementation details await confirmation.
+    kind: lifecycle
+    evidence: INFERRED
+    lane: BMC_INTERNAL
+    protocol: SPI candidate
+  - id: soc-dram
+    source: bmc-dram
+    target: bmc-soc
+    title:
+      zhCN: BMC 工作内存
+      enUS: BMC working memory
+    description:
+      zhCN: 供固件与视频缓冲使用，精确接口待确认。
+      enUS: Used by firmware and video buffering; exact interface awaits confirmation.
+    kind: physical
+    evidence: INFERRED
+    lane: BMC_INTERNAL
+  - id: soc-services
+    source: bmc-soc
+    target: bmc-services
+    title:
+      zhCN: 运行内置服务
+      enUS: Run built-in services
+    description:
+      zhCN: BMC SoC 执行 MegaRAC 固件服务。
+      enUS: The BMC SoC executes MegaRAC firmware services.
+    kind: lifecycle
+    evidence: RUNTIME_OBSERVED
+    lane: BMC_INTERNAL
+  - id: services-sol
+    source: bmc-services
+    target: host-uart
+    title:
+      zhCN: SOL 封装/解封装
+      enUS: SOL encapsulation/decapsulation
+    description:
+      zhCN: UART 字节经 IPMI v2.0/RMCP+ SOL 在管理网络上传输。
+      enUS: UART bytes are transported as IPMI v2.0/RMCP+ SOL over the management network.
+    kind: payload
+    evidence: RUNTIME_OBSERVED
+    lane: CONSOLE
+    protocol: SOL 115200 8N1
+  - id: uart-host
+    source: host-uart
+    target: ubuntu-host
+    title:
+      zhCN: 串口控制台
+      enUS: Serial console
+    description:
+      zhCN: 覆盖内核/systemd/login；BIOS 串口输出是否完整取决于固件 Console Redirection 配置。
+      enUS: Covers kernel/systemd/login; complete BIOS serial output depends on firmware Console Redirection settings.
+    kind: payload
+    evidence: RUNTIME_OBSERVED
+    lane: CONSOLE
+    protocol: ttyS0 115200 8N1
+  - id: services-usb
+    source: bmc-services
+    target: usb-emulation
+    title:
+      zhCN: 配置 USB 仿真
+      enUS: Configure USB emulation
+    description:
+      zhCN: BMC 内置固件控制虚拟介质和 HID 仿真。
+      enUS: Built-in BMC firmware controls virtual media and HID emulation.
+    kind: control
+    evidence: RUNTIME_OBSERVED
+    lane: VIRTUAL_MEDIA
+  - id: usb-cdrom
+    source: usb-emulation
+    target: virtual-cdrom
+    title:
+      zhCN: 模拟 USB 光驱
+      enUS: Emulate USB optical drive
+    description:
+      zhCN: Host 看到 BMC Virtual CDROM0/1。
+      enUS: The Host sees BMC Virtual CDROM0/1.
+    kind: physical
+    evidence: RUNTIME_OBSERVED
+    lane: VIRTUAL_MEDIA
+    protocol: USB mass storage
+  - id: cdrom-uefi
+    source: virtual-cdrom
+    target: host-uefi
+    title:
+      zhCN: UEFI 枚举与启动
+      enUS: UEFI enumeration and boot
+    description:
+      zhCN: 一次性 Boot Override 选择远程光驱。
+      enUS: One-time Boot Override selects the remote optical drive.
+    kind: lifecycle
+    evidence: RUNTIME_OBSERVED
+    lane: BOOT
+  - id: uefi-ubuntu
+    source: host-uefi
+    target: ubuntu-host
+    title:
+      zhCN: 加载 GRUB 与 Ubuntu
+      enUS: Load GRUB and Ubuntu
+    description:
+      zhCN: 实测到达 Ubuntu Live 图形环境，未执行磁盘安装。
+      enUS: Observed reaching the Ubuntu live graphical environment without disk installation.
+    kind: lifecycle
+    evidence: RUNTIME_OBSERVED
+    lane: BOOT
+  - id: video-host
+    source: host-uefi
+    target: video-capture
+    title:
+      zhCN: POST/UEFI 视频
+      enUS: POST/UEFI video
+    description:
+      zhCN: 固件画面进入 BMC KVM 捕获路径。
+      enUS: Firmware video enters the BMC KVM capture path.
+    kind: payload
+    evidence: RUNTIME_OBSERVED
+    lane: KVM
+  - id: video-services
+    source: video-capture
+    target: bmc-services
+    title:
+      zhCN: KVM 视频流
+      enUS: KVM video stream
+    description:
+      zhCN: BMC 将捕获的视频编码并通过 Web/KVM 服务输出。
+      enUS: The BMC encodes captured video and exposes it through Web/KVM.
+    kind: payload
+    evidence: RUNTIME_OBSERVED
+    lane: KVM
+  - id: services-power
+    source: bmc-services
+    target: power-post-control
+    title:
+      zhCN: 上下电与复位命令
+      enUS: Power and reset commands
+    description:
+      zhCN: IPMI/厂商 API 操作经侧带控制送往 Host。
+      enUS: IPMI/vendor API operations reach the Host through sideband control.
+    kind: control
+    evidence: RUNTIME_OBSERVED
+    lane: POWER
+  - id: power-host
+    source: power-post-control
+    target: host-cpu-dram
+    title:
+      zhCN: 电源/复位/POST 状态
+      enUS: Power/reset/POST state
+    description:
+      zhCN: 控制主机生命周期并回读启动进度；精确电气接口待确认。
+      enUS: Controls Host lifecycle and reads boot progress; exact electrical interfaces await confirmation.
+    kind: lifecycle
+    evidence: RUNTIME_OBSERVED
+    lane: POWER
+  - id: sensors-bus
+    source: sensors-fru
+    target: sensor-bus
+    title:
+      zhCN: 遥测与资产数据
+      enUS: Telemetry and inventory data
+    description:
+      zhCN: 温度、电压、风扇、PSU 和 FRU 数据进入管理总线。
+      enUS: Temperature, voltage, fan, PSU, and FRU data enter the management bus.
+    kind: payload
+    evidence: INFERRED
+    lane: TELEMETRY
+    dashed: true
+  - id: bus-services
+    source: sensor-bus
+    target: bmc-services
+    title:
+      zhCN: 传感器/FRU 读取
+      enUS: Sensor/FRU reads
+    description:
+      zhCN: BMC 服务对外提供 SDR、SEL、传感器与 FRU。
+      enUS: BMC services expose SDR, SEL, sensors, and FRU.
+    kind: payload
+    evidence: RUNTIME_OBSERVED
+    lane: TELEMETRY
+  - id: lom-shared
+    source: host-lom
+    target: bmc-shared-lan
+    title:
+      zhCN: NC-SI 候选物理链路
+      enUS: Candidate NC-SI physical link
+    description:
+      zhCN: 共享管理通常经 NC-SI 复用某个 Host LOM，但本机准确端口尚未验证。
+      enUS: Shared management typically reuses a Host LOM through NC-SI, but this server's exact port is not verified.
+    kind: physical
+    evidence: INFERRED
+    lane: MGMT_NETWORK
+    protocol: NC-SI candidate
+    dashed: true
+  - id: cpu-uefi
+    source: host-cpu-dram
+    target: host-uefi
+    title:
+      zhCN: 执行平台固件
+      enUS: Execute platform firmware
+    description:
+      zhCN: CPU 复位后执行 UEFI 初始化平台。
+      enUS: The CPU executes UEFI to initialize the platform after reset.
+    kind: lifecycle
+    evidence: RTL_PROVEN
+    lane: BOOT
+  - id: cpu-os
+    source: host-cpu-dram
+    target: ubuntu-host
+    title:
+      zhCN: 执行 Host OS
+      enUS: Execute Host OS
+    description:
+      zhCN: Ubuntu 使用 Host CPU/DRAM。
+      enUS: Ubuntu runs on Host CPU/DRAM.
+    kind: physical
+    evidence: RUNTIME_OBSERVED
+    lane: HOST
+  - id: host-gpu
+    source: host-cpu-dram
+    target: nvidia-a10
+    title:
+      zhCN: PCIe GPU 路径待实测
+      enUS: PCIe GPU path pending verification
+    description:
+      zhCN: 需要 lspci -tv、nvidia-smi topo -m 与 CUDA/GDS 检查确认。
+      enUS: Requires lspci -tv, nvidia-smi topo -m, and CUDA/GDS checks.
+    kind: physical
+    evidence: INFERRED
+    lane: PCIE
+    protocol: PCIe
+    dashed: true
+  - id: host-nvme
+    source: host-cpu-dram
+    target: local-nvme
+    title:
+      zhCN: PCIe NVMe 路径待实测
+      enUS: PCIe NVMe path pending verification
+    description:
+      zhCN: 需要确认根端口、NUMA、IOMMU、文件系统与数据可擦除性。
+      enUS: Root port, NUMA, IOMMU, filesystem, and data-destructive test boundaries require confirmation.
+    kind: physical
+    evidence: INFERRED
+    lane: PCIE
+    protocol: PCIe / NVMe
+    dashed: true
+functions:
+  - id: recorder.capture-sol
+    moduleId: bmc-adapter
+    name: capture_sol
+    description: 持续采集 SOL 字节并写入启动事件。
+    evidence: CODE_PROVEN
+    contract: &a8
+      trigger: collector process active
+      context: IPMI SOL session
+      consumes: UART bytes and reconnect errors
+      produces: raw/timestamped/JSONL events
+      stateResource: current boot session
+      completionError: reconnect with error event
+  - id: recorder.poll-post
+    moduleId: bmc-adapter
+    name: poll_post_sel
+    description: 轮询 POST、SEL 与主机电源状态。
+    evidence: CODE_PROVEN
+    contract: &a10
+      trigger: periodic timer
+      context: authenticated BMC session
+      consumes: POST/SEL/power responses
+      produces: telemetry events
+      stateResource: session event timeline
+      completionError: record timeout and retry
+  - id: recorder.start-cycle
+    moduleId: event-store
+    name: start_boot_cycle
+    description: 自动或人工建立新的启动会话边界。
+    evidence: CODE_PROVEN
+    contract: &a9
+      trigger: detected power transition or manual action
+      context: black-box recorder
+      consumes: prior session state
+      produces: new session metadata
+      stateResource: boot session index
+      completionError: retain current session and report failure
+  - id: adapter.vendor-login
+    moduleId: bmc-adapter
+    name: vendor_api_login
+    description: 登录现有 MegaRAC HTTPS API 并维护 CSRF 会话。
+    evidence: RUNTIME_OBSERVED
+    contract:
+      trigger: orchestration request
+      context: management LAN and configured secret store
+      consumes: endpoint alias and protected credentials
+      produces: authenticated API session
+      stateResource: short-lived cookie and CSRF token
+      completionError: abort without exposing credentials
+  - id: media.prepare
+    moduleId: media-gateway
+    name: prepare_remote_media
+    description: 从 NAS 拉取、校验并以受限只读协议提供 ISO。
+    evidence: RUNTIME_OBSERVED
+    contract: &a1
+      trigger: selected ISO alias
+      context: management node filesystem
+      consumes: SMB source and expected SHA-256
+      produces: verified NFSv3/HTTP media endpoint
+      stateResource: local ISO cache
+      completionError: reject media on copy or hash failure
+  - id: boot.mount-media
+    moduleId: boot-orchestrator
+    name: configure_vendor_remote_media
+    description: 调用 BMC 既有厂商接口配置远程介质，而不是向 BMC 上传程序。
+    evidence: RUNTIME_OBSERVED
+    contract: &a2
+      trigger: verified media available
+      context: authenticated vendor API
+      consumes: NFS endpoint and ISO alias
+      produces: connected virtual CDROM
+      stateResource: BMC remote-media configuration
+      completionError: disconnect partial mapping and report error
+      hardwareEffect: BMC USB gadget exposes mass-storage device
+  - id: boot.override
+    moduleId: boot-orchestrator
+    name: set_one_time_uefi_cd
+    description: 设置仅下一次从 UEFI 虚拟光驱启动。
+    evidence: RUNTIME_OBSERVED
+    contract: &a4
+      trigger: virtual CD connected
+      context: IPMI/vendor API
+      consumes: boot target cdrom and UEFI option
+      produces: one-time boot override
+      stateResource: BMC boot flags
+      completionError: do not reset Host if boot flag cannot be verified
+      hardwareEffect: UEFI selects BMC virtual CD on next reset
+  - id: boot.reset
+    moduleId: boot-orchestrator
+    name: reset_host
+    description: 在记录器已工作的前提下触发 Host 重启。
+    evidence: RUNTIME_OBSERVED
+    contract: &a5
+      trigger: explicit operator action
+      context: active capture session
+      consumes: verified boot plan
+      produces: Host power/reset transition
+      stateResource: boot state machine
+      completionError: record BMC error and preserve evidence
+      hardwareEffect: asserts server power/reset control
+  - id: bmc.fetch-iso
+    moduleId: bmc-services
+    name: fetch_remote_iso
+    description: BMC 内置 NFS 客户端按配置拉取 ISO 块。
+    evidence: RUNTIME_OBSERVED
+    contract: &a3
+      trigger: remote-media connect
+      context: BMC firmware
+      consumes: NFSv3 file blocks
+      produces: USB mass-storage backing data
+      stateResource: remote-media session
+      completionError: expose media error and disconnect
+  - id: bmc.sol
+    moduleId: bmc-services
+    name: encapsulate_sol
+    description: 将 Host UART 字节封装为 IPMI SOL 数据。
+    evidence: RUNTIME_OBSERVED
+    contract: &a7
+      trigger: UART receive or remote keystroke
+      context: active RMCP+ SOL payload
+      consumes: UART bytes or SOL payload
+      produces: SOL payload or UART bytes
+      stateResource: SOL session and retry counters
+      completionError: terminate stale payload and permit reconnect
+      hardwareEffect: transmits/receives Host UART
+  - id: uefi.boot-cd
+    moduleId: host-uefi
+    name: boot_virtual_cd
+    description: 枚举虚拟 CD 并启动其中的 UEFI 引导程序。
+    evidence: RUNTIME_OBSERVED
+    contract: &a6
+      trigger: Host reset with one-time CD override
+      context: UEFI boot manager
+      consumes: USB mass-storage blocks and boot entry
+      produces: GRUB and Ubuntu loader execution
+      stateResource: UEFI boot attempt
+      completionError: fall through or stop according to firmware policy
+      hardwareEffect: CPU executes code loaded from virtual CD
+  - id: bmc.read-sensors
+    moduleId: bmc-services
+    name: read_sensors_fru_sel
+    description: 读取传感器、FRU 与 SEL 数据供管理面使用。
+    evidence: RUNTIME_OBSERVED
+    contract: &a11
+      trigger: IPMI or web query
+      context: BMC management firmware
+      consumes: board telemetry and event records
+      produces: SDR/FRU/SEL response
+      stateResource: BMC sensor and event repositories
+      completionError: return unavailable sensor or protocol error
+journeys:
+  - id: remote-iso-boot
+    title:
+      zhCN: 远程 ISO 一次性启动
+      enUS: One-Time Remote ISO Boot
+    summary:
+      zhCN: NAS 镜像经管理节点中继，由 BMC 拉取并模拟 USB 光驱，UEFI 启动 Ubuntu Live。
+      enUS: The NAS image is relayed by the management node, fetched by the BMC, emulated as USB CD, and booted by UEFI into Ubuntu Live.
+    caveat:
+      zhCN: 标准 Redfish InsertMedia 在本机返回 HTTP 500，实测成功路径是厂商 MegaRAC API + NFSv3；未执行磁盘安装。
+      enUS: Standard Redfish InsertMedia returned HTTP 500; the observed successful path uses the vendor MegaRAC API plus NFSv3. No disk installation was performed.
+    steps:
+      - id: rib-1
+        nodeId: nas-iso
+        title:
+          zhCN: 选择 NAS ISO
+          enUS: Select NAS ISO
+        evidence: RUNTIME_OBSERVED
+      - id: rib-2
+        functionId: media.prepare
+        title:
+          zhCN: 拉取校验并中继
+          enUS: Fetch verify and relay
+        evidence: RUNTIME_OBSERVED
+      - id: rib-3
+        functionId: boot.mount-media
+        title:
+          zhCN: 配置远程介质
+          enUS: Configure remote media
+        evidence: RUNTIME_OBSERVED
+      - id: rib-4
+        functionId: bmc.fetch-iso
+        title:
+          zhCN: BMC 拉取 ISO
+          enUS: BMC fetches ISO
+        evidence: RUNTIME_OBSERVED
+      - id: rib-5
+        functionId: boot.override
+        title:
+          zhCN: 设置一次性 CD 启动
+          enUS: Set one-time CD boot
+        evidence: RUNTIME_OBSERVED
+      - id: rib-6
+        functionId: boot.reset
+        title:
+          zhCN: 重启 Host
+          enUS: Reset Host
+        evidence: RUNTIME_OBSERVED
+      - id: rib-7
+        functionId: uefi.boot-cd
+        title:
+          zhCN: UEFI 启动 Ubuntu Live
+          enUS: UEFI boots Ubuntu Live
+        evidence: RUNTIME_OBSERVED
+    edgeIds:
+      - nas-gateway
+      - gateway-cache
+      - cache-bmc
+      - services-usb
+      - usb-cdrom
+      - cdrom-uefi
+      - uefi-ubuntu
+  - id: sol-blackbox
+    title:
+      zhCN: SOL 启动黑匣子采集
+      enUS: SOL Boot Black-Box Capture
+    summary:
+      zhCN: Host 串口经 BMC SOL 到管理节点，并持续写入可查询的启动会话。
+      enUS: Host serial flows through BMC SOL to the management node and is continuously persisted as queryable boot sessions.
+    caveat:
+      zhCN: 当前 OS 内核至登录阶段可见；完整 BIOS 文本还依赖 BIOS Console Redirection 是否在最早阶段输出到相同 UART。
+      enUS: OS kernel through login is visible; complete BIOS text still depends on early firmware Console Redirection to the same UART.
+    steps:
+      - id: sol-1
+        nodeId: host-uefi
+        title:
+          zhCN: 固件/系统产生串口输出
+          enUS: Firmware/OS emits serial output
+        evidence: RUNTIME_OBSERVED
+      - id: sol-2
+        nodeId: host-uart
+        title:
+          zhCN: UART 传送字节
+          enUS: UART carries bytes
+        evidence: RUNTIME_OBSERVED
+      - id: sol-3
+        functionId: bmc.sol
+        title:
+          zhCN: BMC 封装 SOL
+          enUS: BMC encapsulates SOL
+        evidence: RUNTIME_OBSERVED
+      - id: sol-4
+        functionId: recorder.capture-sol
+        title:
+          zhCN: 采集并重连
+          enUS: Capture and reconnect
+        evidence: CODE_PROVEN
+      - id: sol-5
+        nodeId: event-store
+        title:
+          zhCN: 写入事件文件
+          enUS: Persist event files
+        evidence: CODE_PROVEN
+      - id: sol-6
+        nodeId: blackbox-web
+        title:
+          zhCN: 浏览器查看会话
+          enUS: Browser views sessions
+        evidence: CODE_PROVEN
+    edgeIds:
+      - uart-host
+      - services-sol
+      - adapter-store
+      - blackbox-store
+      - browser-blackbox
+  - id: power-reset-observe
+    title:
+      zhCN: 受控重启与状态观测
+      enUS: Controlled Reset and State Observation
+    summary:
+      zhCN: 人工确认后，编排器启动新会话、发出复位并并行记录 POST/SOL/SEL。
+      enUS: After operator confirmation, the orchestrator opens a session, resets the Host, and records POST/SOL/SEL in parallel.
+    steps:
+      - id: pro-1
+        functionId: recorder.start-cycle
+        title:
+          zhCN: 建立人工启动边界
+          enUS: Create manual boot boundary
+        evidence: CODE_PROVEN
+      - id: pro-2
+        functionId: boot.reset
+        title:
+          zhCN: 发出复位命令
+          enUS: Issue reset command
+        evidence: RUNTIME_OBSERVED
+      - id: pro-3
+        nodeId: power-post-control
+        title:
+          zhCN: 主板执行复位
+          enUS: Board performs reset
+        evidence: RUNTIME_OBSERVED
+      - id: pro-4
+        functionId: recorder.poll-post
+        title:
+          zhCN: 轮询 POST/SEL/电源
+          enUS: Poll POST/SEL/power
+        evidence: CODE_PROVEN
+      - id: pro-5
+        functionId: recorder.capture-sol
+        title:
+          zhCN: 并行采集 SOL
+          enUS: Capture SOL in parallel
+        evidence: CODE_PROVEN
+    edgeIds:
+      - orchestrator-adapter
+      - adapter-switch
+      - switch-dedicated
+      - services-power
+      - power-host
+      - adapter-store
+  - id: kvm-console
+    title:
+      zhCN: BMC KVM 图形控制台
+      enUS: BMC KVM Graphical Console
+    summary:
+      zhCN: Host 视频经 BMC 捕获，键鼠经 USB HID 返回，覆盖 BIOS 到图形系统。
+      enUS: Host video is captured by the BMC while keyboard/mouse return through USB HID, covering BIOS through the graphical OS.
+    caveat:
+      zhCN: 精确视频控制器、总线和主板走线尚未从原理图确认。
+      enUS: Exact video controller, bus, and board traces are not yet schematic-confirmed.
+    steps:
+      - id: kvm-1
+        nodeId: host-uefi
+        title:
+          zhCN: 产生视频画面
+          enUS: Produce video output
+        evidence: RUNTIME_OBSERVED
+      - id: kvm-2
+        nodeId: video-capture
+        title:
+          zhCN: BMC 捕获并编码
+          enUS: BMC captures and encodes
+        evidence: RUNTIME_OBSERVED
+      - id: kvm-3
+        nodeId: bmc-services
+        title:
+          zhCN: KVM 服务传输
+          enUS: KVM service transports
+        evidence: RUNTIME_OBSERVED
+      - id: kvm-4
+        nodeId: operator-browser
+        title:
+          zhCN: 浏览器显示和输入
+          enUS: Browser displays and inputs
+        evidence: RUNTIME_OBSERVED
+      - id: kvm-5
+        nodeId: usb-emulation
+        title:
+          zhCN: USB HID 返回 Host
+          enUS: USB HID returns to Host
+        evidence: RUNTIME_OBSERVED
+    edgeIds:
+      - video-host
+      - video-services
+      - switch-dedicated
+      - services-usb
+  - id: telemetry-inventory
+    title:
+      zhCN: 传感器、SEL 与 FRU
+      enUS: Sensors, SEL, and FRU
+    summary:
+      zhCN: 主板遥测和资产信息由 BMC 汇聚并由适配器记录。
+      enUS: Board telemetry and inventory are aggregated by the BMC and recorded by the adapter.
+    caveat:
+      zhCN: 协议能力和读数已观察，逐器件 I²C/SMBus/IPMB 物理连接仍属推断。
+      enUS: Protocol capability and readings are observed; per-device I²C/SMBus/IPMB physical wiring remains inferred.
+    steps:
+      - id: tel-1
+        nodeId: sensors-fru
+        title:
+          zhCN: 产生遥测/资产信息
+          enUS: Produce telemetry/inventory
+        evidence: RUNTIME_OBSERVED
+      - id: tel-2
+        nodeId: sensor-bus
+        title:
+          zhCN: 侧带总线汇聚
+          enUS: Sideband bus aggregation
+        evidence: INFERRED
+      - id: tel-3
+        functionId: bmc.read-sensors
+        title:
+          zhCN: BMC 读取并提供
+          enUS: BMC reads and exposes
+        evidence: RUNTIME_OBSERVED
+      - id: tel-4
+        functionId: recorder.poll-post
+        title:
+          zhCN: 适配器采集记录
+          enUS: Adapter captures records
+        evidence: CODE_PROVEN
+    edgeIds:
+      - sensors-bus
+      - bus-services
+      - adapter-store
+  - id: shared-lan-path
+    title:
+      zhCN: BMC 共享管理口候选路径
+      enUS: Candidate BMC Shared-LAN Path
+    summary:
+      zhCN: 共享通道可能通过 NC-SI 复用 Host LOM，但当前仅确认逻辑通道存在。
+      enUS: The shared channel may reuse a Host LOM through NC-SI, but only the logical channel is currently confirmed.
+    caveat:
+      zhCN: 当前共享通道地址为 0.0.0.0，不能把图中的 NC-SI 连接视为本机板级定论。
+      enUS: The shared channel currently has no address; the depicted NC-SI connection is not a board-level conclusion.
+    steps:
+      - id: slp-1
+        nodeId: mgmt-switch
+        title:
+          zhCN: 管理流量进入业务网口
+          enUS: Management traffic reaches LOM
+        evidence: INFERRED
+      - id: slp-2
+        nodeId: host-lom
+        title:
+          zhCN: LOM 分流管理帧
+          enUS: LOM diverts management frames
+        evidence: INFERRED
+      - id: slp-3
+        nodeId: bmc-shared-lan
+        title:
+          zhCN: NC-SI 送入 BMC
+          enUS: NC-SI delivers to BMC
+        evidence: INFERRED
+      - id: slp-4
+        nodeId: bmc-soc
+        title:
+          zhCN: BMC 处理管理协议
+          enUS: BMC handles management protocol
+        evidence: INFERRED
+    edgeIds:
+      - switch-shared
+      - lom-shared
+      - shared-soc
+  - id: gds-readiness
+    title:
+      zhCN: A10 + 本地 NVMe 的 GDS 环境确认
+      enUS: A10 + Local NVMe GDS Readiness
+    summary:
+      zhCN: 先确认设备、驱动、拓扑和 P2P 能力，再进行任何非破坏性 GDS 验证。
+      enUS: Confirm devices, drivers, topology, and P2P capability before any non-destructive GDS validation.
+    caveat:
+      zhCN: 本场景仅记录用户声明的安装状态，不声称 GDS 已部署或 PCIe P2P 已通过。
+      enUS: This scene records user-declared installation only and does not claim that GDS is deployed or PCIe P2P has passed.
+    steps:
+      - id: gds-1
+        nodeId: ubuntu-host
+        title:
+          zhCN: 检查 OS/内核/CUDA
+          enUS: Check OS/kernel/CUDA
+        evidence: RUNTIME_OBSERVED
+      - id: gds-2
+        nodeId: nvidia-a10
+        title:
+          zhCN: 确认 A10 驱动与拓扑
+          enUS: Verify A10 driver and topology
+        evidence: INFERRED
+      - id: gds-3
+        nodeId: local-nvme
+        title:
+          zhCN: 确认 NVMe 与安全测试盘
+          enUS: Verify NVMe and safe test media
+        evidence: INFERRED
+      - id: gds-4
+        nodeId: host-cpu-dram
+        title:
+          zhCN: 判断 PCIe 根端口/P2P 路径
+          enUS: Determine PCIe root/P2P path
+        evidence: INFERRED
+    edgeIds:
+      - host-gpu
+      - host-nvme
+layout:
+  zones:
+    - zoneId: operator-source
+      position: &a64
+        - -30
+        - 0
+        - 8
+      size: &a74
+        - 12
+        - 8
+        - 12
+      backdrop: generic
+    - zoneId: management-node
+      position: &a65
+        - -16
+        - 0
+        - 5
+      size: &a78
+        - 14
+        - 12
+        - 18
+      backdrop: server
+    - zoneId: management-network
+      position: &a66
+        - -2
+        - 0
+        - 5
+      size: &a82
+        - 10
+        - 9
+        - 16
+      backdrop: fabric
+    - zoneId: bmc-domain
+      position: &a67
+        - 10
+        - 0
+        - 5
+      size: &a86
+        - 12
+        - 12
+        - 16
+      backdrop: board
+    - zoneId: board-sideband
+      position: &a68
+        - 23
+        - 0
+        - 5
+      size: &a90
+        - 12
+        - 14
+        - 18
+      backdrop: board
+    - zoneId: host-platform
+      position: &a69
+        - 38
+        - 0
+        - 5
+      size: &a94
+        - 15
+        - 15
+        - 19
+      backdrop: server
+    - zoneId: pcie-devices
+      position: &a70
+        - 53
+        - 0
+        - 5
+      size: &a98
+        - 11
+        - 9
+        - 14
+      backdrop: device
+  nodes:
+    - nodeId: operator-browser
+      position: &a35
+        - -32
+        - 2
+        - 7
+      size: &a100
+        - 3.8
+        - 1.5
+        - 2.5
+    - nodeId: windows-copy
+      position: &a36
+        - -28
+        - 2
+        - 7
+      size: &a102
+        - 3.8
+        - 1.5
+        - 2.5
+    - nodeId: nas-iso
+      position: &a37
+        - -30
+        - -2
+        - 3
+      size: &a104
+        - 4.5
+        - 2.2
+        - 3
+    - nodeId: blackbox-web
+      position: &a38
+        - -19
+        - 3.5
+        - 8
+      size: &a106
+        - 4.2
+        - 1.6
+        - 2.6
+    - nodeId: event-store
+      position: &a39
+        - -13.5
+        - 3.5
+        - 8
+      size: &a108
+        - 4.2
+        - 1.6
+        - 2.6
+    - nodeId: bmc-adapter
+      position: &a40
+        - -19
+        - 0
+        - 3.5
+      size: &a110
+        - 4.2
+        - 1.6
+        - 2.6
+    - nodeId: boot-orchestrator
+      position: &a41
+        - -13.5
+        - 0
+        - 3.5
+      size: &a112
+        - 4.2
+        - 1.6
+        - 2.6
+    - nodeId: media-gateway
+      position: &a42
+        - -19
+        - -3.5
+        - -1
+      size: &a114
+        - 4.2
+        - 1.6
+        - 2.6
+    - nodeId: iso-cache
+      position: &a43
+        - -13.5
+        - -3.5
+        - -1
+      size: &a116
+        - 4.2
+        - 1.6
+        - 2.6
+    - nodeId: mgmt-switch
+      position: &a44
+        - -2
+        - 2.5
+        - 8
+      size: &a118
+        - 4.2
+        - 1.5
+        - 2.4
+    - nodeId: bmc-dedicated-lan
+      position: &a45
+        - -2
+        - 0
+        - 3.5
+      size: &a120
+        - 4.2
+        - 1.5
+        - 2.4
+    - nodeId: bmc-shared-lan
+      position: &a46
+        - -2
+        - -2.5
+        - 0
+      size: &a122
+        - 4.2
+        - 1.5
+        - 2.4
+    - nodeId: bmc-soc
+      position: &a47
+        - 10
+        - 1.5
+        - 6
+      size: &a124
+        - 4.5
+        - 2.2
+        - 3.2
+    - nodeId: bmc-services
+      position: &a48
+        - 10
+        - -2
+        - 2
+      size: &a130
+        - 4.5
+        - 1.7
+        - 3
+    - nodeId: bmc-flash
+      position: &a49
+        - 6.5
+        - 4
+        - 9
+      size: &a126
+        - 2.6
+        - 1.3
+        - 2
+    - nodeId: bmc-dram
+      position: &a50
+        - 13.5
+        - 4
+        - 9
+      size: &a128
+        - 2.6
+        - 1.3
+        - 2
+    - nodeId: host-uart
+      position: &a51
+        - 20
+        - 4
+        - 9
+      size: &a132
+        - 3.6
+        - 1.4
+        - 2.3
+    - nodeId: usb-emulation
+      position: &a52
+        - 26
+        - 4
+        - 9
+      size: &a134
+        - 3.6
+        - 1.4
+        - 2.3
+    - nodeId: video-capture
+      position: &a53
+        - 20
+        - 0
+        - 4
+      size: &a136
+        - 3.6
+        - 1.4
+        - 2.3
+    - nodeId: sensor-bus
+      position: &a54
+        - 26
+        - 0
+        - 4
+      size: &a138
+        - 3.6
+        - 1.4
+        - 2.3
+    - nodeId: power-post-control
+      position: &a55
+        - 23
+        - -4
+        - -1
+      size: &a140
+        - 4.2
+        - 1.4
+        - 2.3
+    - nodeId: host-uefi
+      position: &a56
+        - 34
+        - 4
+        - 9
+      size: &a142
+        - 4
+        - 1.6
+        - 2.6
+    - nodeId: virtual-cdrom
+      position: &a57
+        - 40
+        - 4
+        - 9
+      size: &a144
+        - 4
+        - 1.6
+        - 2.6
+    - nodeId: host-cpu-dram
+      position: &a58
+        - 37
+        - 0
+        - 4
+      size: &a146
+        - 5.5
+        - 2.5
+        - 3.8
+    - nodeId: ubuntu-host
+      position: &a59
+        - 43
+        - 0
+        - 4
+      size: &a148
+        - 4
+        - 1.6
+        - 2.6
+    - nodeId: host-lom
+      position: &a60
+        - 34
+        - -4
+        - -1
+      size: &a150
+        - 4
+        - 1.6
+        - 2.6
+    - nodeId: sensors-fru
+      position: &a61
+        - 41
+        - -4
+        - -1
+      size: &a152
+        - 5
+        - 1.6
+        - 2.6
+    - nodeId: nvidia-a10
+      position: &a62
+        - 53
+        - 2
+        - 7
+      size: &a154
+        - 4.5
+        - 2
+        - 3
+    - nodeId: local-nvme
+      position: &a63
+        - 53
+        - -2
+        - 2
+      size: &a156
+        - 4.5
+        - 2
+        - 3
+  camera:
+    position:
+      - 5
+      - 38
+      - 72
+    target:
+      - 11
+      - 0
+      - 4
+    fov: 54
+  labelDistance: 36
+  farBlockOpacity: 0.22
+  farFlowOpacity: 0.58
+enhanced:
+  defaultView: overview
+  content:
+    zhCN:
+      planeMeta:
+        operator-source:
+          label: 操作端与镜像源
+          short: 操作端与镜像源
+          color: "#22a7cf"
+        management-node:
+          label: 独立管理节点
+          short: 独立管理节点
+          color: "#7657c8"
+        management-network:
+          label: 管理网络
+          short: 管理网络
+          color: "#2f83e7"
+        bmc-domain:
+          label: BMC 独立管理域
+          short: BMC 独立管理域
+          color: "#168f7b"
+        board-sideband:
+          label: 主板侧带链路
+          short: 主板侧带链路
+          color: "#e58b2a"
+        host-platform:
+          label: EG942H-G30 Host 平台
+          short: EG942H-G30 Host 平台
+          color: "#7fae3f"
+        pcie-devices:
+          label: PCIe 测试设备
+          short: PCIe 测试设备
+          color: "#e14b72"
+      edgeMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+        DATA:
+          color: "#7657c8"
+          label: DATA
+        PHYSICAL:
+          color: "#168f7b"
+          label: PHYSICAL
+      laneMeta:
+        UI:
+          color: "#2878c7"
+          label: UI
+          summary: UI
+        MEDIA:
+          color: "#7657c8"
+          label: MEDIA
+          summary: MEDIA
+        TELEMETRY:
+          color: "#168f7b"
+          label: TELEMETRY
+          summary: TELEMETRY
+        CONTROL:
+          color: "#2f83e7"
+          label: CONTROL
+          summary: CONTROL
+        MGMT_NETWORK:
+          color: "#7fae3f"
+          label: MGMT_NETWORK
+          summary: MGMT_NETWORK
+        BMC_INTERNAL:
+          color: "#e14b72"
+          label: BMC_INTERNAL
+          summary: BMC_INTERNAL
+        CONSOLE:
+          color: "#2878c7"
+          label: CONSOLE
+          summary: CONSOLE
+        VIRTUAL_MEDIA:
+          color: "#7657c8"
+          label: VIRTUAL_MEDIA
+          summary: VIRTUAL_MEDIA
+        BOOT:
+          color: "#168f7b"
+          label: BOOT
+          summary: BOOT
+        KVM:
+          color: "#2f83e7"
+          label: KVM
+          summary: KVM
+        POWER:
+          color: "#7fae3f"
+          label: POWER
+          summary: POWER
+        HOST:
+          color: "#e14b72"
+          label: HOST
+          summary: HOST
+        PCIE:
+          color: "#2878c7"
+          label: PCIE
+          summary: PCIE
+      functionInteractions:
+        operator-browser: []
+        windows-copy: []
+        nas-iso: []
+        blackbox-web: []
+        event-store: []
+        bmc-adapter: []
+        boot-orchestrator: []
+        media-gateway: []
+        iso-cache: []
+        mgmt-switch: []
+        bmc-dedicated-lan: []
+        bmc-shared-lan: []
+        bmc-soc: []
+        bmc-flash: []
+        bmc-dram: []
+        bmc-services: []
+        host-uart: []
+        usb-emulation: []
+        video-capture: []
+        sensor-bus: []
+        power-post-control: []
+        host-uefi: []
+        virtual-cdrom: []
+        host-cpu-dram: []
+        ubuntu-host: []
+        host-lom: []
+        sensors-fru: []
+        nvidia-a10: []
+        local-nvme: []
+      driverCausalLayerMeta:
+        payload:
+          label: 数据与所有权
+          short: DATA
+          color: "#4d8edb"
+          description: payload
+        control:
+          label: 控制执行
+          short: CTRL
+          color: "#708090"
+          description: control
+        sync:
+          label: 同步与完成
+          short: SYNC
+          color: "#e5b534"
+          description: sync
+        lifecycle:
+          label: 生命周期与回滚
+          short: LIFE
+          color: "#e14b72"
+          description: lifecycle
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#708090"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#22b8cf"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#8a61d1"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a62a"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#e14b72"
+          label: IRQ
+          dashed: false
+        WAIT:
+          color: "#e5b534"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#c13f5c"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#e14b72"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        remote-iso-boot:
+          id: remote-iso-boot
+          title: 远程 ISO 一次性启动
+          shortTitle: 远程 ISO 一次性启动
+          summary: NAS 镜像经管理节点中继，由 BMC 拉取并模拟 USB 光驱，UEFI 启动 Ubuntu Live。
+          caveat: 标准 Redfish InsertMedia 在本机返回 HTTP 500，实测成功路径是厂商 MegaRAC API + NFSv3；未执行磁盘安装。
+          steps:
+            - id: rib-1
+              title: 选择 NAS ISO
+              shortTitle: 选择 NAS ISO
+              moduleRole: nas-iso
+              contextLane: operator-source
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: rib-2
+              title: 拉取校验并中继
+              shortTitle: prepare_remote_media
+              moduleRole: media-gateway
+              contextLane: management-node
+              layers:
+                - lifecycle
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a1
+            - id: rib-3
+              title: 配置远程介质
+              shortTitle: configure_vendor_remote_media
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a2
+            - id: rib-4
+              title: BMC 拉取 ISO
+              shortTitle: fetch_remote_iso
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - control
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a3
+            - id: rib-5
+              title: 设置一次性 CD 启动
+              shortTitle: set_one_time_uefi_cd
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a4
+            - id: rib-6
+              title: 重启 Host
+              shortTitle: reset_host
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - lifecycle
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a5
+            - id: rib-7
+              title: UEFI 启动 Ubuntu Live
+              shortTitle: boot_virtual_cd
+              moduleRole: host-uefi
+              contextLane: host-platform
+              layers:
+                - lifecycle
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a6
+          edges:
+            - source: rib-1
+              target: rib-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-2
+              target: rib-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-3
+              target: rib-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-4
+              target: rib-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-5
+              target: rib-6
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-6
+              target: rib-7
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        sol-blackbox:
+          id: sol-blackbox
+          title: SOL 启动黑匣子采集
+          shortTitle: SOL 启动黑匣子采集
+          summary: Host 串口经 BMC SOL 到管理节点，并持续写入可查询的启动会话。
+          caveat: 当前 OS 内核至登录阶段可见；完整 BIOS 文本还依赖 BIOS Console Redirection 是否在最早阶段输出到相同 UART。
+          steps:
+            - id: sol-1
+              title: 固件/系统产生串口输出
+              shortTitle: 固件/系统产生串口输出
+              moduleRole: host-uefi
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: sol-2
+              title: UART 传送字节
+              shortTitle: UART 传送字节
+              moduleRole: host-uart
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: sol-3
+              title: BMC 封装 SOL
+              shortTitle: encapsulate_sol
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a7
+            - id: sol-4
+              title: 采集并重连
+              shortTitle: capture_sol
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a8
+            - id: sol-5
+              title: 写入事件文件
+              shortTitle: 写入事件文件
+              moduleRole: event-store
+              contextLane: management-node
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: sol-6
+              title: 浏览器查看会话
+              shortTitle: 浏览器查看会话
+              moduleRole: blackbox-web
+              contextLane: management-node
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: sol-1
+              target: sol-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-2
+              target: sol-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-3
+              target: sol-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-4
+              target: sol-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-5
+              target: sol-6
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        power-reset-observe:
+          id: power-reset-observe
+          title: 受控重启与状态观测
+          shortTitle: 受控重启与状态观测
+          summary: 人工确认后，编排器启动新会话、发出复位并并行记录 POST/SOL/SEL。
+          caveat: ""
+          steps:
+            - id: pro-1
+              title: 建立人工启动边界
+              shortTitle: start_boot_cycle
+              moduleRole: event-store
+              contextLane: management-node
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a9
+            - id: pro-2
+              title: 发出复位命令
+              shortTitle: reset_host
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a5
+            - id: pro-3
+              title: 主板执行复位
+              shortTitle: 主板执行复位
+              moduleRole: power-post-control
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: pro-4
+              title: 轮询 POST/SEL/电源
+              shortTitle: poll_post_sel
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a10
+            - id: pro-5
+              title: 并行采集 SOL
+              shortTitle: capture_sol
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a8
+          edges:
+            - source: pro-1
+              target: pro-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: pro-2
+              target: pro-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: pro-3
+              target: pro-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: pro-4
+              target: pro-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        kvm-console:
+          id: kvm-console
+          title: BMC KVM 图形控制台
+          shortTitle: BMC KVM 图形控制台
+          summary: Host 视频经 BMC 捕获，键鼠经 USB HID 返回，覆盖 BIOS 到图形系统。
+          caveat: 精确视频控制器、总线和主板走线尚未从原理图确认。
+          steps:
+            - id: kvm-1
+              title: 产生视频画面
+              shortTitle: 产生视频画面
+              moduleRole: host-uefi
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-2
+              title: BMC 捕获并编码
+              shortTitle: BMC 捕获并编码
+              moduleRole: video-capture
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-3
+              title: KVM 服务传输
+              shortTitle: KVM 服务传输
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-4
+              title: 浏览器显示和输入
+              shortTitle: 浏览器显示和输入
+              moduleRole: operator-browser
+              contextLane: operator-source
+              layers:
+                - control
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-5
+              title: USB HID 返回 Host
+              shortTitle: USB HID 返回 Host
+              moduleRole: usb-emulation
+              contextLane: board-sideband
+              layers:
+                - control
+              kind: data
+              evidence: RUNTIME_OBSERVED
+          edges:
+            - source: kvm-1
+              target: kvm-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: kvm-2
+              target: kvm-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: kvm-3
+              target: kvm-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: kvm-4
+              target: kvm-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        telemetry-inventory:
+          id: telemetry-inventory
+          title: 传感器、SEL 与 FRU
+          shortTitle: 传感器、SEL 与 FRU
+          summary: 主板遥测和资产信息由 BMC 汇聚并由适配器记录。
+          caveat: 协议能力和读数已观察，逐器件 I²C/SMBus/IPMB 物理连接仍属推断。
+          steps:
+            - id: tel-1
+              title: 产生遥测/资产信息
+              shortTitle: 产生遥测/资产信息
+              moduleRole: sensors-fru
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: tel-2
+              title: 侧带总线汇聚
+              shortTitle: 侧带总线汇聚
+              moduleRole: sensor-bus
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: tel-3
+              title: BMC 读取并提供
+              shortTitle: read_sensors_fru_sel
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a11
+            - id: tel-4
+              title: 适配器采集记录
+              shortTitle: poll_post_sel
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a10
+          edges:
+            - source: tel-1
+              target: tel-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: tel-2
+              target: tel-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: tel-3
+              target: tel-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        shared-lan-path:
+          id: shared-lan-path
+          title: BMC 共享管理口候选路径
+          shortTitle: BMC 共享管理口候选路径
+          summary: 共享通道可能通过 NC-SI 复用 Host LOM，但当前仅确认逻辑通道存在。
+          caveat: 当前共享通道地址为 0.0.0.0，不能把图中的 NC-SI 连接视为本机板级定论。
+          steps:
+            - id: slp-1
+              title: 管理流量进入业务网口
+              shortTitle: 管理流量进入业务网口
+              moduleRole: mgmt-switch
+              contextLane: management-network
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: slp-2
+              title: LOM 分流管理帧
+              shortTitle: LOM 分流管理帧
+              moduleRole: host-lom
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: slp-3
+              title: NC-SI 送入 BMC
+              shortTitle: NC-SI 送入 BMC
+              moduleRole: bmc-shared-lan
+              contextLane: management-network
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: slp-4
+              title: BMC 处理管理协议
+              shortTitle: BMC 处理管理协议
+              moduleRole: bmc-soc
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: slp-1
+              target: slp-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: slp-2
+              target: slp-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: slp-3
+              target: slp-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        gds-readiness:
+          id: gds-readiness
+          title: A10 + 本地 NVMe 的 GDS 环境确认
+          shortTitle: A10 + 本地 NVMe 的 GDS 环境确认
+          summary: 先确认设备、驱动、拓扑和 P2P 能力，再进行任何非破坏性 GDS 验证。
+          caveat: 本场景仅记录用户声明的安装状态，不声称 GDS 已部署或 PCIe P2P 已通过。
+          steps:
+            - id: gds-1
+              title: 检查 OS/内核/CUDA
+              shortTitle: 检查 OS/内核/CUDA
+              moduleRole: ubuntu-host
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: gds-2
+              title: 确认 A10 驱动与拓扑
+              shortTitle: 确认 A10 驱动与拓扑
+              moduleRole: nvidia-a10
+              contextLane: pcie-devices
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: gds-3
+              title: 确认 NVMe 与安全测试盘
+              shortTitle: 确认 NVMe 与安全测试盘
+              moduleRole: local-nvme
+              contextLane: pcie-devices
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: gds-4
+              title: 判断 PCIe 根端口/P2P 路径
+              shortTitle: 判断 PCIe 根端口/P2P 路径
+              moduleRole: host-cpu-dram
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: gds-1
+              target: gds-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: gds-2
+              target: gds-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: gds-3
+              target: gds-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+      topologyNodes:
+        - id: operator-browser
+          label: 运维浏览器
+          fill: "#22a7cf"
+          data:
+            title: 运维浏览器
+            plane: operator-source
+            layer: 区域 01 · 人与源数据
+            kind: client
+            description: 查看黑匣子记录和 3D 拓扑，并通过已有 BMC 页面/KVM 进行人工操作。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a12
+            codeRefs: []
+            views:
+              - overview
+              - operator-source
+              - kvm-console
+        - id: windows-copy
+          label: Windows 同步副本
+          fill: "#49bad8"
+          data:
+            title: Windows 同步副本
+            plane: operator-source
+            layer: 区域 01 · 人与源数据
+            kind: device
+            description: E 盘中的本仓库副本，可在 Windows 本地启动相同场景。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - operator-source
+        - id: nas-iso
+          label: 公司 NAS / ISO 源
+          fill: "#2c91bb"
+          data:
+            title: 公司 NAS / ISO 源
+            plane: operator-source
+            layer: 区域 01 · 人与源数据
+            kind: device
+            description: 通过 SMB2/3 保存 Ubuntu ISO；场景仅使用别名，不保存地址或凭据。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a13
+            codeRefs: []
+            views:
+              - overview
+              - operator-source
+              - remote-iso-boot
+        - id: blackbox-web
+          label: 启动监控黑匣子 Web
+          fill: "#7657c8"
+          data:
+            title: 启动监控黑匣子 Web
+            plane: management-node
+            layer: 区域 02 · 自动化与留痕
+            kind: client
+            description: 展示按启动会话分割的 SOL、POST、SEL 与元数据。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: 启动监控黑匣子 Web
+                path: external/eg942h-g30-boot-web/boot_web.py
+                note: Existing black-box web service on the management node; not bundled in this public scene.
+            views:
+              - overview
+              - management-node
+              - sol-blackbox
+        - id: event-store
+          label: 启动会话与事件存储
+          fill: "#8a61d1"
+          data:
+            title: 启动会话与事件存储
+            plane: management-node
+            layer: 区域 02 · 自动化与留痕
+            kind: device
+            description: 保存原始串口、带时间戳文本、JSONL 和会话元数据，并执行保留策略。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+              - sol-blackbox
+              - power-reset-observe
+        - id: bmc-adapter
+          label: BMC 适配层
+          fill: "#6957b8"
+          data:
+            title: BMC 适配层
+            plane: management-node
+            layer: 区域 02 · 自动化与留痕
+            kind: service
+            description: 封装 IPMI lanplus、SOL、SEL/FRU、POST 与厂商 MegaRAC HTTPS API。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a14
+            codeRefs:
+              - name: BMC 适配层
+                path: external/eg942h-g30-boot-recorder/bmc_boot_recorder.py
+                note: Existing recorder/adapter implementation on the management node.
+            views:
+              - overview
+              - management-node
+              - sol-blackbox
+              - power-reset-observe
+              - telemetry-inventory
+        - id: boot-orchestrator
+          label: 启动编排器
+          fill: "#8566c9"
+          data:
+            title: 启动编排器
+            plane: management-node
+            layer: 区域 02 · 自动化与留痕
+            kind: service
+            description: 编排远程介质、一次性启动、上下电与启动状态机；不在 BMC 内运行自定义程序。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+              - remote-iso-boot
+              - power-reset-observe
+        - id: media-gateway
+          label: 镜像中继网关
+          fill: "#9c78d0"
+          data:
+            title: 镜像中继网关
+            plane: management-node
+            layer: 区域 02 · 自动化与留痕
+            kind: service
+            description: 从 NAS 获取 ISO，校验 SHA-256，并向旧 BMC 提供只读 NFSv3；HTTP Range 为备选。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a15
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+              - remote-iso-boot
+        - id: iso-cache
+          label: 本地 ISO 缓存
+          fill: "#a88ad0"
+          data:
+            title: 本地 ISO 缓存
+            plane: management-node
+            layer: 区域 02 · 自动化与留痕
+            kind: device
+            description: 保存经校验的 ISO 与硬链接，隔离 NAS 协议和 BMC 兼容性差异。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+        - id: mgmt-switch
+          label: 局域网管理交换网络
+          fill: "#2f83e7"
+          data:
+            title: 局域网管理交换网络
+            plane: management-network
+            layer: 区域 03 · 以太网管理面
+            kind: target
+            description: 承载浏览器、管理节点、NAS 与 BMC 管理面流量；实际 VLAN/交换机端口尚未全部固化。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-network
+              - shared-lan-path
+        - id: bmc-dedicated-lan
+          label: BMC 专用管理网口
+          fill: "#397ad6"
+          data:
+            title: BMC 专用管理网口
+            plane: management-network
+            layer: 区域 03 · 以太网管理面
+            kind: device
+            description: 独立 RJ45 管理接口，当前通过 DHCP 可达；真实 IP/MAC 保留在受控环境文件中。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a16
+            codeRefs: []
+            views:
+              - overview
+              - management-network
+        - id: bmc-shared-lan
+          label: BMC 共享管理端口逻辑端点
+          fill: "#5591dc"
+          data:
+            title: BMC 共享管理端口逻辑端点
+            plane: management-network
+            layer: 区域 03 · 以太网管理面
+            kind: device
+            description: BMC 报告存在共享通道，但未配置地址；其与具体 Host LOM 的 NC-SI 物理绑定尚待板级确认。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a17
+            codeRefs: []
+            views:
+              - overview
+              - management-network
+              - shared-lan-path
+        - id: bmc-soc
+          label: BMC SoC
+          fill: "#168f7b"
+          data:
+            title: BMC SoC
+            plane: bmc-domain
+            layer: 区域 04 · MegaRAC BMC
+            kind: target
+            description: 在 Host 关闭或业务网络失效时仍独立运行，承载管理固件与各侧带控制器。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+              - shared-lan-path
+        - id: bmc-flash
+          label: BMC 固件 SPI Flash
+          fill: "#3a9f89"
+          data:
+            title: BMC 固件 SPI Flash
+            plane: bmc-domain
+            layer: 区域 04 · MegaRAC BMC
+            kind: target
+            description: 典型 BMC 固件持久化介质；本机具体芯片型号、容量与分区尚未拆机或读取确认。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+        - id: bmc-dram
+          label: BMC 独立 DRAM
+          fill: "#4caf91"
+          data:
+            title: BMC 独立 DRAM
+            plane: bmc-domain
+            layer: 区域 04 · MegaRAC BMC
+            kind: target
+            description: 供 BMC 固件、视频缓冲和服务运行；具体容量与连接方式待芯片资料确认。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+        - id: bmc-services
+          label: MegaRAC 内置管理服务
+          fill: "#20a68d"
+          data:
+            title: MegaRAC 内置管理服务
+            plane: bmc-domain
+            layer: 区域 04 · MegaRAC BMC
+            kind: service
+            description: 提供 Web/KVM、IPMI、SOL、传感器、远程介质和厂商 API；当前未证明可部署任意自定义程序。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a18
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+              - remote-iso-boot
+              - sol-blackbox
+              - kvm-console
+              - telemetry-inventory
+        - id: host-uart
+          label: Host UART ↔ BMC SOL
+          fill: "#e58b2a"
+          data:
+            title: Host UART ↔ BMC SOL
+            plane: board-sideband
+            layer: 区域 05 · BMC 到 Host
+            kind: network
+            description: 传送文本控制台；Ubuntu ttyS0 和内核 console 已用于无业务网络登录。精确 UART 控制器/走线待原理图确认。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a19
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - sol-blackbox
+        - id: usb-emulation
+          label: BMC USB 设备仿真链路
+          fill: "#e99b43"
+          data:
+            title: BMC USB 设备仿真链路
+            plane: board-sideband
+            layer: 区域 05 · BMC 到 Host
+            kind: network
+            description: 向 Host 暴露虚拟 CDROM 和 KVM 键鼠；功能已观察，具体 USB 控制器与拓扑待确认。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a20
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - kvm-console
+        - id: video-capture
+          label: Host 视频捕获链路
+          fill: "#efad5e"
+          data:
+            title: Host 视频捕获链路
+            plane: board-sideband
+            layer: 区域 05 · BMC 到 Host
+            kind: network
+            description: 将 POST、UEFI 和 OS 图形画面送入 BMC KVM；精确 VGA/PCIe/帧缓冲路径待硬件资料确认。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - kvm-console
+        - id: sensor-bus
+          label: I²C/SMBus/IPMB 管理总线
+          fill: "#f0b76d"
+          data:
+            title: I²C/SMBus/IPMB 管理总线
+            plane: board-sideband
+            layer: 区域 05 · BMC 到 Host
+            kind: network
+            description: 典型连接温度、电压、风扇、PSU 与 FRU；本机可读取相应信息，但每条板级总线尚未逐一验证。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: *a21
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - telemetry-inventory
+        - id: power-post-control
+          label: 电源/复位/POST 侧带控制
+          fill: "#e48a28"
+          data:
+            title: 电源/复位/POST 侧带控制
+            plane: board-sideband
+            layer: 区域 05 · BMC 到 Host
+            kind: network
+            description: BMC 可控制 Host 上下电、复位并读取 POST 状态；具体 GPIO/eSPI/LPC 组合待主板原理图确认。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a22
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - power-reset-observe
+        - id: host-uefi
+          label: Host UEFI / BIOS
+          fill: "#7fae3f"
+          data:
+            title: Host UEFI / BIOS
+            plane: host-platform
+            layer: 区域 06 · 固件与操作系统
+            kind: service
+            description: 枚举 BMC 虚拟光驱和 PCIe 设备，执行一次性 UEFI CD 启动并产生 POST。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - remote-iso-boot
+              - sol-blackbox
+              - kvm-console
+        - id: virtual-cdrom
+          label: BMC Virtual CDROM0/1
+          fill: "#94bd55"
+          data:
+            title: BMC Virtual CDROM0/1
+            plane: host-platform
+            layer: 区域 06 · 固件与操作系统
+            kind: device
+            description: BMC 向 Host 模拟的 USB 光驱，承载远程 Ubuntu ISO。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a23
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+        - id: host-cpu-dram
+          label: 双路海光 CPU 与 DRAM
+          fill: "#6f9e35"
+          data:
+            title: 双路海光 CPU 与 DRAM
+            plane: host-platform
+            layer: 区域 06 · 固件与操作系统
+            kind: target
+            description: EG942H-G30 4U Host 计算平台；产品能力与当前平台类型已有资料佐证。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - gds-readiness
+        - id: ubuntu-host
+          label: Ubuntu Host 系统
+          fill: "#85ad49"
+          data:
+            title: Ubuntu Host 系统
+            plane: host-platform
+            layer: 区域 06 · 固件与操作系统
+            kind: client
+            description: 通过业务网卡 SSH，也可经 ttyS0/SOL 登录；当前远程 ISO 仅进入 Live 环境，未写系统盘。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a24
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - gds-readiness
+        - id: host-lom
+          label: Host 业务网口 / LOM
+          fill: "#a3c56b"
+          data:
+            title: Host 业务网口 / LOM
+            plane: host-platform
+            layer: 区域 06 · 固件与操作系统
+            kind: device
+            description: 承载 Ubuntu 业务网络，与 BMC 专用管理口逻辑隔离；共享 BMC 的准确 NC-SI 绑定待确认。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a25
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - shared-lan-path
+        - id: sensors-fru
+          label: 传感器 / 风扇 / PSU / FRU
+          fill: "#b0ca7a"
+          data:
+            title: 传感器 / 风扇 / PSU / FRU
+            plane: host-platform
+            layer: 区域 06 · 固件与操作系统
+            kind: target
+            description: 为 BMC 提供温度、电压、风扇、电源和资产信息。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - telemetry-inventory
+        - id: nvidia-a10
+          label: NVIDIA A10 GPU
+          fill: "#e14b72"
+          data:
+            title: NVIDIA A10 GPU
+            plane: pcie-devices
+            layer: 区域 07 · GDS 准备环境
+            kind: device
+            description: 用户声明已安装的 GDS 测试 GPU；拓扑和 P2P 能力仍需在 Host 上用 lspci/CUDA 工具实测。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: *a26
+            codeRefs: []
+            views:
+              - overview
+              - pcie-devices
+              - gds-readiness
+        - id: local-nvme
+          label: 本地 NVMe 测试盘
+          fill: "#d66184"
+          data:
+            title: 本地 NVMe 测试盘
+            plane: pcie-devices
+            layer: 区域 07 · GDS 准备环境
+            kind: device
+            description: 用户声明已接入的本地测试盘；型号、PCIe 根端口、IOMMU 分组和数据安全边界需现场确认。
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: *a27
+            codeRefs: []
+            views:
+              - overview
+              - pcie-devices
+              - gds-readiness
+      topologyEdges:
+        - id: browser-blackbox
+          source: operator-browser
+          target: blackbox-web
+          label: 查看启动记录
+          data:
+            kind: CONTROL
+            lane: UI
+            description: 局域网 HTTP 访问黑匣子页面。
+            evidence: target
+            protocol: HTTP
+        - id: windows-scene
+          source: windows-copy
+          target: operator-browser
+          label: 本地 3D 渲染
+          data:
+            kind: DATA
+            lane: UI
+            description: Windows 启动 Vite 后由浏览器加载本场景。
+            evidence: code
+            protocol: HTTP
+        - id: nas-gateway
+          source: nas-iso
+          target: media-gateway
+          label: 获取 ISO
+          data:
+            kind: DATA
+            lane: MEDIA
+            description: 管理节点使用现代 SMB 客户端读取镜像。
+            evidence: target
+            protocol: SMB2/3
+        - id: blackbox-store
+          source: event-store
+          target: blackbox-web
+          label: 会话查询
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: Web 层读取按启动会话组织的事件。
+            evidence: code
+        - id: adapter-store
+          source: bmc-adapter
+          target: event-store
+          label: 写入事件
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: 记录 SOL、POST、SEL 和采集器状态。
+            evidence: code
+        - id: orchestrator-adapter
+          source: boot-orchestrator
+          target: bmc-adapter
+          label: 调用 BMC 能力
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 编排器通过适配层执行厂商 API 与 IPMI 操作。
+            evidence: code
+        - id: gateway-cache
+          source: media-gateway
+          target: iso-cache
+          label: 校验并缓存
+          data:
+            kind: CONTROL
+            lane: MEDIA
+            description: SHA-256 校验后保存可导出的本地文件。
+            evidence: target
+        - id: cache-bmc
+          source: iso-cache
+          target: bmc-services
+          label: BMC 拉取 ISO
+          data:
+            kind: DATA
+            lane: MEDIA
+            description: BMC 内置 NFS 客户端从受限只读 NFSv3 导出读取镜像。
+            evidence: target
+            protocol: NFSv3
+        - id: adapter-switch
+          source: bmc-adapter
+          target: mgmt-switch
+          label: 管理协议流量
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: 管理节点经局域网访问 BMC。
+            evidence: target
+            protocol: Ethernet
+        - id: switch-dedicated
+          source: mgmt-switch
+          target: bmc-dedicated-lan
+          label: 专用管理以太网
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: 当前已验证的主要带外管理路径。
+            evidence: target
+            protocol: 1GbE
+        - id: switch-shared
+          source: mgmt-switch
+          target: bmc-shared-lan
+          label: 共享管理入口候选
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: 共享通道存在，但当前未配置 IP，也未证实连接到哪一个 Host LOM。
+            evidence: inference
+            protocol: Ethernet / NC-SI
+        - id: dedicated-soc
+          source: bmc-dedicated-lan
+          target: bmc-soc
+          label: BMC MAC/网络控制器
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: 将专用管理口流量送入 BMC SoC。
+            evidence: target
+        - id: shared-soc
+          source: bmc-shared-lan
+          target: bmc-soc
+          label: 共享通道逻辑连接
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: BMC 通道存在已观察，内部具体 MAC/NC-SI 路径待确认。
+            evidence: inference
+        - id: soc-flash
+          source: bmc-flash
+          target: bmc-soc
+          label: 固件启动
+          data:
+            kind: CONTROL
+            lane: BMC_INTERNAL
+            description: BMC 从独立非易失存储加载固件；本机实现细节待确认。
+            evidence: inference
+            protocol: SPI candidate
+        - id: soc-dram
+          source: bmc-dram
+          target: bmc-soc
+          label: BMC 工作内存
+          data:
+            kind: PHYSICAL
+            lane: BMC_INTERNAL
+            description: 供固件与视频缓冲使用，精确接口待确认。
+            evidence: inference
+        - id: soc-services
+          source: bmc-soc
+          target: bmc-services
+          label: 运行内置服务
+          data:
+            kind: CONTROL
+            lane: BMC_INTERNAL
+            description: BMC SoC 执行 MegaRAC 固件服务。
+            evidence: target
+        - id: services-sol
+          source: bmc-services
+          target: host-uart
+          label: SOL 封装/解封装
+          data:
+            kind: DATA
+            lane: CONSOLE
+            description: UART 字节经 IPMI v2.0/RMCP+ SOL 在管理网络上传输。
+            evidence: target
+            protocol: SOL 115200 8N1
+        - id: uart-host
+          source: host-uart
+          target: ubuntu-host
+          label: 串口控制台
+          data:
+            kind: DATA
+            lane: CONSOLE
+            description: 覆盖内核/systemd/login；BIOS 串口输出是否完整取决于固件 Console Redirection 配置。
+            evidence: target
+            protocol: ttyS0 115200 8N1
+        - id: services-usb
+          source: bmc-services
+          target: usb-emulation
+          label: 配置 USB 仿真
+          data:
+            kind: CONTROL
+            lane: VIRTUAL_MEDIA
+            description: BMC 内置固件控制虚拟介质和 HID 仿真。
+            evidence: target
+        - id: usb-cdrom
+          source: usb-emulation
+          target: virtual-cdrom
+          label: 模拟 USB 光驱
+          data:
+            kind: PHYSICAL
+            lane: VIRTUAL_MEDIA
+            description: Host 看到 BMC Virtual CDROM0/1。
+            evidence: target
+            protocol: USB mass storage
+        - id: cdrom-uefi
+          source: virtual-cdrom
+          target: host-uefi
+          label: UEFI 枚举与启动
+          data:
+            kind: CONTROL
+            lane: BOOT
+            description: 一次性 Boot Override 选择远程光驱。
+            evidence: target
+        - id: uefi-ubuntu
+          source: host-uefi
+          target: ubuntu-host
+          label: 加载 GRUB 与 Ubuntu
+          data:
+            kind: CONTROL
+            lane: BOOT
+            description: 实测到达 Ubuntu Live 图形环境，未执行磁盘安装。
+            evidence: target
+        - id: video-host
+          source: host-uefi
+          target: video-capture
+          label: POST/UEFI 视频
+          data:
+            kind: DATA
+            lane: KVM
+            description: 固件画面进入 BMC KVM 捕获路径。
+            evidence: target
+        - id: video-services
+          source: video-capture
+          target: bmc-services
+          label: KVM 视频流
+          data:
+            kind: DATA
+            lane: KVM
+            description: BMC 将捕获的视频编码并通过 Web/KVM 服务输出。
+            evidence: target
+        - id: services-power
+          source: bmc-services
+          target: power-post-control
+          label: 上下电与复位命令
+          data:
+            kind: CONTROL
+            lane: POWER
+            description: IPMI/厂商 API 操作经侧带控制送往 Host。
+            evidence: target
+        - id: power-host
+          source: power-post-control
+          target: host-cpu-dram
+          label: 电源/复位/POST 状态
+          data:
+            kind: CONTROL
+            lane: POWER
+            description: 控制主机生命周期并回读启动进度；精确电气接口待确认。
+            evidence: target
+        - id: sensors-bus
+          source: sensors-fru
+          target: sensor-bus
+          label: 遥测与资产数据
+          dashed: true
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: 温度、电压、风扇、PSU 和 FRU 数据进入管理总线。
+            evidence: inference
+        - id: bus-services
+          source: sensor-bus
+          target: bmc-services
+          label: 传感器/FRU 读取
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: BMC 服务对外提供 SDR、SEL、传感器与 FRU。
+            evidence: target
+        - id: lom-shared
+          source: host-lom
+          target: bmc-shared-lan
+          label: NC-SI 候选物理链路
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: 共享管理通常经 NC-SI 复用某个 Host LOM，但本机准确端口尚未验证。
+            evidence: inference
+            protocol: NC-SI candidate
+        - id: cpu-uefi
+          source: host-cpu-dram
+          target: host-uefi
+          label: 执行平台固件
+          data:
+            kind: CONTROL
+            lane: BOOT
+            description: CPU 复位后执行 UEFI 初始化平台。
+            evidence: target
+        - id: cpu-os
+          source: host-cpu-dram
+          target: ubuntu-host
+          label: 执行 Host OS
+          data:
+            kind: PHYSICAL
+            lane: HOST
+            description: Ubuntu 使用 Host CPU/DRAM。
+            evidence: target
+        - id: host-gpu
+          source: host-cpu-dram
+          target: nvidia-a10
+          label: PCIe GPU 路径待实测
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: PCIE
+            description: 需要 lspci -tv、nvidia-smi topo -m 与 CUDA/GDS 检查确认。
+            evidence: inference
+            protocol: PCIe
+        - id: host-nvme
+          source: host-cpu-dram
+          target: local-nvme
+          label: PCIe NVMe 路径待实测
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: PCIE
+            description: 需要确认根端口、NUMA、IOMMU、文件系统与数据可擦除性。
+            evidence: inference
+            protocol: PCIe / NVMe
+      viewOptions:
+        - id: overview
+          label: 物理全景
+          hint: 从浏览器、管理节点、BMC 管理网络到服务器主板侧带链路、UEFI、虚拟介质及 A10/NVMe 测试设备的证据分层拓扑。
+        - id: operator-source
+          label: 操作端与镜像源
+          hint: 浏览器、Windows 同步副本与公司 NAS
+        - id: management-node
+          label: 独立管理节点
+          hint: 黑匣子、事件存储、BMC 适配器、启动编排与镜像网关
+        - id: management-network
+          label: 管理网络
+          hint: 管理交换网络与 BMC 专用/共享管理端口
+        - id: bmc-domain
+          label: BMC 独立管理域
+          hint: BMC SoC、固件存储、工作内存与内置管理服务
+        - id: board-sideband
+          label: 主板侧带链路
+          hint: UART、USB、视频、传感器和电源/POST 控制
+        - id: host-platform
+          label: EG942H-G30 Host 平台
+          hint: UEFI、虚拟光驱、CPU/DRAM、Ubuntu 与业务网口
+        - id: pcie-devices
+          label: PCIe 测试设备
+          hint: 当前声明安装的 NVIDIA A10 与本地 NVMe
+        - id: remote-iso-boot
+          label: 远程 ISO 一次性启动
+          hint: NAS 镜像经管理节点中继，由 BMC 拉取并模拟 USB 光驱，UEFI 启动 Ubuntu Live。
+        - id: sol-blackbox
+          label: SOL 启动黑匣子采集
+          hint: Host 串口经 BMC SOL 到管理节点，并持续写入可查询的启动会话。
+        - id: power-reset-observe
+          label: 受控重启与状态观测
+          hint: 人工确认后，编排器启动新会话、发出复位并并行记录 POST/SOL/SEL。
+        - id: kvm-console
+          label: BMC KVM 图形控制台
+          hint: Host 视频经 BMC 捕获，键鼠经 USB HID 返回，覆盖 BIOS 到图形系统。
+        - id: telemetry-inventory
+          label: 传感器、SEL 与 FRU
+          hint: 主板遥测和资产信息由 BMC 汇聚并由适配器记录。
+        - id: shared-lan-path
+          label: BMC 共享管理口候选路径
+          hint: 共享通道可能通过 NC-SI 复用 Host LOM，但当前仅确认逻辑通道存在。
+        - id: gds-readiness
+          label: A10 + 本地 NVMe 的 GDS 环境确认
+          hint: 先确认设备、驱动、拓扑和 P2P 能力，再进行任何非破坏性 GDS 验证。
+      systemTree:
+        - label: 操作端与镜像源
+          plane: operator-source
+          nodes: *a28
+        - label: 独立管理节点
+          plane: management-node
+          nodes: *a29
+        - label: 管理网络
+          plane: management-network
+          nodes: *a30
+        - label: BMC 独立管理域
+          plane: bmc-domain
+          nodes: *a31
+        - label: 主板侧带链路
+          plane: board-sideband
+          nodes: *a32
+        - label: EG942H-G30 Host 平台
+          plane: host-platform
+          nodes: *a33
+        - label: PCIe 测试设备
+          plane: pcie-devices
+          nodes: *a34
+      storageTrees:
+        - id: blackbox-web-sources
+          label: 启动监控黑匣子 Web
+          plane: management-node
+          roots:
+            - path: external/eg942h-g30-boot-web/boot_web.py
+              role: Existing black-box web service on the management node; not bundled in this public scene.
+              nodeId: blackbox-web
+        - id: bmc-adapter-sources
+          label: BMC 适配层
+          plane: management-node
+          roots:
+            - path: external/eg942h-g30-boot-recorder/bmc_boot_recorder.py
+              role: Existing recorder/adapter implementation on the management node.
+              nodeId: bmc-adapter
+      runtimeFacts:
+        - label: 证据等级
+          value: RUNTIME_OBSERVED
+          tone: good
+      cameraHudViews:
+        overview:
+          eyebrow: EG942H-G30-R2-M4
+          title: 物理全景
+          detail: 从浏览器、管理节点、BMC 管理网络到服务器主板侧带链路、UEFI、虚拟介质及 A10/NVMe 测试设备的证据分层拓扑。
+        operator-source:
+          eyebrow: EG942H-G30-R2-M4
+          title: 操作端与镜像源
+          detail: 浏览器、Windows 同步副本与公司 NAS
+        management-node:
+          eyebrow: EG942H-G30-R2-M4
+          title: 独立管理节点
+          detail: 黑匣子、事件存储、BMC 适配器、启动编排与镜像网关
+        management-network:
+          eyebrow: EG942H-G30-R2-M4
+          title: 管理网络
+          detail: 管理交换网络与 BMC 专用/共享管理端口
+        bmc-domain:
+          eyebrow: EG942H-G30-R2-M4
+          title: BMC 独立管理域
+          detail: BMC SoC、固件存储、工作内存与内置管理服务
+        board-sideband:
+          eyebrow: EG942H-G30-R2-M4
+          title: 主板侧带链路
+          detail: UART、USB、视频、传感器和电源/POST 控制
+        host-platform:
+          eyebrow: EG942H-G30-R2-M4
+          title: EG942H-G30 Host 平台
+          detail: UEFI、虚拟光驱、CPU/DRAM、Ubuntu 与业务网口
+        pcie-devices:
+          eyebrow: EG942H-G30-R2-M4
+          title: PCIe 测试设备
+          detail: 当前声明安装的 NVIDIA A10 与本地 NVMe
+        remote-iso-boot:
+          eyebrow: EG942H-G30-R2-M4
+          title: 远程 ISO 一次性启动
+          detail: NAS 镜像经管理节点中继，由 BMC 拉取并模拟 USB 光驱，UEFI 启动 Ubuntu Live。
+        sol-blackbox:
+          eyebrow: EG942H-G30-R2-M4
+          title: SOL 启动黑匣子采集
+          detail: Host 串口经 BMC SOL 到管理节点，并持续写入可查询的启动会话。
+        power-reset-observe:
+          eyebrow: EG942H-G30-R2-M4
+          title: 受控重启与状态观测
+          detail: 人工确认后，编排器启动新会话、发出复位并并行记录 POST/SOL/SEL。
+        kvm-console:
+          eyebrow: EG942H-G30-R2-M4
+          title: BMC KVM 图形控制台
+          detail: Host 视频经 BMC 捕获，键鼠经 USB HID 返回，覆盖 BIOS 到图形系统。
+        telemetry-inventory:
+          eyebrow: EG942H-G30-R2-M4
+          title: 传感器、SEL 与 FRU
+          detail: 主板遥测和资产信息由 BMC 汇聚并由适配器记录。
+        shared-lan-path:
+          eyebrow: EG942H-G30-R2-M4
+          title: BMC 共享管理口候选路径
+          detail: 共享通道可能通过 NC-SI 复用 Host LOM，但当前仅确认逻辑通道存在。
+        gds-readiness:
+          eyebrow: EG942H-G30-R2-M4
+          title: A10 + 本地 NVMe 的 GDS 环境确认
+          detail: 先确认设备、驱动、拓扑和 P2P 能力，再进行任何非破坏性 GDS 验证。
+    enUS:
+      planeMeta:
+        operator-source:
+          label: Operator and Image Source
+          short: Operator and Image Source
+          color: "#22a7cf"
+        management-node:
+          label: Independent Management Node
+          short: Independent Management Node
+          color: "#7657c8"
+        management-network:
+          label: Management Network
+          short: Management Network
+          color: "#2f83e7"
+        bmc-domain:
+          label: BMC Independent Management Domain
+          short: BMC Independent Management Domain
+          color: "#168f7b"
+        board-sideband:
+          label: Board Sideband Links
+          short: Board Sideband Links
+          color: "#e58b2a"
+        host-platform:
+          label: EG942H-G30 Host Platform
+          short: EG942H-G30 Host Platform
+          color: "#7fae3f"
+        pcie-devices:
+          label: PCIe Test Devices
+          short: PCIe Test Devices
+          color: "#e14b72"
+      edgeMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+        DATA:
+          color: "#7657c8"
+          label: DATA
+        PHYSICAL:
+          color: "#168f7b"
+          label: PHYSICAL
+      laneMeta:
+        UI:
+          color: "#2878c7"
+          label: UI
+          summary: UI
+        MEDIA:
+          color: "#7657c8"
+          label: MEDIA
+          summary: MEDIA
+        TELEMETRY:
+          color: "#168f7b"
+          label: TELEMETRY
+          summary: TELEMETRY
+        CONTROL:
+          color: "#2f83e7"
+          label: CONTROL
+          summary: CONTROL
+        MGMT_NETWORK:
+          color: "#7fae3f"
+          label: MGMT_NETWORK
+          summary: MGMT_NETWORK
+        BMC_INTERNAL:
+          color: "#e14b72"
+          label: BMC_INTERNAL
+          summary: BMC_INTERNAL
+        CONSOLE:
+          color: "#2878c7"
+          label: CONSOLE
+          summary: CONSOLE
+        VIRTUAL_MEDIA:
+          color: "#7657c8"
+          label: VIRTUAL_MEDIA
+          summary: VIRTUAL_MEDIA
+        BOOT:
+          color: "#168f7b"
+          label: BOOT
+          summary: BOOT
+        KVM:
+          color: "#2f83e7"
+          label: KVM
+          summary: KVM
+        POWER:
+          color: "#7fae3f"
+          label: POWER
+          summary: POWER
+        HOST:
+          color: "#e14b72"
+          label: HOST
+          summary: HOST
+        PCIE:
+          color: "#2878c7"
+          label: PCIE
+          summary: PCIE
+      functionInteractions:
+        operator-browser: []
+        windows-copy: []
+        nas-iso: []
+        blackbox-web: []
+        event-store: []
+        bmc-adapter: []
+        boot-orchestrator: []
+        media-gateway: []
+        iso-cache: []
+        mgmt-switch: []
+        bmc-dedicated-lan: []
+        bmc-shared-lan: []
+        bmc-soc: []
+        bmc-flash: []
+        bmc-dram: []
+        bmc-services: []
+        host-uart: []
+        usb-emulation: []
+        video-capture: []
+        sensor-bus: []
+        power-post-control: []
+        host-uefi: []
+        virtual-cdrom: []
+        host-cpu-dram: []
+        ubuntu-host: []
+        host-lom: []
+        sensors-fru: []
+        nvidia-a10: []
+        local-nvme: []
+      driverCausalLayerMeta:
+        payload:
+          label: Payload and ownership
+          short: DATA
+          color: "#4d8edb"
+          description: payload
+        control:
+          label: Control execution
+          short: CTRL
+          color: "#708090"
+          description: control
+        sync:
+          label: Synchronization
+          short: SYNC
+          color: "#e5b534"
+          description: sync
+        lifecycle:
+          label: Lifecycle and rollback
+          short: LIFE
+          color: "#e14b72"
+          description: lifecycle
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#708090"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#22b8cf"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#8a61d1"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a62a"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#e14b72"
+          label: IRQ
+          dashed: false
+        WAIT:
+          color: "#e5b534"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#c13f5c"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#e14b72"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        remote-iso-boot:
+          id: remote-iso-boot
+          title: One-Time Remote ISO Boot
+          shortTitle: One-Time Remote ISO Boot
+          summary: The NAS image is relayed by the management node, fetched by the BMC, emulated as USB CD, and booted by UEFI into Ubuntu Live.
+          caveat: Standard Redfish InsertMedia returned HTTP 500; the observed successful path uses the vendor MegaRAC API plus NFSv3. No disk installation was performed.
+          steps:
+            - id: rib-1
+              title: Select NAS ISO
+              shortTitle: Select NAS ISO
+              moduleRole: nas-iso
+              contextLane: operator-source
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: rib-2
+              title: Fetch verify and relay
+              shortTitle: prepare_remote_media
+              moduleRole: media-gateway
+              contextLane: management-node
+              layers:
+                - lifecycle
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a1
+            - id: rib-3
+              title: Configure remote media
+              shortTitle: configure_vendor_remote_media
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a2
+            - id: rib-4
+              title: BMC fetches ISO
+              shortTitle: fetch_remote_iso
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - control
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a3
+            - id: rib-5
+              title: Set one-time CD boot
+              shortTitle: set_one_time_uefi_cd
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a4
+            - id: rib-6
+              title: Reset Host
+              shortTitle: reset_host
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - lifecycle
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a5
+            - id: rib-7
+              title: UEFI boots Ubuntu Live
+              shortTitle: boot_virtual_cd
+              moduleRole: host-uefi
+              contextLane: host-platform
+              layers:
+                - lifecycle
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a6
+          edges:
+            - source: rib-1
+              target: rib-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-2
+              target: rib-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-3
+              target: rib-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-4
+              target: rib-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-5
+              target: rib-6
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: rib-6
+              target: rib-7
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        sol-blackbox:
+          id: sol-blackbox
+          title: SOL Boot Black-Box Capture
+          shortTitle: SOL Boot Black-Box Capture
+          summary: Host serial flows through BMC SOL to the management node and is continuously persisted as queryable boot sessions.
+          caveat: OS kernel through login is visible; complete BIOS text still depends on early firmware Console Redirection to the same UART.
+          steps:
+            - id: sol-1
+              title: Firmware/OS emits serial output
+              shortTitle: Firmware/OS emits serial output
+              moduleRole: host-uefi
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: sol-2
+              title: UART carries bytes
+              shortTitle: UART carries bytes
+              moduleRole: host-uart
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: sol-3
+              title: BMC encapsulates SOL
+              shortTitle: encapsulate_sol
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a7
+            - id: sol-4
+              title: Capture and reconnect
+              shortTitle: capture_sol
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a8
+            - id: sol-5
+              title: Persist event files
+              shortTitle: Persist event files
+              moduleRole: event-store
+              contextLane: management-node
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: sol-6
+              title: Browser views sessions
+              shortTitle: Browser views sessions
+              moduleRole: blackbox-web
+              contextLane: management-node
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: sol-1
+              target: sol-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-2
+              target: sol-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-3
+              target: sol-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-4
+              target: sol-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: sol-5
+              target: sol-6
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        power-reset-observe:
+          id: power-reset-observe
+          title: Controlled Reset and State Observation
+          shortTitle: Controlled Reset and State Observation
+          summary: After operator confirmation, the orchestrator opens a session, resets the Host, and records POST/SOL/SEL in parallel.
+          caveat: ""
+          steps:
+            - id: pro-1
+              title: Create manual boot boundary
+              shortTitle: start_boot_cycle
+              moduleRole: event-store
+              contextLane: management-node
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a9
+            - id: pro-2
+              title: Issue reset command
+              shortTitle: reset_host
+              moduleRole: boot-orchestrator
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a5
+            - id: pro-3
+              title: Board performs reset
+              shortTitle: Board performs reset
+              moduleRole: power-post-control
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: pro-4
+              title: Poll POST/SEL/power
+              shortTitle: poll_post_sel
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a10
+            - id: pro-5
+              title: Capture SOL in parallel
+              shortTitle: capture_sol
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a8
+          edges:
+            - source: pro-1
+              target: pro-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: pro-2
+              target: pro-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: pro-3
+              target: pro-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: pro-4
+              target: pro-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        kvm-console:
+          id: kvm-console
+          title: BMC KVM Graphical Console
+          shortTitle: BMC KVM Graphical Console
+          summary: Host video is captured by the BMC while keyboard/mouse return through USB HID, covering BIOS through the graphical OS.
+          caveat: Exact video controller, bus, and board traces are not yet schematic-confirmed.
+          steps:
+            - id: kvm-1
+              title: Produce video output
+              shortTitle: Produce video output
+              moduleRole: host-uefi
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-2
+              title: BMC captures and encodes
+              shortTitle: BMC captures and encodes
+              moduleRole: video-capture
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-3
+              title: KVM service transports
+              shortTitle: KVM service transports
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-4
+              title: Browser displays and inputs
+              shortTitle: Browser displays and inputs
+              moduleRole: operator-browser
+              contextLane: operator-source
+              layers:
+                - control
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: kvm-5
+              title: USB HID returns to Host
+              shortTitle: USB HID returns to Host
+              moduleRole: usb-emulation
+              contextLane: board-sideband
+              layers:
+                - control
+              kind: data
+              evidence: RUNTIME_OBSERVED
+          edges:
+            - source: kvm-1
+              target: kvm-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: kvm-2
+              target: kvm-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: kvm-3
+              target: kvm-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: kvm-4
+              target: kvm-5
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        telemetry-inventory:
+          id: telemetry-inventory
+          title: Sensors, SEL, and FRU
+          shortTitle: Sensors, SEL, and FRU
+          summary: Board telemetry and inventory are aggregated by the BMC and recorded by the adapter.
+          caveat: Protocol capability and readings are observed; per-device I²C/SMBus/IPMB physical wiring remains inferred.
+          steps:
+            - id: tel-1
+              title: Produce telemetry/inventory
+              shortTitle: Produce telemetry/inventory
+              moduleRole: sensors-fru
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: tel-2
+              title: Sideband bus aggregation
+              shortTitle: Sideband bus aggregation
+              moduleRole: sensor-bus
+              contextLane: board-sideband
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: tel-3
+              title: BMC reads and exposes
+              shortTitle: read_sensors_fru_sel
+              moduleRole: bmc-services
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: function
+              evidence: RUNTIME_OBSERVED
+              contract: *a11
+            - id: tel-4
+              title: Adapter captures records
+              shortTitle: poll_post_sel
+              moduleRole: bmc-adapter
+              contextLane: management-node
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              contract: *a10
+          edges:
+            - source: tel-1
+              target: tel-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: tel-2
+              target: tel-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: tel-3
+              target: tel-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        shared-lan-path:
+          id: shared-lan-path
+          title: Candidate BMC Shared-LAN Path
+          shortTitle: Candidate BMC Shared-LAN Path
+          summary: The shared channel may reuse a Host LOM through NC-SI, but only the logical channel is currently confirmed.
+          caveat: The shared channel currently has no address; the depicted NC-SI connection is not a board-level conclusion.
+          steps:
+            - id: slp-1
+              title: Management traffic reaches LOM
+              shortTitle: Management traffic reaches LOM
+              moduleRole: mgmt-switch
+              contextLane: management-network
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: slp-2
+              title: LOM diverts management frames
+              shortTitle: LOM diverts management frames
+              moduleRole: host-lom
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: slp-3
+              title: NC-SI delivers to BMC
+              shortTitle: NC-SI delivers to BMC
+              moduleRole: bmc-shared-lan
+              contextLane: management-network
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: slp-4
+              title: BMC handles management protocol
+              shortTitle: BMC handles management protocol
+              moduleRole: bmc-soc
+              contextLane: bmc-domain
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: slp-1
+              target: slp-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: slp-2
+              target: slp-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: slp-3
+              target: slp-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        gds-readiness:
+          id: gds-readiness
+          title: A10 + Local NVMe GDS Readiness
+          shortTitle: A10 + Local NVMe GDS Readiness
+          summary: Confirm devices, drivers, topology, and P2P capability before any non-destructive GDS validation.
+          caveat: This scene records user-declared installation only and does not claim that GDS is deployed or PCIe P2P has passed.
+          steps:
+            - id: gds-1
+              title: Check OS/kernel/CUDA
+              shortTitle: Check OS/kernel/CUDA
+              moduleRole: ubuntu-host
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+            - id: gds-2
+              title: Verify A10 driver and topology
+              shortTitle: Verify A10 driver and topology
+              moduleRole: nvidia-a10
+              contextLane: pcie-devices
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: gds-3
+              title: Verify NVMe and safe test media
+              shortTitle: Verify NVMe and safe test media
+              moduleRole: local-nvme
+              contextLane: pcie-devices
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: gds-4
+              title: Determine PCIe root/P2P path
+              shortTitle: Determine PCIe root/P2P path
+              moduleRole: host-cpu-dram
+              contextLane: host-platform
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: gds-1
+              target: gds-2
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: gds-2
+              target: gds-3
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: gds-3
+              target: gds-4
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+      topologyNodes:
+        - id: operator-browser
+          label: Operator Browser
+          fill: "#22a7cf"
+          data:
+            title: Operator Browser
+            plane: operator-source
+            layer: ZONE 01 · ACTOR AND SOURCE
+            kind: client
+            description: Views black-box records and 3D topology and uses the existing BMC web/KVM UI for manual operations.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a12
+            codeRefs: []
+            views:
+              - overview
+              - operator-source
+              - kvm-console
+        - id: windows-copy
+          label: Windows Synced Copy
+          fill: "#49bad8"
+          data:
+            title: Windows Synced Copy
+            plane: operator-source
+            layer: ZONE 01 · ACTOR AND SOURCE
+            kind: device
+            description: This repository copy on the E drive can render the same scene locally on Windows.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - operator-source
+        - id: nas-iso
+          label: Company NAS / ISO Source
+          fill: "#2c91bb"
+          data:
+            title: Company NAS / ISO Source
+            plane: operator-source
+            layer: ZONE 01 · ACTOR AND SOURCE
+            kind: device
+            description: Stores the Ubuntu ISO over SMB2/3; this scene uses aliases and stores no addresses or credentials.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a13
+            codeRefs: []
+            views:
+              - overview
+              - operator-source
+              - remote-iso-boot
+        - id: blackbox-web
+          label: Boot Black-Box Web
+          fill: "#7657c8"
+          data:
+            title: Boot Black-Box Web
+            plane: management-node
+            layer: ZONE 02 · AUTOMATION AND EVIDENCE
+            kind: client
+            description: Presents SOL, POST, SEL, and metadata grouped by boot session.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: Boot Black-Box Web
+                path: external/eg942h-g30-boot-web/boot_web.py
+                note: Existing black-box web service on the management node; not bundled in this public scene.
+            views:
+              - overview
+              - management-node
+              - sol-blackbox
+        - id: event-store
+          label: Boot Session and Event Store
+          fill: "#8a61d1"
+          data:
+            title: Boot Session and Event Store
+            plane: management-node
+            layer: ZONE 02 · AUTOMATION AND EVIDENCE
+            kind: device
+            description: Stores raw serial, timestamped text, JSONL, and session metadata with retention policy.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+              - sol-blackbox
+              - power-reset-observe
+        - id: bmc-adapter
+          label: BMC Adapter Layer
+          fill: "#6957b8"
+          data:
+            title: BMC Adapter Layer
+            plane: management-node
+            layer: ZONE 02 · AUTOMATION AND EVIDENCE
+            kind: service
+            description: Wraps IPMI lanplus, SOL, SEL/FRU, POST, and the vendor MegaRAC HTTPS API.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a14
+            codeRefs:
+              - name: BMC Adapter Layer
+                path: external/eg942h-g30-boot-recorder/bmc_boot_recorder.py
+                note: Existing recorder/adapter implementation on the management node.
+            views:
+              - overview
+              - management-node
+              - sol-blackbox
+              - power-reset-observe
+              - telemetry-inventory
+        - id: boot-orchestrator
+          label: Boot Orchestrator
+          fill: "#8566c9"
+          data:
+            title: Boot Orchestrator
+            plane: management-node
+            layer: ZONE 02 · AUTOMATION AND EVIDENCE
+            kind: service
+            description: Orchestrates remote media, one-time boot, power control, and boot state; custom code does not run inside the BMC.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+              - remote-iso-boot
+              - power-reset-observe
+        - id: media-gateway
+          label: Image Relay Gateway
+          fill: "#9c78d0"
+          data:
+            title: Image Relay Gateway
+            plane: management-node
+            layer: ZONE 02 · AUTOMATION AND EVIDENCE
+            kind: service
+            description: Fetches ISO from NAS, verifies SHA-256, and exposes restricted read-only NFSv3 to the legacy BMC; HTTP Range is a fallback.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a15
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+              - remote-iso-boot
+        - id: iso-cache
+          label: Local ISO Cache
+          fill: "#a88ad0"
+          data:
+            title: Local ISO Cache
+            plane: management-node
+            layer: ZONE 02 · AUTOMATION AND EVIDENCE
+            kind: device
+            description: Holds verified ISO files and hard links, isolating NAS protocol from BMC compatibility constraints.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-node
+        - id: mgmt-switch
+          label: LAN Management Switching
+          fill: "#2f83e7"
+          data:
+            title: LAN Management Switching
+            plane: management-network
+            layer: ZONE 03 · ETHERNET MANAGEMENT PLANE
+            kind: target
+            description: Carries browser, management-node, NAS, and BMC management traffic; exact VLAN and switch-port mapping is not fully documented.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - management-network
+              - shared-lan-path
+        - id: bmc-dedicated-lan
+          label: BMC Dedicated Management LAN
+          fill: "#397ad6"
+          data:
+            title: BMC Dedicated Management LAN
+            plane: management-network
+            layer: ZONE 03 · ETHERNET MANAGEMENT PLANE
+            kind: device
+            description: Dedicated RJ45 management interface currently reachable through DHCP; real IP/MAC remain in controlled environment records.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a16
+            codeRefs: []
+            views:
+              - overview
+              - management-network
+        - id: bmc-shared-lan
+          label: BMC Shared-LAN Logical Endpoint
+          fill: "#5591dc"
+          data:
+            title: BMC Shared-LAN Logical Endpoint
+            plane: management-network
+            layer: ZONE 03 · ETHERNET MANAGEMENT PLANE
+            kind: device
+            description: The BMC reports a shared channel without an address; its NC-SI physical binding to a specific Host LOM remains to be confirmed.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a17
+            codeRefs: []
+            views:
+              - overview
+              - management-network
+              - shared-lan-path
+        - id: bmc-soc
+          label: BMC SoC
+          fill: "#168f7b"
+          data:
+            title: BMC SoC
+            plane: bmc-domain
+            layer: ZONE 04 · MEGARAC BMC
+            kind: target
+            description: Runs independently while the Host is off or production networking fails and hosts management firmware and sideband controllers.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+              - shared-lan-path
+        - id: bmc-flash
+          label: BMC Firmware SPI Flash
+          fill: "#3a9f89"
+          data:
+            title: BMC Firmware SPI Flash
+            plane: bmc-domain
+            layer: ZONE 04 · MEGARAC BMC
+            kind: target
+            description: Typical persistent BMC firmware medium; exact chip, capacity, and partitioning are not yet confirmed on this server.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+        - id: bmc-dram
+          label: BMC Dedicated DRAM
+          fill: "#4caf91"
+          data:
+            title: BMC Dedicated DRAM
+            plane: bmc-domain
+            layer: ZONE 04 · MEGARAC BMC
+            kind: target
+            description: Serves BMC firmware, video buffering, and services; capacity and exact attachment await silicon documentation.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+        - id: bmc-services
+          label: Built-in MegaRAC Services
+          fill: "#20a68d"
+          data:
+            title: Built-in MegaRAC Services
+            plane: bmc-domain
+            layer: ZONE 04 · MEGARAC BMC
+            kind: service
+            description: Provides Web/KVM, IPMI, SOL, sensors, remote media, and vendor APIs; arbitrary custom program deployment is not established.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a18
+            codeRefs: []
+            views:
+              - overview
+              - bmc-domain
+              - remote-iso-boot
+              - sol-blackbox
+              - kvm-console
+              - telemetry-inventory
+        - id: host-uart
+          label: Host UART ↔ BMC SOL
+          fill: "#e58b2a"
+          data:
+            title: Host UART ↔ BMC SOL
+            plane: board-sideband
+            layer: ZONE 05 · BMC TO HOST
+            kind: network
+            description: Carries the text console; Ubuntu ttyS0 and kernel console provide login without production networking. Exact UART controller and trace await schematic confirmation.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a19
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - sol-blackbox
+        - id: usb-emulation
+          label: BMC USB Device-Emulation Link
+          fill: "#e99b43"
+          data:
+            title: BMC USB Device-Emulation Link
+            plane: board-sideband
+            layer: ZONE 05 · BMC TO HOST
+            kind: network
+            description: Exposes virtual CDROM and KVM keyboard/mouse to the Host; functionality is observed while exact USB controller topology awaits confirmation.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a20
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - kvm-console
+        - id: video-capture
+          label: Host Video Capture Link
+          fill: "#efad5e"
+          data:
+            title: Host Video Capture Link
+            plane: board-sideband
+            layer: ZONE 05 · BMC TO HOST
+            kind: network
+            description: Delivers POST, UEFI, and OS graphics to BMC KVM; exact VGA/PCIe/framebuffer path awaits hardware documentation.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - kvm-console
+        - id: sensor-bus
+          label: I²C/SMBus/IPMB Management Bus
+          fill: "#f0b76d"
+          data:
+            title: I²C/SMBus/IPMB Management Bus
+            plane: board-sideband
+            layer: ZONE 05 · BMC TO HOST
+            kind: network
+            description: Typically connects temperature, voltage, fans, PSU, and FRU; corresponding data are readable, but each board-level bus has not been individually traced.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: *a21
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - telemetry-inventory
+        - id: power-post-control
+          label: Power / Reset / POST Sideband Control
+          fill: "#e48a28"
+          data:
+            title: Power / Reset / POST Sideband Control
+            plane: board-sideband
+            layer: ZONE 05 · BMC TO HOST
+            kind: network
+            description: The BMC controls Host power/reset and reads POST state; the exact GPIO/eSPI/LPC combination awaits the board schematic.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a22
+            codeRefs: []
+            views:
+              - overview
+              - board-sideband
+              - power-reset-observe
+        - id: host-uefi
+          label: Host UEFI / BIOS
+          fill: "#7fae3f"
+          data:
+            title: Host UEFI / BIOS
+            plane: host-platform
+            layer: ZONE 06 · FIRMWARE AND OPERATING SYSTEM
+            kind: service
+            description: Enumerates the BMC virtual CD and PCIe devices, performs one-time UEFI CD boot, and emits POST progress.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - remote-iso-boot
+              - sol-blackbox
+              - kvm-console
+        - id: virtual-cdrom
+          label: BMC Virtual CDROM0/1
+          fill: "#94bd55"
+          data:
+            title: BMC Virtual CDROM0/1
+            plane: host-platform
+            layer: ZONE 06 · FIRMWARE AND OPERATING SYSTEM
+            kind: device
+            description: USB optical drives emulated by the BMC to carry the remote Ubuntu ISO.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a23
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+        - id: host-cpu-dram
+          label: Dual Hygon CPUs and DRAM
+          fill: "#6f9e35"
+          data:
+            title: Dual Hygon CPUs and DRAM
+            plane: host-platform
+            layer: ZONE 06 · FIRMWARE AND OPERATING SYSTEM
+            kind: target
+            description: EG942H-G30 4U Host compute platform; platform class and product capabilities are documented.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - gds-readiness
+        - id: ubuntu-host
+          label: Ubuntu Host OS
+          fill: "#85ad49"
+          data:
+            title: Ubuntu Host OS
+            plane: host-platform
+            layer: ZONE 06 · FIRMWARE AND OPERATING SYSTEM
+            kind: client
+            description: Reachable through production-network SSH or ttyS0/SOL; the remote ISO reached a live environment without writing the system disk.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a24
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - gds-readiness
+        - id: host-lom
+          label: Host Production NIC / LOM
+          fill: "#a3c56b"
+          data:
+            title: Host Production NIC / LOM
+            plane: host-platform
+            layer: ZONE 06 · FIRMWARE AND OPERATING SYSTEM
+            kind: device
+            description: Carries Ubuntu production networking and is logically separate from the dedicated BMC port; exact shared-BMC NC-SI binding awaits confirmation.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: *a25
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - shared-lan-path
+        - id: sensors-fru
+          label: Sensors / Fans / PSU / FRU
+          fill: "#b0ca7a"
+          data:
+            title: Sensors / Fans / PSU / FRU
+            plane: host-platform
+            layer: ZONE 06 · FIRMWARE AND OPERATING SYSTEM
+            kind: target
+            description: Supplies temperature, voltage, fan, power, and asset information to the BMC.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - host-platform
+              - telemetry-inventory
+        - id: nvidia-a10
+          label: NVIDIA A10 GPU
+          fill: "#e14b72"
+          data:
+            title: NVIDIA A10 GPU
+            plane: pcie-devices
+            layer: ZONE 07 · GDS PREPARATION
+            kind: device
+            description: User-declared GDS test GPU; topology and P2P capability still require Host-side lspci/CUDA verification.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: *a26
+            codeRefs: []
+            views:
+              - overview
+              - pcie-devices
+              - gds-readiness
+        - id: local-nvme
+          label: Local NVMe Test Drive
+          fill: "#d66184"
+          data:
+            title: Local NVMe Test Drive
+            plane: pcie-devices
+            layer: ZONE 07 · GDS PREPARATION
+            kind: device
+            description: User-declared local test drive; model, PCIe root port, IOMMU group, and data-safety boundary require live verification.
+            evidence: inference
+            core: true
+            tags: []
+            interfaces: *a27
+            codeRefs: []
+            views:
+              - overview
+              - pcie-devices
+              - gds-readiness
+      topologyEdges:
+        - id: browser-blackbox
+          source: operator-browser
+          target: blackbox-web
+          label: View boot records
+          data:
+            kind: CONTROL
+            lane: UI
+            description: LAN HTTP access to the black-box web page.
+            evidence: target
+            protocol: HTTP
+        - id: windows-scene
+          source: windows-copy
+          target: operator-browser
+          label: Local 3D rendering
+          data:
+            kind: DATA
+            lane: UI
+            description: The browser loads this scene after Vite starts on Windows.
+            evidence: code
+            protocol: HTTP
+        - id: nas-gateway
+          source: nas-iso
+          target: media-gateway
+          label: Fetch ISO
+          data:
+            kind: DATA
+            lane: MEDIA
+            description: The management node reads the image using a modern SMB client.
+            evidence: target
+            protocol: SMB2/3
+        - id: blackbox-store
+          source: event-store
+          target: blackbox-web
+          label: Session query
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: The web layer reads events grouped by boot session.
+            evidence: code
+        - id: adapter-store
+          source: bmc-adapter
+          target: event-store
+          label: Persist events
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: Records SOL, POST, SEL, and collector status.
+            evidence: code
+        - id: orchestrator-adapter
+          source: boot-orchestrator
+          target: bmc-adapter
+          label: Invoke BMC capabilities
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: The orchestrator uses the adapter for vendor API and IPMI operations.
+            evidence: code
+        - id: gateway-cache
+          source: media-gateway
+          target: iso-cache
+          label: Verify and cache
+          data:
+            kind: CONTROL
+            lane: MEDIA
+            description: Persists an exportable local file after SHA-256 verification.
+            evidence: target
+        - id: cache-bmc
+          source: iso-cache
+          target: bmc-services
+          label: BMC fetches ISO
+          data:
+            kind: DATA
+            lane: MEDIA
+            description: The BMC built-in NFS client reads the image from a restricted read-only NFSv3 export.
+            evidence: target
+            protocol: NFSv3
+        - id: adapter-switch
+          source: bmc-adapter
+          target: mgmt-switch
+          label: Management protocol traffic
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: The management node reaches the BMC over the LAN.
+            evidence: target
+            protocol: Ethernet
+        - id: switch-dedicated
+          source: mgmt-switch
+          target: bmc-dedicated-lan
+          label: Dedicated management Ethernet
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: Currently verified primary out-of-band management path.
+            evidence: target
+            protocol: 1GbE
+        - id: switch-shared
+          source: mgmt-switch
+          target: bmc-shared-lan
+          label: Shared-management ingress candidate
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: A shared channel exists but has no configured IP and is not yet mapped to a specific Host LOM.
+            evidence: inference
+            protocol: Ethernet / NC-SI
+        - id: dedicated-soc
+          source: bmc-dedicated-lan
+          target: bmc-soc
+          label: BMC MAC/network controller
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: Carries dedicated-port traffic into the BMC SoC.
+            evidence: target
+        - id: shared-soc
+          source: bmc-shared-lan
+          target: bmc-soc
+          label: Shared-channel logical attachment
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: The BMC channel is observed; its exact internal MAC/NC-SI path awaits confirmation.
+            evidence: inference
+        - id: soc-flash
+          source: bmc-flash
+          target: bmc-soc
+          label: Firmware boot
+          data:
+            kind: CONTROL
+            lane: BMC_INTERNAL
+            description: The BMC loads firmware from independent nonvolatile storage; implementation details await confirmation.
+            evidence: inference
+            protocol: SPI candidate
+        - id: soc-dram
+          source: bmc-dram
+          target: bmc-soc
+          label: BMC working memory
+          data:
+            kind: PHYSICAL
+            lane: BMC_INTERNAL
+            description: Used by firmware and video buffering; exact interface awaits confirmation.
+            evidence: inference
+        - id: soc-services
+          source: bmc-soc
+          target: bmc-services
+          label: Run built-in services
+          data:
+            kind: CONTROL
+            lane: BMC_INTERNAL
+            description: The BMC SoC executes MegaRAC firmware services.
+            evidence: target
+        - id: services-sol
+          source: bmc-services
+          target: host-uart
+          label: SOL encapsulation/decapsulation
+          data:
+            kind: DATA
+            lane: CONSOLE
+            description: UART bytes are transported as IPMI v2.0/RMCP+ SOL over the management network.
+            evidence: target
+            protocol: SOL 115200 8N1
+        - id: uart-host
+          source: host-uart
+          target: ubuntu-host
+          label: Serial console
+          data:
+            kind: DATA
+            lane: CONSOLE
+            description: Covers kernel/systemd/login; complete BIOS serial output depends on firmware Console Redirection settings.
+            evidence: target
+            protocol: ttyS0 115200 8N1
+        - id: services-usb
+          source: bmc-services
+          target: usb-emulation
+          label: Configure USB emulation
+          data:
+            kind: CONTROL
+            lane: VIRTUAL_MEDIA
+            description: Built-in BMC firmware controls virtual media and HID emulation.
+            evidence: target
+        - id: usb-cdrom
+          source: usb-emulation
+          target: virtual-cdrom
+          label: Emulate USB optical drive
+          data:
+            kind: PHYSICAL
+            lane: VIRTUAL_MEDIA
+            description: The Host sees BMC Virtual CDROM0/1.
+            evidence: target
+            protocol: USB mass storage
+        - id: cdrom-uefi
+          source: virtual-cdrom
+          target: host-uefi
+          label: UEFI enumeration and boot
+          data:
+            kind: CONTROL
+            lane: BOOT
+            description: One-time Boot Override selects the remote optical drive.
+            evidence: target
+        - id: uefi-ubuntu
+          source: host-uefi
+          target: ubuntu-host
+          label: Load GRUB and Ubuntu
+          data:
+            kind: CONTROL
+            lane: BOOT
+            description: Observed reaching the Ubuntu live graphical environment without disk installation.
+            evidence: target
+        - id: video-host
+          source: host-uefi
+          target: video-capture
+          label: POST/UEFI video
+          data:
+            kind: DATA
+            lane: KVM
+            description: Firmware video enters the BMC KVM capture path.
+            evidence: target
+        - id: video-services
+          source: video-capture
+          target: bmc-services
+          label: KVM video stream
+          data:
+            kind: DATA
+            lane: KVM
+            description: The BMC encodes captured video and exposes it through Web/KVM.
+            evidence: target
+        - id: services-power
+          source: bmc-services
+          target: power-post-control
+          label: Power and reset commands
+          data:
+            kind: CONTROL
+            lane: POWER
+            description: IPMI/vendor API operations reach the Host through sideband control.
+            evidence: target
+        - id: power-host
+          source: power-post-control
+          target: host-cpu-dram
+          label: Power/reset/POST state
+          data:
+            kind: CONTROL
+            lane: POWER
+            description: Controls Host lifecycle and reads boot progress; exact electrical interfaces await confirmation.
+            evidence: target
+        - id: sensors-bus
+          source: sensors-fru
+          target: sensor-bus
+          label: Telemetry and inventory data
+          dashed: true
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: Temperature, voltage, fan, PSU, and FRU data enter the management bus.
+            evidence: inference
+        - id: bus-services
+          source: sensor-bus
+          target: bmc-services
+          label: Sensor/FRU reads
+          data:
+            kind: DATA
+            lane: TELEMETRY
+            description: BMC services expose SDR, SEL, sensors, and FRU.
+            evidence: target
+        - id: lom-shared
+          source: host-lom
+          target: bmc-shared-lan
+          label: Candidate NC-SI physical link
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: MGMT_NETWORK
+            description: Shared management typically reuses a Host LOM through NC-SI, but this server's exact port is not verified.
+            evidence: inference
+            protocol: NC-SI candidate
+        - id: cpu-uefi
+          source: host-cpu-dram
+          target: host-uefi
+          label: Execute platform firmware
+          data:
+            kind: CONTROL
+            lane: BOOT
+            description: The CPU executes UEFI to initialize the platform after reset.
+            evidence: target
+        - id: cpu-os
+          source: host-cpu-dram
+          target: ubuntu-host
+          label: Execute Host OS
+          data:
+            kind: PHYSICAL
+            lane: HOST
+            description: Ubuntu runs on Host CPU/DRAM.
+            evidence: target
+        - id: host-gpu
+          source: host-cpu-dram
+          target: nvidia-a10
+          label: PCIe GPU path pending verification
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: PCIE
+            description: Requires lspci -tv, nvidia-smi topo -m, and CUDA/GDS checks.
+            evidence: inference
+            protocol: PCIe
+        - id: host-nvme
+          source: host-cpu-dram
+          target: local-nvme
+          label: PCIe NVMe path pending verification
+          dashed: true
+          data:
+            kind: PHYSICAL
+            lane: PCIE
+            description: Root port, NUMA, IOMMU, filesystem, and data-destructive test boundaries require confirmation.
+            evidence: inference
+            protocol: PCIe / NVMe
+      viewOptions:
+        - id: overview
+          label: Overview
+          hint: Evidence-tiered topology from browser and management node through BMC networking, board sideband links, UEFI, virtual media, and the A10/NVMe test devices.
+        - id: operator-source
+          label: Operator and Image Source
+          hint: Browser, Windows working copy, and company NAS
+        - id: management-node
+          label: Independent Management Node
+          hint: Black box, event store, BMC adapter, boot orchestration, and media gateway
+        - id: management-network
+          label: Management Network
+          hint: Management switching and BMC dedicated/shared interfaces
+        - id: bmc-domain
+          label: BMC Independent Management Domain
+          hint: BMC SoC, firmware storage, working memory, and built-in services
+        - id: board-sideband
+          label: Board Sideband Links
+          hint: UART, USB, video, sensors, and power/POST control
+        - id: host-platform
+          label: EG942H-G30 Host Platform
+          hint: UEFI, virtual CD, CPU/DRAM, Ubuntu, and production NIC
+        - id: pcie-devices
+          label: PCIe Test Devices
+          hint: Currently declared NVIDIA A10 and local NVMe
+        - id: remote-iso-boot
+          label: One-Time Remote ISO Boot
+          hint: The NAS image is relayed by the management node, fetched by the BMC, emulated as USB CD, and booted by UEFI into Ubuntu Live.
+        - id: sol-blackbox
+          label: SOL Boot Black-Box Capture
+          hint: Host serial flows through BMC SOL to the management node and is continuously persisted as queryable boot sessions.
+        - id: power-reset-observe
+          label: Controlled Reset and State Observation
+          hint: After operator confirmation, the orchestrator opens a session, resets the Host, and records POST/SOL/SEL in parallel.
+        - id: kvm-console
+          label: BMC KVM Graphical Console
+          hint: Host video is captured by the BMC while keyboard/mouse return through USB HID, covering BIOS through the graphical OS.
+        - id: telemetry-inventory
+          label: Sensors, SEL, and FRU
+          hint: Board telemetry and inventory are aggregated by the BMC and recorded by the adapter.
+        - id: shared-lan-path
+          label: Candidate BMC Shared-LAN Path
+          hint: The shared channel may reuse a Host LOM through NC-SI, but only the logical channel is currently confirmed.
+        - id: gds-readiness
+          label: A10 + Local NVMe GDS Readiness
+          hint: Confirm devices, drivers, topology, and P2P capability before any non-destructive GDS validation.
+      systemTree:
+        - label: Operator and Image Source
+          plane: operator-source
+          nodes: *a28
+        - label: Independent Management Node
+          plane: management-node
+          nodes: *a29
+        - label: Management Network
+          plane: management-network
+          nodes: *a30
+        - label: BMC Independent Management Domain
+          plane: bmc-domain
+          nodes: *a31
+        - label: Board Sideband Links
+          plane: board-sideband
+          nodes: *a32
+        - label: EG942H-G30 Host Platform
+          plane: host-platform
+          nodes: *a33
+        - label: PCIe Test Devices
+          plane: pcie-devices
+          nodes: *a34
+      storageTrees:
+        - id: blackbox-web-sources
+          label: Boot Black-Box Web
+          plane: management-node
+          roots:
+            - path: external/eg942h-g30-boot-web/boot_web.py
+              role: Existing black-box web service on the management node; not bundled in this public scene.
+              nodeId: blackbox-web
+        - id: bmc-adapter-sources
+          label: BMC Adapter Layer
+          plane: management-node
+          roots:
+            - path: external/eg942h-g30-boot-recorder/bmc_boot_recorder.py
+              role: Existing recorder/adapter implementation on the management node.
+              nodeId: bmc-adapter
+      runtimeFacts:
+        - label: Evidence level
+          value: RUNTIME_OBSERVED
+          tone: good
+      cameraHudViews:
+        overview:
+          eyebrow: EG942H-G30-R2-M4
+          title: Overview
+          detail: Evidence-tiered topology from browser and management node through BMC networking, board sideband links, UEFI, virtual media, and the A10/NVMe test devices.
+        operator-source:
+          eyebrow: EG942H-G30-R2-M4
+          title: Operator and Image Source
+          detail: Browser, Windows working copy, and company NAS
+        management-node:
+          eyebrow: EG942H-G30-R2-M4
+          title: Independent Management Node
+          detail: Black box, event store, BMC adapter, boot orchestration, and media gateway
+        management-network:
+          eyebrow: EG942H-G30-R2-M4
+          title: Management Network
+          detail: Management switching and BMC dedicated/shared interfaces
+        bmc-domain:
+          eyebrow: EG942H-G30-R2-M4
+          title: BMC Independent Management Domain
+          detail: BMC SoC, firmware storage, working memory, and built-in services
+        board-sideband:
+          eyebrow: EG942H-G30-R2-M4
+          title: Board Sideband Links
+          detail: UART, USB, video, sensors, and power/POST control
+        host-platform:
+          eyebrow: EG942H-G30-R2-M4
+          title: EG942H-G30 Host Platform
+          detail: UEFI, virtual CD, CPU/DRAM, Ubuntu, and production NIC
+        pcie-devices:
+          eyebrow: EG942H-G30-R2-M4
+          title: PCIe Test Devices
+          detail: Currently declared NVIDIA A10 and local NVMe
+        remote-iso-boot:
+          eyebrow: EG942H-G30-R2-M4
+          title: One-Time Remote ISO Boot
+          detail: The NAS image is relayed by the management node, fetched by the BMC, emulated as USB CD, and booted by UEFI into Ubuntu Live.
+        sol-blackbox:
+          eyebrow: EG942H-G30-R2-M4
+          title: SOL Boot Black-Box Capture
+          detail: Host serial flows through BMC SOL to the management node and is continuously persisted as queryable boot sessions.
+        power-reset-observe:
+          eyebrow: EG942H-G30-R2-M4
+          title: Controlled Reset and State Observation
+          detail: After operator confirmation, the orchestrator opens a session, resets the Host, and records POST/SOL/SEL in parallel.
+        kvm-console:
+          eyebrow: EG942H-G30-R2-M4
+          title: BMC KVM Graphical Console
+          detail: Host video is captured by the BMC while keyboard/mouse return through USB HID, covering BIOS through the graphical OS.
+        telemetry-inventory:
+          eyebrow: EG942H-G30-R2-M4
+          title: Sensors, SEL, and FRU
+          detail: Board telemetry and inventory are aggregated by the BMC and recorded by the adapter.
+        shared-lan-path:
+          eyebrow: EG942H-G30-R2-M4
+          title: Candidate BMC Shared-LAN Path
+          detail: The shared channel may reuse a Host LOM through NC-SI, but only the logical channel is currently confirmed.
+        gds-readiness:
+          eyebrow: EG942H-G30-R2-M4
+          title: A10 + Local NVMe GDS Readiness
+          detail: Confirm devices, drivers, topology, and P2P capability before any non-destructive GDS validation.
+  common:
+    focusModuleGroups:
+      operator-browser:
+        - operator-browser
+      windows-copy:
+        - windows-copy
+      nas-iso:
+        - nas-iso
+      blackbox-web:
+        - blackbox-web
+      event-store:
+        - event-store
+      bmc-adapter:
+        - bmc-adapter
+      boot-orchestrator:
+        - boot-orchestrator
+      media-gateway:
+        - media-gateway
+      iso-cache:
+        - iso-cache
+      mgmt-switch:
+        - mgmt-switch
+      bmc-dedicated-lan:
+        - bmc-dedicated-lan
+      bmc-shared-lan:
+        - bmc-shared-lan
+      bmc-soc:
+        - bmc-soc
+      bmc-flash:
+        - bmc-flash
+      bmc-dram:
+        - bmc-dram
+      bmc-services:
+        - bmc-services
+      host-uart:
+        - host-uart
+      usb-emulation:
+        - usb-emulation
+      video-capture:
+        - video-capture
+      sensor-bus:
+        - sensor-bus
+      power-post-control:
+        - power-post-control
+      host-uefi:
+        - host-uefi
+      virtual-cdrom:
+        - virtual-cdrom
+      host-cpu-dram:
+        - host-cpu-dram
+      ubuntu-host:
+        - ubuntu-host
+      host-lom:
+        - host-lom
+      sensors-fru:
+        - sensors-fru
+      nvidia-a10:
+        - nvidia-a10
+      local-nvme:
+        - local-nvme
+    driverJourneyModuleRoleByNodeId:
+      operator-browser: operator-browser
+      windows-copy: windows-copy
+      nas-iso: nas-iso
+      blackbox-web: blackbox-web
+      event-store: event-store
+      bmc-adapter: bmc-adapter
+      boot-orchestrator: boot-orchestrator
+      media-gateway: media-gateway
+      iso-cache: iso-cache
+      mgmt-switch: mgmt-switch
+      bmc-dedicated-lan: bmc-dedicated-lan
+      bmc-shared-lan: bmc-shared-lan
+      bmc-soc: bmc-soc
+      bmc-flash: bmc-flash
+      bmc-dram: bmc-dram
+      bmc-services: bmc-services
+      host-uart: host-uart
+      usb-emulation: usb-emulation
+      video-capture: video-capture
+      sensor-bus: sensor-bus
+      power-post-control: power-post-control
+      host-uefi: host-uefi
+      virtual-cdrom: virtual-cdrom
+      host-cpu-dram: host-cpu-dram
+      ubuntu-host: ubuntu-host
+      host-lom: host-lom
+      sensors-fru: sensors-fru
+      nvidia-a10: nvidia-a10
+      local-nvme: local-nvme
+    driverJourneyOrder:
+      - remote-iso-boot
+      - sol-blackbox
+      - power-reset-observe
+      - kvm-console
+      - telemetry-inventory
+      - shared-lan-path
+      - gds-readiness
+    nodePositions:
+      operator-browser: *a35
+      windows-copy: *a36
+      nas-iso: *a37
+      blackbox-web: *a38
+      event-store: *a39
+      bmc-adapter: *a40
+      boot-orchestrator: *a41
+      media-gateway: *a42
+      iso-cache: *a43
+      mgmt-switch: *a44
+      bmc-dedicated-lan: *a45
+      bmc-shared-lan: *a46
+      bmc-soc: *a47
+      bmc-services: *a48
+      bmc-flash: *a49
+      bmc-dram: *a50
+      host-uart: *a51
+      usb-emulation: *a52
+      video-capture: *a53
+      sensor-bus: *a54
+      power-post-control: *a55
+      host-uefi: *a56
+      virtual-cdrom: *a57
+      host-cpu-dram: *a58
+      ubuntu-host: *a59
+      host-lom: *a60
+      sensors-fru: *a61
+      nvidia-a10: *a62
+      local-nvme: *a63
+    macroZones:
+      operator-source:
+        center: *a64
+        halfSize:
+          - 6
+          - 4
+          - 6
+        nodeIds: *a28
+      management-node:
+        center: *a65
+        halfSize:
+          - 7
+          - 6
+          - 9
+        nodeIds: *a29
+      management-network:
+        center: *a66
+        halfSize:
+          - 5
+          - 4.5
+          - 8
+        nodeIds: *a30
+      bmc-domain:
+        center: *a67
+        halfSize:
+          - 6
+          - 6
+          - 8
+        nodeIds: *a31
+      board-sideband:
+        center: *a68
+        halfSize:
+          - 6
+          - 7
+          - 9
+        nodeIds: *a32
+      host-platform:
+        center: *a69
+        halfSize:
+          - 7.5
+          - 7.5
+          - 9.5
+        nodeIds: *a33
+      pcie-devices:
+        center: *a70
+        halfSize:
+          - 5.5
+          - 4.5
+          - 7
+        nodeIds: *a34
+    globalModuleLabels:
+      - id: operator-browser
+        color: "#22a7cf"
+        halfWidth: 1.9
+        moduleSide: right
+        cameraSide: right
+      - id: windows-copy
+        color: "#49bad8"
+        halfWidth: 1.9
+        moduleSide: right
+        cameraSide: right
+      - id: nas-iso
+        color: "#2c91bb"
+        halfWidth: 2.25
+        moduleSide: right
+        cameraSide: right
+      - id: blackbox-web
+        color: "#7657c8"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: event-store
+        color: "#8a61d1"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: bmc-adapter
+        color: "#6957b8"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: boot-orchestrator
+        color: "#8566c9"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: media-gateway
+        color: "#9c78d0"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: iso-cache
+        color: "#a88ad0"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: mgmt-switch
+        color: "#2f83e7"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: bmc-dedicated-lan
+        color: "#397ad6"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: bmc-shared-lan
+        color: "#5591dc"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: bmc-soc
+        color: "#168f7b"
+        halfWidth: 2.25
+        moduleSide: right
+        cameraSide: right
+      - id: bmc-services
+        color: "#20a68d"
+        halfWidth: 2.25
+        moduleSide: right
+        cameraSide: right
+      - id: bmc-flash
+        color: "#3a9f89"
+        halfWidth: 1.3
+        moduleSide: right
+        cameraSide: right
+      - id: bmc-dram
+        color: "#4caf91"
+        halfWidth: 1.3
+        moduleSide: right
+        cameraSide: right
+      - id: host-uart
+        color: "#e58b2a"
+        halfWidth: 1.8
+        moduleSide: right
+        cameraSide: right
+      - id: usb-emulation
+        color: "#e99b43"
+        halfWidth: 1.8
+        moduleSide: right
+        cameraSide: right
+      - id: video-capture
+        color: "#efad5e"
+        halfWidth: 1.8
+        moduleSide: right
+        cameraSide: right
+      - id: sensor-bus
+        color: "#f0b76d"
+        halfWidth: 1.8
+        moduleSide: right
+        cameraSide: right
+      - id: power-post-control
+        color: "#e48a28"
+        halfWidth: 2.1
+        moduleSide: right
+        cameraSide: right
+      - id: host-uefi
+        color: "#7fae3f"
+        halfWidth: 2
+        moduleSide: right
+        cameraSide: right
+      - id: virtual-cdrom
+        color: "#94bd55"
+        halfWidth: 2
+        moduleSide: right
+        cameraSide: right
+      - id: host-cpu-dram
+        color: "#6f9e35"
+        halfWidth: 2.75
+        moduleSide: right
+        cameraSide: right
+      - id: ubuntu-host
+        color: "#85ad49"
+        halfWidth: 2
+        moduleSide: right
+        cameraSide: right
+      - id: host-lom
+        color: "#a3c56b"
+        halfWidth: 2
+        moduleSide: right
+        cameraSide: right
+      - id: sensors-fru
+        color: "#b0ca7a"
+        halfWidth: 2.5
+        moduleSide: right
+        cameraSide: right
+      - id: nvidia-a10
+        color: "#e14b72"
+        halfWidth: 2.25
+        moduleSide: right
+        cameraSide: right
+      - id: local-nvme
+        color: "#d66184"
+        halfWidth: 2.25
+        moduleSide: right
+        cameraSide: right
+    routeNodeIds:
+      remote-iso-boot:
+        - nas-iso
+        - media-gateway
+        - boot-orchestrator
+        - bmc-services
+        - boot-orchestrator
+        - boot-orchestrator
+        - host-uefi
+      sol-blackbox:
+        - host-uefi
+        - host-uart
+        - bmc-services
+        - bmc-adapter
+        - event-store
+        - blackbox-web
+      power-reset-observe:
+        - event-store
+        - boot-orchestrator
+        - power-post-control
+        - bmc-adapter
+        - bmc-adapter
+      kvm-console:
+        - host-uefi
+        - video-capture
+        - bmc-services
+        - operator-browser
+        - usb-emulation
+      telemetry-inventory:
+        - sensors-fru
+        - sensor-bus
+        - bmc-services
+        - bmc-adapter
+      shared-lan-path:
+        - mgmt-switch
+        - host-lom
+        - bmc-shared-lan
+        - bmc-soc
+      gds-readiness:
+        - ubuntu-host
+        - nvidia-a10
+        - local-nvme
+        - host-cpu-dram
+    directionCards: []
+    visuals:
+      zones:
+        - id: operator-source
+          anchorNodeId: operator-browser
+          eyebrow: *a71
+          title: *a72
+          summary: *a73
+          position: *a64
+          size: *a74
+          color: "#22a7cf"
+          detailGroup: operator-source
+          backdrop: generic
+        - id: management-node
+          anchorNodeId: blackbox-web
+          eyebrow: *a75
+          title: *a76
+          summary: *a77
+          position: *a65
+          size: *a78
+          color: "#7657c8"
+          detailGroup: management-node
+          backdrop: server
+        - id: management-network
+          anchorNodeId: mgmt-switch
+          eyebrow: *a79
+          title: *a80
+          summary: *a81
+          position: *a66
+          size: *a82
+          color: "#2f83e7"
+          detailGroup: management-network
+          backdrop: generic
+        - id: bmc-domain
+          anchorNodeId: bmc-soc
+          eyebrow: *a83
+          title: *a84
+          summary: *a85
+          position: *a67
+          size: *a86
+          color: "#168f7b"
+          detailGroup: bmc-domain
+          backdrop: gateway
+        - id: board-sideband
+          anchorNodeId: host-uart
+          eyebrow: *a87
+          title: *a88
+          summary: *a89
+          position: *a68
+          size: *a90
+          color: "#e58b2a"
+          detailGroup: board-sideband
+          backdrop: gateway
+        - id: host-platform
+          anchorNodeId: host-uefi
+          eyebrow: *a91
+          title: *a92
+          summary: *a93
+          position: *a69
+          size: *a94
+          color: "#7fae3f"
+          detailGroup: host-platform
+          backdrop: server
+        - id: pcie-devices
+          anchorNodeId: nvidia-a10
+          eyebrow: *a95
+          title: *a96
+          summary: *a97
+          position: *a70
+          size: *a98
+          color: "#e14b72"
+          detailGroup: pcie-devices
+          backdrop: generic
+      modules:
+        - nodeId: operator-browser
+          title: *a99
+          eyebrow: *a71
+          position: *a35
+          size: *a100
+          color: "#22a7cf"
+          labelOffset:
+            - 2.9
+            - 0.2
+            - 2.9
+          detailGroup: operator-source
+        - nodeId: windows-copy
+          title: *a101
+          eyebrow: *a71
+          position: *a36
+          size: *a102
+          color: "#49bad8"
+          labelOffset:
+            - 2.9
+            - 0.2
+            - 2.9
+          detailGroup: operator-source
+        - nodeId: nas-iso
+          title: *a103
+          eyebrow: *a71
+          position: *a37
+          size: *a104
+          color: "#2c91bb"
+          labelOffset:
+            - 3.25
+            - 0.2
+            - 3.4
+          detailGroup: operator-source
+        - nodeId: blackbox-web
+          title: *a105
+          eyebrow: *a75
+          position: *a38
+          size: *a106
+          color: "#7657c8"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 3
+          detailGroup: management-node
+        - nodeId: event-store
+          title: *a107
+          eyebrow: *a75
+          position: *a39
+          size: *a108
+          color: "#8a61d1"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 3
+          detailGroup: management-node
+        - nodeId: bmc-adapter
+          title: *a109
+          eyebrow: *a75
+          position: *a40
+          size: *a110
+          color: "#6957b8"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 3
+          detailGroup: management-node
+        - nodeId: boot-orchestrator
+          title: *a111
+          eyebrow: *a75
+          position: *a41
+          size: *a112
+          color: "#8566c9"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 3
+          detailGroup: management-node
+        - nodeId: media-gateway
+          title: *a113
+          eyebrow: *a75
+          position: *a42
+          size: *a114
+          color: "#9c78d0"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 3
+          detailGroup: management-node
+        - nodeId: iso-cache
+          title: *a115
+          eyebrow: *a75
+          position: *a43
+          size: *a116
+          color: "#a88ad0"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 3
+          detailGroup: management-node
+        - nodeId: mgmt-switch
+          title: *a117
+          eyebrow: *a79
+          position: *a44
+          size: *a118
+          color: "#2f83e7"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 2.8
+          detailGroup: management-network
+        - nodeId: bmc-dedicated-lan
+          title: *a119
+          eyebrow: *a79
+          position: *a45
+          size: *a120
+          color: "#397ad6"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 2.8
+          detailGroup: management-network
+        - nodeId: bmc-shared-lan
+          title: *a121
+          eyebrow: *a79
+          position: *a46
+          size: *a122
+          color: "#5591dc"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 2.8
+          detailGroup: management-network
+        - nodeId: bmc-soc
+          title: *a123
+          eyebrow: *a83
+          position: *a47
+          size: *a124
+          color: "#168f7b"
+          labelOffset:
+            - 3.25
+            - 0.2
+            - 3.6
+          detailGroup: bmc-domain
+        - nodeId: bmc-flash
+          title: *a125
+          eyebrow: *a83
+          position: *a49
+          size: *a126
+          color: "#3a9f89"
+          labelOffset:
+            - 2.3
+            - 0.2
+            - 2.4
+          detailGroup: bmc-domain
+        - nodeId: bmc-dram
+          title: *a127
+          eyebrow: *a83
+          position: *a50
+          size: *a128
+          color: "#4caf91"
+          labelOffset:
+            - 2.3
+            - 0.2
+            - 2.4
+          detailGroup: bmc-domain
+        - nodeId: bmc-services
+          title: *a129
+          eyebrow: *a83
+          position: *a48
+          size: *a130
+          color: "#20a68d"
+          labelOffset:
+            - 3.25
+            - 0.2
+            - 3.4
+          detailGroup: bmc-domain
+        - nodeId: host-uart
+          title: *a131
+          eyebrow: *a87
+          position: *a51
+          size: *a132
+          color: "#e58b2a"
+          labelOffset:
+            - 2.8
+            - 0.2
+            - 2.6999999999999997
+          detailGroup: board-sideband
+        - nodeId: usb-emulation
+          title: *a133
+          eyebrow: *a87
+          position: *a52
+          size: *a134
+          color: "#e99b43"
+          labelOffset:
+            - 2.8
+            - 0.2
+            - 2.6999999999999997
+          detailGroup: board-sideband
+        - nodeId: video-capture
+          title: *a135
+          eyebrow: *a87
+          position: *a53
+          size: *a136
+          color: "#efad5e"
+          labelOffset:
+            - 2.8
+            - 0.2
+            - 2.6999999999999997
+          detailGroup: board-sideband
+        - nodeId: sensor-bus
+          title: *a137
+          eyebrow: *a87
+          position: *a54
+          size: *a138
+          color: "#f0b76d"
+          labelOffset:
+            - 2.8
+            - 0.2
+            - 2.6999999999999997
+          detailGroup: board-sideband
+        - nodeId: power-post-control
+          title: *a139
+          eyebrow: *a87
+          position: *a55
+          size: *a140
+          color: "#e48a28"
+          labelOffset:
+            - 3.1
+            - 0.2
+            - 2.6999999999999997
+          detailGroup: board-sideband
+        - nodeId: host-uefi
+          title: *a141
+          eyebrow: *a91
+          position: *a56
+          size: *a142
+          color: "#7fae3f"
+          labelOffset:
+            - 3
+            - 0.2
+            - 3
+          detailGroup: host-platform
+        - nodeId: virtual-cdrom
+          title: *a143
+          eyebrow: *a91
+          position: *a57
+          size: *a144
+          color: "#94bd55"
+          labelOffset:
+            - 3
+            - 0.2
+            - 3
+          detailGroup: host-platform
+        - nodeId: host-cpu-dram
+          title: *a145
+          eyebrow: *a91
+          position: *a58
+          size: *a146
+          color: "#6f9e35"
+          labelOffset:
+            - 3.75
+            - 0.2
+            - 4.2
+          detailGroup: host-platform
+        - nodeId: ubuntu-host
+          title: *a147
+          eyebrow: *a91
+          position: *a59
+          size: *a148
+          color: "#85ad49"
+          labelOffset:
+            - 3
+            - 0.2
+            - 3
+          detailGroup: host-platform
+        - nodeId: host-lom
+          title: *a149
+          eyebrow: *a91
+          position: *a60
+          size: *a150
+          color: "#a3c56b"
+          labelOffset:
+            - 3
+            - 0.2
+            - 3
+          detailGroup: host-platform
+        - nodeId: sensors-fru
+          title: *a151
+          eyebrow: *a91
+          position: *a61
+          size: *a152
+          color: "#b0ca7a"
+          labelOffset:
+            - 3.5
+            - 0.2
+            - 3
+          detailGroup: host-platform
+        - nodeId: nvidia-a10
+          title: *a153
+          eyebrow: *a95
+          position: *a62
+          size: *a154
+          color: "#e14b72"
+          labelOffset:
+            - 3.25
+            - 0.2
+            - 3.4
+          detailGroup: pcie-devices
+        - nodeId: local-nvme
+          title: *a155
+          eyebrow: *a95
+          position: *a63
+          size: *a156
+          color: "#d66184"
+          labelOffset:
+            - 3.25
+            - 0.2
+            - 3.4
+          detailGroup: pcie-devices
+      layers: []
+      depths: []
+  displayDefaults:
+    pipeThickness: 4.5
+    hudDistance: 1.2
+    moduleLabelDistance: 1.2
+    labelLayoutMode: module
+    labelLineThickness: 1.5
+    moduleLabelScale: 1
+    focusAnnotationScale: 1
+    focusHudTextScale: 1
+    subLabelDistance: 30
+    subLabelFadeRange: 8
+    farFadeStart: 48
+    farBlockOpacity: 0.22
+    farFlowOpacity: 0.58
