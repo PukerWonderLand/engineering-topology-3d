@@ -178,6 +178,13 @@ input:focus-visible,
 .storage-tree summary em { min-width: 19px; padding: 2px 5px; border-radius: 8px; background: #edf2f7; color: #75869a; font-family: Consolas, monospace; font-size: 8px; font-style: normal; text-align: center; }
 .tree-children { display: grid; gap: 2px; padding: 2px 0 6px 16px; border-left: 1px solid #dce5ee; margin-left: 10px; }
 .tree-children button { display: flex; flex-direction: column; align-items: flex-start; min-height: 37px; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #4e6076; font-size: 9px; text-align: left; cursor: pointer; }
+.enter-node-button { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 9px; width: 100%; min-height: 54px; margin: 12px 0 5px; padding: 8px 10px; border: 1px solid #99bfe5; border-radius: 9px; background: linear-gradient(110deg, #edf6ff, #effaf7); color: #245f96; text-align: left; cursor: pointer; }
+.enter-node-button > span { display: grid; width: 30px; height: 30px; border: 1px solid #79abe0; border-radius: 8px; background: #fff; place-items: center; color: #2878e3; font-size: 16px; }
+.enter-node-button div { display: grid; gap: 3px; min-width: 0; }
+.enter-node-button strong { color: #1d5f9d; font-size: 10px; }
+.enter-node-button small { overflow: hidden; color: #6a8094; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.enter-node-button > i { color: #238f78; font-size: 17px; font-style: normal; }
+.enter-node-button:hover { border-color: #2878e3; background: linear-gradient(110deg, #e1f0ff, #e2f7f1); box-shadow: 0 6px 18px rgba(40, 120, 227, 0.13); transform: translateY(-1px); }
 .tree-children button:hover { border-color: #d6e4f2; background: #f3f8fd; color: #244d79; }
 .tree-children button.selected { border-color: #9fc5ef; background: #eaf4ff; color: #1765bd; box-shadow: inset 3px 0 0 #3e8ae5; }
 .tree-children button span { margin-bottom: 2px; color: #93a0ae; font-family: Consolas, monospace; font-size: 7.5px; }
@@ -1251,6 +1258,108 @@ html[data-locale="en-US"] .module-info p { -webkit-line-clamp: 3; line-clamp: 3;
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* Framework-level welcome tour. The underlying scene stays mounted so closing
+   the tour returns users to the exact scene and camera state they already had. */
+.welcome-tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 3vw, 42px);
+  overflow: auto;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(66, 147, 235, 0.24), transparent 34%),
+    radial-gradient(circle at 86% 88%, rgba(19, 166, 129, 0.2), transparent 31%),
+    rgba(12, 29, 48, 0.72);
+  backdrop-filter: blur(12px) saturate(0.82);
+}
+.welcome-tour {
+  display: grid;
+  grid-template-rows: 68px minmax(0, 1fr) 82px;
+  width: min(1160px, 100%);
+  max-height: min(820px, calc(100vh - 36px));
+  overflow: hidden;
+  border: 1px solid rgba(190, 214, 237, 0.92);
+  border-radius: 22px;
+  background: rgba(249, 252, 255, 0.98);
+  box-shadow: 0 36px 100px rgba(4, 18, 32, 0.42), inset 0 1px 0 #fff;
+}
+.welcome-tour-header,
+.welcome-tour-footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 26px; }
+.welcome-tour-header { border-bottom: 1px solid #d8e4ee; background: linear-gradient(90deg, rgba(232, 244, 255, 0.94), rgba(245, 251, 249, 0.95)); }
+.welcome-tour-brand { display: flex; align-items: center; gap: 11px; color: #1b3d5d; font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; letter-spacing: 0.1em; }
+.welcome-tour-brand > i { position: relative; display: grid; width: 32px; height: 32px; border: 1px solid #9fc3e6; border-radius: 9px; background: #fff; place-items: center; }
+.welcome-tour-brand > i::before { width: 14px; height: 14px; border: 2px solid #2878e3; border-radius: 4px; content: ""; }
+.welcome-tour-brand > i span { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #2878e3; box-shadow: 0 0 0 2px #dcecff; }
+.welcome-tour-brand > i span:nth-child(1) { transform: translate(-10px, -10px); }
+.welcome-tour-brand > i span:nth-child(2) { transform: translate(10px, -10px); }
+.welcome-tour-brand > i span:nth-child(3) { transform: translate(0, 10px); }
+.welcome-tour-skip { display: flex; align-items: center; gap: 9px; min-height: 36px; padding: 0 5px 0 12px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #607790; font-size: 11px; cursor: pointer; }
+.welcome-tour-skip span { display: grid; width: 25px; height: 25px; border: 1px solid #c7d6e4; border-radius: 7px; background: rgba(255, 255, 255, 0.82); color: #506a83; place-items: center; font-size: 16px; }
+.welcome-tour-skip:hover { border-color: #bed2e5; background: #fff; color: #266bab; }
+.welcome-tour-body { display: grid; grid-template-columns: minmax(290px, 0.74fr) minmax(520px, 1.36fr); align-items: center; gap: clamp(24px, 3.5vw, 52px); min-height: 0; padding: clamp(28px, 4vw, 54px); animation: welcomeStepIn 360ms cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes welcomeStepIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.welcome-tour-copy { align-self: center; }
+.welcome-tour-eyebrow { margin: 0 0 14px; color: #2777c7; font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; font-weight: 800; letter-spacing: 0.14em; }
+.welcome-tour-copy h2 { max-width: 430px; margin: 0; color: #122b43; font-size: clamp(30px, 3.2vw, 48px); font-weight: 760; letter-spacing: -0.045em; line-height: 1.12; }
+.welcome-tour-description { max-width: 450px; margin: 24px 0 0; color: #526b82; font-size: clamp(14px, 1.3vw, 17px); line-height: 1.85; }
+.welcome-tour-hint { display: flex; align-items: flex-start; gap: 9px; max-width: 450px; margin-top: 24px; padding: 11px 13px; border: 1px solid #cfe0ee; border-radius: 10px; background: linear-gradient(100deg, #edf7ff, #f1faf7); color: #42657f; font-size: 11px; line-height: 1.55; }
+.welcome-tour-hint span { flex: 0 0 auto; color: #168f75; font-size: 15px; line-height: 1.1; }
+.welcome-tour-media { align-self: center; margin: 0; overflow: hidden; border: 1px solid #9eb7cc; border-radius: 15px; background: #102236; box-shadow: 0 24px 56px rgba(20, 50, 78, 0.24); }
+.welcome-tour-media-bar { display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 13px; border-bottom: 1px solid #23445f; background: linear-gradient(90deg, #132d45, #183a50); color: #d4e6f4; font-family: Consolas, "Cascadia Mono", monospace; font-size: 8px; letter-spacing: 0.08em; }
+.welcome-tour-media-bar span { display: flex; align-items: center; gap: 7px; }
+.welcome-tour-media-bar i { width: 6px; height: 6px; border-radius: 50%; background: #27d39f; box-shadow: 0 0 0 4px rgba(39, 211, 159, 0.14); }
+.welcome-tour-media-bar em { color: #8fb3ce; font-style: normal; }
+.welcome-tour-media picture { display: block; aspect-ratio: 16 / 9; background-color: #eaf1f6; background-position: center; background-repeat: no-repeat; background-size: contain; }
+.welcome-tour-media img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.welcome-tour-footer { border-top: 1px solid #d8e4ee; background: #f7fafc; }
+.welcome-tour-progress { display: flex; align-items: center; gap: 8px; }
+.welcome-tour-progress button { position: relative; display: grid; width: 28px; height: 28px; padding: 0; border: 1px solid #c4d4e2; border-radius: 50%; background: #fff; color: #7a8da0; place-items: center; font-family: Consolas, monospace; font-size: 8px; cursor: pointer; }
+.welcome-tour-progress button:not(:last-child)::after { position: absolute; left: 28px; width: 9px; height: 1px; background: #cbd9e5; content: ""; }
+.welcome-tour-progress button.complete { border-color: #72b7a5; background: #e9f8f3; color: #117b64; }
+.welcome-tour-progress button.active { border-color: #2878e3; background: #2878e3; box-shadow: 0 0 0 4px rgba(40, 120, 227, 0.13); color: #fff; }
+.welcome-tour-actions { display: flex; align-items: center; gap: 9px; }
+.welcome-tour-actions button { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 42px; border-radius: 10px; font-size: 11px; font-weight: 760; cursor: pointer; }
+.welcome-tour-previous { min-width: 100px; border: 1px solid #c8d7e4; background: #fff; color: #587087; }
+.welcome-tour-previous:disabled { opacity: 0; pointer-events: none; }
+.welcome-tour-next { min-width: 132px; padding: 0 15px; border: 1px solid #1e6bc2; background: linear-gradient(135deg, #2f83e7, #1769c7); box-shadow: 0 8px 20px rgba(31, 110, 196, 0.24); color: #fff; }
+.welcome-tour-next span { font-size: 16px; }
+.welcome-tour-previous:hover { border-color: #7eadd7; background: #edf6ff; color: #2469aa; }
+.welcome-tour-next:hover { background: linear-gradient(135deg, #2377d4, #1159ad); transform: translateY(-1px); }
+
+@media (max-width: 900px) {
+  .welcome-tour { max-height: calc(100vh - 24px); grid-template-rows: 58px minmax(0, 1fr) 72px; }
+  .welcome-tour-header,
+  .welcome-tour-footer { padding: 0 16px; }
+  .welcome-tour-body { grid-template-columns: 1fr; align-content: start; gap: 20px; padding: 24px; overflow-y: auto; }
+  .welcome-tour-copy h2 { font-size: clamp(27px, 7vw, 38px); }
+  .welcome-tour-description { margin-top: 14px; font-size: 14px; line-height: 1.7; }
+  .welcome-tour-hint { margin-top: 14px; }
+  .welcome-tour-media { width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .welcome-tour-backdrop { padding: 0; }
+  .welcome-tour { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; }
+  .welcome-tour-brand strong { font-size: 9px; }
+  .welcome-tour-skip { padding-left: 5px; font-size: 9px; }
+  .welcome-tour-body { padding: 20px 16px; }
+  .welcome-tour-eyebrow { margin-bottom: 9px; font-size: 9px; }
+  .welcome-tour-copy h2 { font-size: 27px; }
+  .welcome-tour-description { font-size: 13px; }
+  .welcome-tour-progress { gap: 5px; }
+  .welcome-tour-progress button { width: 24px; height: 24px; }
+  .welcome-tour-progress button:not(:last-child)::after { left: 24px; width: 6px; }
+  .welcome-tour-previous { display: none !important; }
+  .welcome-tour-next { min-width: 116px; min-height: 38px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-tour-body { animation: none !important; }
+  .welcome-tour-next:hover { transform: none; }
 }
 
 /* Schema-driven scene explorer. This layer is intentionally independent from the

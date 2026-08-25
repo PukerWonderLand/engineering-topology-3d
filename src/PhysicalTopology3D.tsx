@@ -53,6 +53,10 @@ type MacroZoneId = string;
 
 type V3 = [number, number, number];
 export type CameraPreset = "iso" | "front" | "top" | "depth";
+export interface CameraNavigationRequest {
+  nodeId: string;
+  requestId: number;
+}
 type LabelDensity = "clean" | "panorama" | "detail";
 type LabelTier = "system" | "detail";
 
@@ -125,6 +129,7 @@ interface PhysicalTopology3DProps {
   focusedJourneyId: DriverJourneyId;
   enabledCausalLayers: ReadonlySet<DriverCausalLayer>;
   focusedJourneyStepId: string;
+  navigationRequest: CameraNavigationRequest | null;
   onNodeClick: (id: string) => void;
   onModuleFocus: (id: string) => void;
   onFunctionFocus: (index: number) => void;
@@ -436,6 +441,8 @@ function CameraRig({
   view,
   preset,
   focusFrame,
+  navigationFrame,
+  navigationRequestId,
   onDistanceBandChange,
   onGestureStart,
   onGestureEnd,
@@ -443,12 +450,21 @@ function CameraRig({
   view: ViewKey;
   preset: CameraPreset;
   focusFrame: ModuleFocusFrame | null;
+  navigationFrame: ModuleFocusFrame | null;
+  navigationRequestId: number | null;
   onDistanceBandChange: (density: Exclude<LabelDensity, "clean">) => void;
   onGestureStart: () => void;
   onGestureEnd: (changed: boolean) => void;
 }) {
   const scene = useEnhancedScene();
   const controlsRef = useRef<OrbitControlsImpl>(null);
+  const transitionRef = useRef<null | {
+    startedAt: number;
+    fromPosition: THREE.Vector3;
+    toPosition: THREE.Vector3;
+    fromTarget: THREE.Vector3;
+    toTarget: THREE.Vector3;
+  }>(null);
   const densityRef = useRef<Exclude<LabelDensity, "clean">>("panorama");
   const gestureActiveRef = useRef(false);
   const gestureChangedRef = useRef(false);
@@ -495,7 +511,7 @@ function CameraRig({
       });
     const derivedCenter = bounds.isEmpty() ? new THREE.Vector3() : bounds.getCenter(new THREE.Vector3());
     const derivedSize = bounds.isEmpty() ? new THREE.Vector3(12, 8, 4) : bounds.getSize(new THREE.Vector3());
-    const frame = focusFrame ?? {
+    const frame = focusFrame ?? navigationFrame ?? {
       center: [derivedCenter.x, derivedCenter.y, derivedCenter.z] as V3,
       size: [Math.max(derivedSize.x, 4), Math.max(derivedSize.y, 4), Math.max(derivedSize.z, 3)] as V3,
     };
@@ -515,16 +531,47 @@ function CameraRig({
       verticalFov,
       size.width / Math.max(1, size.height),
     );
-    camera.position.copy(center).add(direction.multiplyScalar(fitDistance));
+    const targetPosition = center.clone().add(direction.multiplyScalar(fitDistance));
+    const shouldFly = navigationFrame !== null && focusFrame === null && navigationRequestId !== null;
     camera.up.set(0, 1, 0);
-    camera.lookAt(center);
+
+    if (shouldFly) {
+      transitionRef.current = {
+        startedAt: performance.now(),
+        fromPosition: camera.position.clone(),
+        toPosition: targetPosition,
+        fromTarget: controlsRef.current?.target.clone() ?? new THREE.Vector3(),
+        toTarget: center,
+      };
+    } else {
+      transitionRef.current = null;
+      camera.position.copy(targetPosition);
+      camera.lookAt(center);
+      if (controlsRef.current) {
+        controlsRef.current.target.copy(center);
+        controlsRef.current.update();
+      }
+      reportDistanceBand(center);
+    }
+    invalidate();
+  }, [camera, focusFrame, invalidate, navigationFrame, navigationRequestId, preset, reportDistanceBand, scene, size.height, size.width, view]);
+
+  useFrame(() => {
+    const transition = transitionRef.current;
+    if (!transition) return;
+    const progress = clampNumber((performance.now() - transition.startedAt) / 520, 0, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    camera.position.lerpVectors(transition.fromPosition, transition.toPosition, eased);
+    const target = new THREE.Vector3().lerpVectors(transition.fromTarget, transition.toTarget, eased);
+    camera.lookAt(target);
     if (controlsRef.current) {
-      controlsRef.current.target.copy(center);
+      controlsRef.current.target.copy(target);
       controlsRef.current.update();
     }
-    reportDistanceBand(center);
-    invalidate();
-  }, [camera, focusFrame, invalidate, preset, reportDistanceBand, scene, size.height, size.width, view]);
+    reportDistanceBand(target);
+    if (progress >= 1) transitionRef.current = null;
+    else invalidate();
+  });
 
   return (
     <OrbitControls
@@ -536,6 +583,7 @@ function CameraRig({
       maxDistance={focused ? 18 : 120}
       maxPolarAngle={Math.PI * 0.62}
       onStart={() => {
+        transitionRef.current = null;
         gestureActiveRef.current = true;
         gestureChangedRef.current = false;
         onGestureStart();
@@ -1677,6 +1725,7 @@ function PhysicalScene({
   focusedJourneyId,
   enabledCausalLayers,
   focusedJourneyStepId,
+  navigationRequest,
   onNodeClick,
   onModuleFocus,
   onFunctionFocus,
@@ -1727,9 +1776,31 @@ function PhysicalScene({
     );
     return moduleFocusFrame(functionCount);
   }, [driverJourneyModuleRoleByNodeId, driverJourneys, focusModuleGroups, focusedJourneyId, focusedModuleId, nodeMap]);
+  const navigationFrame = useMemo<ModuleFocusFrame | null>(() => {
+    if (!navigationRequest || focusedModuleId) return null;
+    const visual = scene.visuals.modules.find((module) => module.nodeId === navigationRequest.nodeId);
+    const center = visual?.position ?? scene.nodePositions[navigationRequest.nodeId];
+    if (!center) return null;
+    const rawSize = visual?.size ?? [4, 3, 3];
+    const size: V3 = [
+      Math.max(7, rawSize[0] * 1.8),
+      Math.max(5, rawSize[1] * 2.2),
+      Math.max(4.5, rawSize[2] * 2.8),
+    ];
+    return { center, size, moduleWidth: size[0] };
+  }, [focusedModuleId, navigationRequest, scene.nodePositions, scene.visuals.modules]);
   return (
     <>
-      <CameraRig view={view} preset={cameraPreset} focusFrame={focusFrame} onDistanceBandChange={onDistanceBandChange} onGestureStart={onCameraGestureStart} onGestureEnd={onCameraGestureEnd} />
+      <CameraRig
+        view={view}
+        preset={cameraPreset}
+        focusFrame={focusFrame}
+        navigationFrame={navigationFrame}
+        navigationRequestId={navigationRequest?.requestId ?? null}
+        onDistanceBandChange={onDistanceBandChange}
+        onGestureStart={onCameraGestureStart}
+        onGestureEnd={onCameraGestureEnd}
+      />
       <GlobalLabelProjectionTracker
         locale={locale}
         enabled={annotationsEnabled && !focusedModuleId}
@@ -1834,6 +1905,7 @@ export default function PhysicalTopology3D({
   focusedJourneyId,
   enabledCausalLayers,
   focusedJourneyStepId,
+  navigationRequest,
   onNodeClick,
   onModuleFocus,
   onFunctionFocus,
@@ -2048,6 +2120,7 @@ export default function PhysicalTopology3D({
           focusedJourneyId={focusedJourneyId}
           enabledCausalLayers={enabledCausalLayers}
           focusedJourneyStepId={focusedJourneyStepId}
+          navigationRequest={navigationRequest}
           onNodeClick={guardedNodeClick}
           onModuleFocus={guardedModuleFocus}
           onFunctionFocus={guardedFunctionFocus}

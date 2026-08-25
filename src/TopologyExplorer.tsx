@@ -1,7 +1,7 @@
 "use client";
 
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CameraPreset } from "./PhysicalTopology3D";
+import type { CameraNavigationRequest, CameraPreset } from "./PhysicalTopology3D";
 import type { GlobalLabelLayoutMode } from "./global-label-layout";
 import { LocaleProvider, translationVariants, useLocale } from "./i18n/locale-context";
 import { buildEnhancedSceneRuntime } from "./enhanced-scene-runtime";
@@ -16,6 +16,7 @@ import type {
 } from "./enhanced-scene-types";
 import { getScene } from "./scene-loader";
 import type { NormalizedSceneDefinition } from "./scene-definition";
+import { WelcomeTour, WELCOME_TOUR_STORAGE_KEY } from "./onboarding/WelcomeTour";
 
 type EdgeKind = string;
 type DriverCausalLayer = string;
@@ -303,11 +304,13 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
   const FAR_BLOCK_OPACITY_STORAGE_KEY = storageKey("far-block-opacity");
   const FAR_FLOW_OPACITY_STORAGE_KEY = storageKey("far-flow-opacity");
   const scenePanelRef = useRef<HTMLElement>(null);
+  const cameraNavigationSequenceRef = useRef(0);
   const [PhysicalTopology3D, setPhysicalTopology3D] = useState<
     null | typeof import("./PhysicalTopology3D").default
   >(null);
   const [view, setView] = useState<ViewKey>(runtime.defaultView);
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>("iso");
+  const [cameraNavigation, setCameraNavigation] = useState<CameraNavigationRequest | null>(null);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [pathStart, setPathStart] = useState<string | null>(null);
@@ -338,6 +341,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenIndexOpen, setFullscreenIndexOpen] = useState(true);
   const [annotationsEnabled, setAnnotationsEnabled] = useState(true);
+  const [welcomeTourOpen, setWelcomeTourOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -347,6 +351,16 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (!PhysicalTopology3D) return;
+    if (window.localStorage.getItem(WELCOME_TOUR_STORAGE_KEY) !== "complete") setWelcomeTourOpen(true);
+  }, [PhysicalTopology3D]);
+
+  const dismissWelcomeTour = useCallback(() => {
+    window.localStorage.setItem(WELCOME_TOUR_STORAGE_KEY, "complete");
+    setWelcomeTourOpen(false);
   }, []);
 
   useEffect(() => {
@@ -600,9 +614,17 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
       setView(nextView);
     }
     setSelectedId(id);
+    setCameraNavigation(null);
     if (pathStart && pathStart !== id) setPathEnd(id);
     if (!focusedModuleId) setMobilePanel("right");
   }, [focusedModuleId, nodeMap, pathStart, view, visibleNodeIds]);
+
+  const navigateToNode = useCallback((id: string) => {
+    if (!nodeMap.has(id)) return;
+    selectNode(id);
+    cameraNavigationSequenceRef.current += 1;
+    setCameraNavigation({ nodeId: id, requestId: cameraNavigationSequenceRef.current });
+  }, [nodeMap, selectNode]);
 
   const selectEdge = useCallback((id: string) => {
     setSelectedId(id);
@@ -618,6 +640,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
     const node = nodeMap.get(id);
     if (!node) return;
     clearPath();
+    setCameraNavigation(null);
     setFocusedModuleId(id);
     setFocusedFunctionIndex(0);
     setFocusedJourneyId(defaultJourneyId);
@@ -649,6 +672,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
   }, []);
 
   const exitFocus = useCallback(() => {
+    setCameraNavigation(null);
     setFocusedModuleId(null);
     setFocusedFunctionIndex(0);
     setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys[defaultJourneyId]));
@@ -657,6 +681,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
 
   const clearSelection = useCallback(() => {
     clearPath();
+    setCameraNavigation(null);
     setFocusedModuleId(null);
     setFocusedFunctionIndex(0);
     setFocusedJourneyStepId(defaultJourneyStepId(driverJourneys[defaultJourneyId]));
@@ -666,6 +691,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
   const resetView = useCallback(() => {
     setView(runtime.defaultView);
     setCameraPreset("iso");
+    setCameraNavigation(null);
     setAnnotationsEnabled(true);
     setFocusedModuleId(null);
     setFocusedFunctionIndex(0);
@@ -708,6 +734,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (welcomeTourOpen) return;
       if (
         event.target instanceof HTMLInputElement
         || event.target instanceof HTMLTextAreaElement
@@ -730,7 +757,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [clearSelection, exitFocus, focusedModuleId, lineSettingsOpen, resetView, toggleFullscreen]);
+  }, [clearSelection, exitFocus, focusedModuleId, lineSettingsOpen, resetView, toggleFullscreen, welcomeTourOpen]);
 
   const focusHudStyle = focusedModule
     ? ({
@@ -764,6 +791,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             <button type="button" className={locale === "zh-CN" ? "active" : ""} onClick={() => setLocale("zh-CN")} aria-pressed={locale === "zh-CN"}>中文</button>
             <button type="button" className={locale === "en-US" ? "active" : ""} onClick={() => setLocale("en-US")} aria-pressed={locale === "en-US"}>EN</button>
           </div>
+          <button className="icon-button tour-help-button" onClick={() => setWelcomeTourOpen(true)} title={locale === "en-US" ? "Open welcome tour" : "打开欢迎引导"} aria-label={locale === "en-US" ? "Open welcome tour" : "打开欢迎引导"}>?</button>
           <button className="icon-button mobile-only" onClick={() => setMobilePanel("left")} aria-label={tr("打开系统导航")}>{tr("树")}</button>
           <button className="icon-button" onClick={resetView} title={tr("返回场景物理全景 (R)")}>ALL</button>
           <button className="icon-button" onClick={clearSelection} title={tr("清除选择与路径 (Esc)")}>CLR</button>
@@ -778,7 +806,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && searchResults[0]) selectNode(searchResults[0].id);
+              if (event.key === "Enter" && searchResults[0]) navigateToNode(searchResults[0].id);
             }}
             placeholder={tr("搜索模块、函数、接口、路径或证据…")}
             aria-label={tr("搜索服务、脚本、端口、设备或路径")}
@@ -787,7 +815,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
           {searchResults.length > 0 && (
             <div className="search-results">
               {searchResults.map((node) => (
-                <button key={node.id} onClick={() => { selectNode(node.id); setQuery(""); }}>
+                <button key={node.id} onClick={() => { navigateToNode(node.id); setQuery(""); }}>
                   <span style={{ background: resolvePlaneMeta(planeMeta, node.data.plane).color }} />
                   <div><strong>{node.data.title}</strong><small>{node.data.codeRefs?.[0]?.name ?? node.data.layer}</small></div>
                 </button>
@@ -801,7 +829,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             <button
               className={view === option.id ? "active" : ""}
               key={option.id}
-              onClick={() => { setView(option.id); setAnnotationsEnabled(true); clearPath(); }}
+              onClick={() => { setView(option.id); setCameraNavigation(null); setAnnotationsEnabled(true); clearPath(); }}
               title={option.hint}
             >
               {option.label}
@@ -828,7 +856,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             planeMeta={planeMeta}
             boundaryNote={`${runtime.description} ${tr("本页是静态知识模型，不能当作设备当前在线状态。")}`}
             onModeChange={setLeftMode}
-            onSelectNode={selectNode}
+            onSelectNode={navigateToNode}
             onMobileClose={() => setMobilePanel("none")}
           />
         </aside>
@@ -855,7 +883,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                   planeMeta={planeMeta}
                   boundaryNote={`${runtime.description} ${tr("本页是静态知识模型，不能当作设备当前在线状态。")}`}
                   onModeChange={setLeftMode}
-                  onSelectNode={selectNode}
+                  onSelectNode={navigateToNode}
                 />
               </aside>
               <button
@@ -899,6 +927,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                 focusedJourneyId={focusedJourneyId}
                 enabledCausalLayers={enabledCausalLayers}
                 focusedJourneyStepId={focusedJourneyStepId}
+                navigationRequest={cameraNavigation}
                 onNodeClick={selectNode}
                 onModuleFocus={focusModule}
                 onFunctionFocus={setFocusedFunctionIndex}
@@ -1084,7 +1113,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
             title={tr("设置标注布局模式、模块标签距离、模块标签大小、3D 批注、聚焦详情文字、标签连接线粗细、主管道和 HUD")}
           >
             <span aria-hidden="true" />
-            {tr("管道粗细")} <strong>{pipeThickness.toFixed(1)}×</strong>
+            {tr("显示设置")} <strong>{pipeThickness.toFixed(1)}×</strong>
           </button>
 
           {lineSettingsOpen && (
@@ -1476,6 +1505,11 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                 <h3>{selectedNode.data.title}</h3>
                 <p className="node-id">{selectedNode.id} · {selectedNode.data.layer}</p>
                 <p className="detail-description">{selectedNode.data.description}</p>
+                <button type="button" className="enter-node-button" onClick={() => focusModule(selectedNode.id)}>
+                  <span aria-hidden="true">◎</span>
+                  <div><strong>{tr("进入节点内部")}</strong><small>{tr("也可以在 3D 场景中双击这个节点")}</small></div>
+                  <i aria-hidden="true">→</i>
+                </button>
 
                 {selectedNode.data.runtimeNote && (
                   <div className="runtime-note"><strong>{tr("状态边界")}</strong><p>{selectedNode.data.runtimeNote}</p></div>
@@ -1581,6 +1615,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
           <span className="evidence-inference">{tr("结构推断")}</span>
         </div>
       </footer>
+      <WelcomeTour locale={locale} open={welcomeTourOpen} onDismiss={dismissWelcomeTour} />
     </main>
   );
 }
