@@ -1,0 +1,4925 @@
+schemaVersion: "2.0"
+id: spu-spug-global-topology
+title:
+  zhCN: SPU / SPUG 全局 PCIe 拓扑
+  enUS: SPU / SPUG Global PCIe Topology
+description:
+  zhCN: 把 SPU、SPUG、HOST、SPU 内部 CPU、SPU-FPGA 与 SPUG-FPGA 放进同一张图：BDF 归属、BAR 窗口、桥与虚拟总线的物理与地址视图。
+  enUS: "Places SPU, SPUG, HOST, the SPU-internal CPU, SPU-FPGA and SPUG-FPGA in one scene: BDF ownership, BAR windows, bridges and the virtual bus."
+evidence: CODE_PROVEN
+locales:
+  default: zh-CN
+  supported:
+    - zh-CN
+    - en-US
+zones:
+  - id: host
+    title: &a89
+      zhCN: HOST 侧软件栈
+      enUS: Host Software Stack
+    eyebrow: &a88
+      zhCN: 区域 01 · 主机侧
+      enUS: ZONE 01 · HOST SIDE
+    summary: &a90
+      zhCN: 内核、用户态、平台阶段与业务阶段；含 Host 根端口与 NUMA 归属
+      enUS: Kernel, userspace, platform and business layers; host root port and NUMA placement
+    color: "#22a7cf"
+    nodeIds:
+      - host-business
+      - host-platform
+      - host-userspace
+      - host-kernel
+      - host-numa
+      - host-root-port
+      - host-addr-space
+  - id: pcie-fabric
+    title: &a93
+      zhCN: PCIe Switch 与两侧地址空间
+      enUS: PCIe Switch and Address Spaces
+    eyebrow: &a92
+      zhCN: 区域 02 · 物理互联
+      enUS: ZONE 02 · PHYSICAL FABRIC
+    summary: &a94
+      zhCN: Broadcom PEX880xx 上游/下游端口、下级 Switch 与 Host/SPU 两套 PCIe 地址语义
+      enUS: Broadcom PEX880xx upstream/downstream ports, sub-switches, and the host/SPU address spaces
+    color: "#607d8b"
+    nodeIds:
+      - pex-switch
+      - pex-sub-switch
+      - pex-downstream
+      - pex-upstream
+      - pex-mgmt
+      - p2p
+      - spu-addr-space
+  - id: spug
+    title: &a97
+      zhCN: SPUG 三条设备支路
+      enUS: SPUG Device Branches
+    eyebrow: &a96
+      zhCN: 区域 03 · 支路与桥
+      enUS: ZONE 03 · BRANCHES AND BRIDGES
+    summary: &a98
+      zhCN: NVMe / GPU / RDMA 三条支路的上下游桥与物理设备；所有权已交给 SPU
+      enUS: Upstream/downstream bridges and physical devices on the NVMe, GPU and RDMA branches; ownership held by SPU
+    color: "#b767f1"
+    nodeIds:
+      - spug-nvme-branch
+      - spug-gpu-branch
+      - spug-rdma-branch
+  - id: spug-fpga
+    title: &a101
+      zhCN: SPUG-FPGA
+      enUS: SPUG-FPGA
+    eyebrow: &a100
+      zhCN: 区域 04 · 下游桥接
+      enUS: ZONE 04 · DOWNSTREAM BRIDGE
+    summary: &a102
+      zhCN: 三块 SPUG-FPGA 的 BAR 窗口、控制寄存器与下游配置代理
+      enUS: BAR windows, control registers and downstream configuration proxy on the three SPUG-FPGAs
+    color: "#d64d72"
+    nodeIds:
+      - spug-fpga-nvme
+      - spug-fpga-gpu
+      - spug-fpga-rdma
+  - id: spu-fpga
+    title: &a105
+      zhCN: SPU-FPGA 与 BAR 窗口
+      enUS: SPU-FPGA and BAR Windows
+    eyebrow: &a104
+      zhCN: 区域 05 · 上行/下行端点
+      enUS: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+    summary: &a106
+      zhCN: SUEP 上行、SDEP 与 SP37 下行三组 BAR 窗口，以及地址转换与 TLP 代理
+      enUS: Three BAR groups (SUEP upstream, SDEP and SP37 downstream), address translation and TLP proxying
+    color: "#168f7b"
+    nodeIds:
+      - spu-fpga
+      - suep-upstream
+      - sdep-downstream
+      - sp37-downstream
+      - bar-suep-pool
+      - bar-sdep-pool
+      - bar-sp37-pool
+      - spu-fpga-addr-trans
+  - id: spu-cpu
+    title: &a109
+      zhCN: SPU 内部 CPU 与虚拟总线
+      enUS: SPU Internal CPU and Virtual Bus
+    eyebrow: &a108
+      zhCN: 区域 06 · 内部枚举
+      enUS: ZONE 06 · INTERNAL ENUMERATION
+    summary: &a110
+      zhCN: SPU CPU、spu_vgpu 造出的虚拟 PCI 总线 f0、虚拟设备与内部根端口
+      enUS: SPU CPU, the virtual PCI bus f0 created by spu_vgpu, virtual devices and the internal root port
+    color: "#2f83e7"
+    nodeIds:
+      - spu-cpu
+      - spu-root-port
+      - spu-vbus-f0
+      - spu-vgpu-a10
+      - spu-vgpu-nvme
+      - spu-ep-direct
+  - id: spu-sw
+    title: &a113
+      zhCN: SPU 软件栈
+      enUS: SPU Software Stack
+    eyebrow: &a112
+      zhCN: 区域 07 · 客侧软件
+      enUS: ZONE 07 · SPU SIDE SOFTWARE
+    summary: &a114
+      zhCN: 业务层、用户态与内核部分；sp37 与 spu_vgpu 的加载侧
+      enUS: Business, userspace and kernel layers; the load side of sp37 and spu_vgpu
+    color: "#c05e2b"
+    nodeIds:
+      - spu-business
+      - spu-userspace
+      - spu-kernel
+      - spu-kernel-custom
+      - spu-sp37
+      - spu-vgpu
+nodes:
+  - id: host-business
+    zoneId: host
+    title: &a116
+      zhCN: Host 业务阶段
+      enUS: Host Business Layer
+    description:
+      zhCN: 设备/应用/部署生命周期、安全会话网关与 SDK 入口：host_ams、SPU SDK、Nereus SDK、host_buildin_admin。
+      enUS: "Device/app/deployment lifecycle, secure session gateway and SDK entry points: host_ams, SPU SDK, Nereus SDK, host_buildin_admin."
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    tags: []
+    interfaces:
+      - vsdx-shape:469
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-469
+        note: "[469] 业务阶段"
+  - id: host-platform
+    zoneId: host
+    title: &a118
+      zhCN: Host 平台阶段
+      enUS: Host Platform Layer
+    description:
+      zhCN: host_nms（L4 TCP 代理/端口映射/加密会话元数据）、host_tun（三层虚拟网络数据面）与 PCS/PCIe。
+      enUS: host_nms (L4 TCP proxy, port mapping, encrypted session metadata), host_tun (L3 virtual network data plane) and PCS/PCIe.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    tags: []
+    interfaces:
+      - vsdx-shape:470
+      - vsdx-shape:450
+      - vsdx-shape:467
+      - vsdx-shape:464
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-470
+        note: "[470] 平台阶段 | [450] host_nms / 仓库：spu_libos/host_nms /  / Host 节点、网络与SPU管理 / 主要的对端：spu_nms / 准确的定位：L4 TCP代理、端口映射和连接转发 / 核心数据：TCP字节流、端口配置、白名单、加密会话元数据 | [467] host_tun / 仓库：spu_tun /  / Host-SPU虚拟网络/隧道 / 主要的对端：spu_tun / 准确的定位：Host-SPU三层虚拟网络数据面 / 核心数据：原始IP包、虚拟IP、DNS、路由、网络白名单 | [464] PCS / PCIe / SPU Server / Gateway / SPU应用"
+  - id: host-userspace
+    zoneId: host
+    title: &a120
+      zhCN: Host 用户态
+      enUS: Host Userspace
+    description:
+      zhCN: host_pcs / pcie_server 封装 SP37 节点，向客户端提供 Unix Socket 服务。
+      enUS: host_pcs / pcie_server wraps the SP37 node and exposes a Unix socket service to clients.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    tags: []
+    interfaces:
+      - vsdx-shape:507
+      - vsdx-shape:448
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-507
+        note: "[507] 用户态 | [448] host_pcs / pcie_server / 仓库：nereus_pcie / 封装 SP37 节点并向 client SO 提供 Unix Socket 服务"
+  - id: host-kernel
+    zoneId: host
+    title: &a122
+      zhCN: Host 内核驱动
+      enUS: Host Kernel Drivers
+    description:
+      zhCN: sp37.ko（绑定 5709:1000）、sdep.ko（绑定 5709:1001，扫 SPUG/GPU 拓扑、NTB 管理、P2P）与 hblkd_end.ko。
+      enUS: sp37.ko (binds 5709:1000), sdep.ko (binds 5709:1001; scans SPUG/GPU topology, manages NTB and P2P) and hblkd_end.ko.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    tags: []
+    interfaces:
+      - vsdx-shape:506
+      - vsdx-shape:446
+      - vsdx-shape:442
+      - vsdx-shape:472
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-506
+        note: "[506] 内核 | [446] sp37.ko / 仓库：kernelspace/spu_pcied / 绑定 `5709:1000`，BAR/MSI-X/DMA/字符设备 | [442] sdep.ko / 仓库：spu-g / 绑定 `5709:1001`，扫描SPUG/GPU拓扑、NTB管理、P2P和工作模式 | [472] hblkd_end.ko / 仓库：spu_blk_bridge / 安全块设备 Host 端"
+  - id: host-numa
+    zoneId: host
+    title: &a124
+      zhCN: Hygon CPU0 / NUMA Node 3
+      enUS: Hygon CPU0 / NUMA Node 3
+    description:
+      zhCN: Host 侧的 CPU 与 NUMA 归属，决定根端口和 IOMMU group 的物理位置。
+      enUS: Host CPU and NUMA placement, which fixes the physical location of the root port and IOMMU group.
+    kind: hardware
+    evidence: RUNTIME_OBSERVED
+    color: "#22a7cf"
+    tags: []
+    interfaces:
+      - vsdx-shape:269
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-269
+        note: "[269] Hygon CPU0 / NUMA Node 3"
+  - id: host-root-port
+    zoneId: host
+    title: &a126
+      zhCN: 70:03.7 CPU PCIe Root Port
+      enUS: 70:03.7 CPU PCIe Root Port
+    description:
+      zhCN: Host 根端口，PEX880xx 上游侧的挂载点。
+      enUS: Host root port; the attach point for the upstream side of the PEX880xx.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    tags: []
+    interfaces:
+      - vsdx-shape:229
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-229
+        note: "[229] 70:03.7 CPU PCIe Root Port / 驱动：pcieport"
+  - id: host-addr-space
+    zoneId: host
+    title: &a128
+      zhCN: HOST 系统环境的 PCIE 地址
+      enUS: Host PCIe Address Space
+    description:
+      zhCN: Host 侧看到的 PCIe 地址语义；SDEP 下行 Bar2（32GiB）在此被重定向。
+      enUS: PCIe address semantics as seen from the host; the SDEP downstream Bar2 (32GiB) is redirected here.
+    kind: state
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    tags: []
+    interfaces:
+      - vsdx-shape:283
+      - vsdx-shape:291
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-283
+        note: "[283] HOST系统环境的PCIE地址 | [291] HOST系统环境的PCIE地址"
+  - id: pex-switch
+    zoneId: pcie-fabric
+    title: &a130
+      zhCN: Broadcom PEX880xx PCIe Gen4 Switch
+      enUS: Broadcom PEX880xx PCIe Gen4 Switch
+    description:
+      zhCN: 71:00.0 上游，72:00.0 / 72:04.0 / 72:08.0 下游，72:1c.0 管理口。
+      enUS: 71:00.0 upstream; 72:00.0 / 72:04.0 / 72:08.0 downstream; 72:1c.0 management.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    tags: []
+    interfaces:
+      - vsdx-shape:230
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-230
+        note: "[230] Broadcom PEX880xx PCIe Gen4 Switch"
+  - id: pex-sub-switch
+    zoneId: pcie-fabric
+    title: &a132
+      zhCN: 下级 PEX Switch 支路
+      enUS: Subordinate PEX Switch Branches
+    description:
+      zhCN: 三条下级支路（73·74、79·7a、7c·7d），把上游端口分到各设备支路。
+      enUS: Three subordinate branches (73/74, 79/7a, 7c/7d) fanning the upstream port out to the device branches.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    tags: []
+    interfaces:
+      - vsdx-shape:343
+      - vsdx-shape:366
+      - vsdx-shape:368
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-343
+        note: "[343] 73:00.0 / 74:10.0 / GPU分支下级PEX Switch / 驱动：PCI核心/pcieport | [366] 79:00.0 / 7a:00.0 / SPU分支下级PEX Switch / 驱动：PCI核心/pcieport | [368] 7c:00.0 / 7d:10.0 / GPU分支下级PEX Switch / 驱动：PCI核心/pcieport"
+  - id: pex-downstream
+    zoneId: pcie-fabric
+    title: &a134
+      zhCN: Switch 下游端口
+      enUS: Switch Downstream Ports
+    description:
+      zhCN: 72:00.0 / 72:04.0 / 72:08.0；分别通向 NVMe、GPU 与 RDMA 侧上游桥。
+      enUS: 72:00.0 / 72:04.0 / 72:08.0; feeding the NVMe, GPU and RDMA upstream bridges respectively.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    tags: []
+    interfaces:
+      - vsdx-shape:340
+      - vsdx-shape:363
+      - vsdx-shape:367
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-340
+        note: "[340] 72:00.0 顶层Switch Downstream Port / 驱动：pcieport | [363] 72:04.0 顶层Switch Downstream Port / 驱动：pcieport | [367] 72:08.0 顶层Switch Downstream Port / 驱动：pcieport"
+  - id: pex-upstream
+    zoneId: pcie-fabric
+    title: &a136
+      zhCN: 71:00.0 Switch 上游端口
+      enUS: 71:00.0 Switch Upstream Port
+    description:
+      zhCN: Switch 面向 Host 根端口的一侧。
+      enUS: The switch side facing the host root port.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    tags: []
+    interfaces:
+      - vsdx-shape:339
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-339
+        note: "[339] 71:00.0 顶层Switch Upstream Port / 驱动：PCI核心/pcieport"
+  - id: pex-mgmt
+    zoneId: pcie-fabric
+    title: &a138
+      zhCN: 72:1c.0 管理口
+      enUS: 72:1c.0 Management Port
+    description:
+      zhCN: Switch 内部管理端点。
+      enUS: Switch internal management endpoint.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    tags: []
+    interfaces:
+      - vsdx-shape:377
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-377
+        note: "[377] 72:1c.0 / PEX Switch管理端口/管理Endpoint"
+  - id: p2p
+    zoneId: pcie-fabric
+    title: &a140
+      zhCN: P2P 直通
+      enUS: P2P Direct Path
+    description:
+      zhCN: 两块 SPUG 之间的直通映射；现场映射表全空，当前流量并不走这条路。
+      enUS: Direct mapping between the two SPUGs; the live mapping tables are empty, so traffic does not currently take this path.
+    kind: state
+    evidence: RUNTIME_OBSERVED
+    color: "#607d8b"
+    tags: []
+    interfaces:
+      - vsdx-shape:288
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-288
+        note: "[288] P2P"
+  - id: spu-addr-space
+    zoneId: pcie-fabric
+    title: &a142
+      zhCN: SPU 系统环境的 PCIE 地址
+      enUS: SPU PCIe Address Space
+    description:
+      zhCN: SPU 侧看到的 PCIe 地址语义；SUEP 上行大 BAR 窗口在此落地并被还原成物理地址。
+      enUS: PCIe address semantics as seen from SPU; the large SUEP upstream BAR window lands here and is restored to a physical address.
+    kind: state
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    tags: []
+    interfaces:
+      - vsdx-shape:277
+      - vsdx-shape:293
+      - vsdx-shape:306
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-277
+        note: "[277] SPU系统环境的PCIE地址 | [293] SPU系统环境的PCIE地址 | [306] SPU系统环境的PCIE地址"
+  - id: spug-nvme-branch
+    zoneId: spug
+    title: &a144
+      zhCN: NVMe 支路
+      enUS: NVMe Branch
+    description:
+      zhCN: 上游桥 7f:00.0（5709:2000）→ 下游桥 80:00.0（5709:2001）→ 物理 Samsung NVMe 81:00.0（144d:a808）。Host 侧无驱动，所有权已交给 SPU。
+      enUS: "Upstream 7f:00.0 (5709:2000) -> downstream 80:00.0 (5709:2001) -> physical Samsung NVMe 81:00.0 (144d:a808). No host driver: ownership has been handed to SPU."
+    kind: device
+    evidence: RUNTIME_OBSERVED
+    color: "#b767f1"
+    tags: []
+    interfaces:
+      - vsdx-shape:370
+      - vsdx-shape:369
+      - vsdx-shape:373
+      - vsdx-shape:211
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-370
+        note: "[370] HOST侧pcieport /  / 7f:00.0 NVMe侧SPUG上游桥端口 / VID:DID = 5709:2000 / 驱动：pcieport | [369] Nvme侧pcieport /  / 80:00.0 NVMe侧SPUG下游桥端口 / VID:DID = 5709:2001 / 驱动：无独立驱动/PCI核心管理 | [373] 81:00.0 物理Samsung NVMe / VID:DID = 144d:a808 / Host驱动：无 / 原因：所有权已交给SPU | [211] Nvme"
+  - id: spug-gpu-branch
+    zoneId: spug
+    title: &a146
+      zhCN: GPU 支路
+      enUS: GPU Branch
+    description:
+      zhCN: 上游桥 76:00.0（5709:2000）→ 下游桥 77:00.0（5709:2001）→ 物理 NVIDIA A10 78:00.0（10de:2236）。Host 侧同样无驱动。
+      enUS: Upstream 76:00.0 (5709:2000) -> downstream 77:00.0 (5709:2001) -> physical NVIDIA A10 78:00.0 (10de:2236). Also no host driver.
+    kind: device
+    evidence: RUNTIME_OBSERVED
+    color: "#b767f1"
+    tags: []
+    interfaces:
+      - vsdx-shape:347
+      - vsdx-shape:346
+      - vsdx-shape:359
+      - vsdx-shape:212
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-347
+        note: "[347] HOST侧pcieport /  / 76:00.0 GPU侧SPUG上游桥端口 / VID:DID = 5709:2000 / 驱动：pcieport | [346] GPU侧pcieport /  / 77:00.0 GPU侧SPUG下游桥端口 / VID:DID = 5709:2001 / 驱动：无独立驱动/PCI核心管理 | [359] 78:00.0 物理NVIDIA A10 / VID:DID = 10de:2236 / Host驱动：无 / 原因：所有权已交给SPU | [212] GPU"
+  - id: spug-rdma-branch
+    zoneId: spug
+    title: &a148
+      zhCN: RDMA 支路
+      enUS: RDMA Branch
+    description:
+      zhCN: RDMA 网卡及其 SPUG-FPGA；源图中只给出实体，没有下游端口细节。
+      enUS: The RDMA NIC and its SPUG-FPGA. The source diagram gives the entity only, without downstream port detail.
+    kind: device
+    evidence: INFERRED
+    color: "#b767f1"
+    tags: []
+    interfaces:
+      - vsdx-shape:213
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-213
+        note: "[213] RDMA网卡"
+  - id: spug-fpga-nvme
+    zoneId: spug-fpga
+    title: &a150
+      zhCN: SPUG-FPGA（NVMe 侧）
+      enUS: SPUG-FPGA (NVMe side)
+    description:
+      zhCN: Bar0/1/2/4 地址转换表；Bar0 16MiB 控制寄存器窗口、Bar1 1MiB 下游 Config/IO 代理窗口；另有寄存器地图与代理职责说明。
+      enUS: Bar0/1/2/4 address translation tables; Bar0 16MiB control-register window, Bar1 1MiB downstream config/IO proxy window; plus register map and proxy responsibilities.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#d64d72"
+    tags: []
+    interfaces:
+      - vsdx-shape:208
+      - vsdx-shape:327
+      - vsdx-shape:328
+      - vsdx-shape:329
+      - vsdx-shape:330
+      - vsdx-shape:331
+      - vsdx-shape:332
+      - vsdx-shape:335
+      - vsdx-shape:393
+      - vsdx-shape:394
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-208
+        note: "[208] SPUG-FPGA | [327] Bar0 | [328] Bar1 | [329] Bar2 | [330] Bar4 | [331] Bar0 / 16MiB控制寄存器窗口 | [332] Bar1 / 1MiB下游Config/IO代理窗口 | [335] 地址转换 | [393] +0x000～ 控制、状态、任务状态 / +0x200附近 认证随机数、Token、通信密钥 / +0x400附近 SN和设备身份 / +0x800～0x8ff 16项BEP/VBEP地址转换表 / +0x900～0x97f 16项地址Mask/大小表 / +0x4000附近 认证公钥 / 其他区域 加解密、Bitmap、RDMA和调试控制 | [394] - 读取下游A10/NVMe配置空间； / - 写下游PCI配置寄存器； / - 代理下游IO Space； / - 枚举、配置和管理下"
+  - id: spug-fpga-gpu
+    zoneId: spug-fpga
+    title: &a152
+      zhCN: SPUG-FPGA（GPU 侧）
+      enUS: SPUG-FPGA (GPU side)
+    description:
+      zhCN: 两组 Bar0/1/2/4 与地址转换逻辑，结构与 NVMe 侧同源。
+      enUS: Two Bar0/1/2/4 groups and address translation logic, structurally identical to the NVMe side.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#d64d72"
+    tags: []
+    interfaces:
+      - vsdx-shape:345
+      - vsdx-shape:348
+      - vsdx-shape:349
+      - vsdx-shape:350
+      - vsdx-shape:351
+      - vsdx-shape:352
+      - vsdx-shape:353
+      - vsdx-shape:354
+      - vsdx-shape:355
+      - vsdx-shape:356
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-345
+        note: "[345] SPUG-FPGA | [348] Bar0 | [349] Bar1 | [350] Bar2 | [351] Bar4 | [352] Bar0 | [353] Bar1 | [354] Bar2 | [355] Bar4 | [356] 地址转换"
+  - id: spug-fpga-rdma
+    zoneId: spug-fpga
+    title: &a154
+      zhCN: SPUG-FPGA（RDMA 侧）
+      enUS: SPUG-FPGA (RDMA side)
+    description:
+      zhCN: 源图只给出实体框；连接线 [261] 一端悬空连到这里，需要对着原图确认是自由线段还是漏连。
+      enUS: The source diagram gives the entity box only; connector [261] is dangling at one end into this shape, so confirm against the original whether it is a free segment or a missed connection.
+    kind: hardware
+    evidence: INFERRED
+    color: "#d64d72"
+    tags: []
+    interfaces:
+      - vsdx-shape:214
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-214
+        note: "[214] SPUG-FPGA"
+  - id: spu-fpga
+    zoneId: spu-fpga
+    title: &a156
+      zhCN: SPU-FPGA
+      enUS: SPU-FPGA
+    description:
+      zhCN: 上行 SUEP、下行 SDEP 与 SP37 三套端点与 BAR 窗口都挂在这块 FPGA 上。
+      enUS: The upstream SUEP, downstream SDEP and SP37 endpoints and their BAR windows all hang off this FPGA.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:206
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-206
+        note: "[206] SPU-FPGA"
+  - id: suep-upstream
+    zoneId: spu-fpga
+    title: &a158
+      zhCN: 02:00.1 SUEP 上行端点
+      enUS: 02:00.1 SUEP Upstream Endpoint
+    description:
+      zhCN: 驱动 suep_driver；Host 看到的 SUEP 卡侧端点。
+      enUS: Driven by suep_driver; the SUEP endpoint as seen by the host.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:383
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-383
+        note: "[383] 02:00.1 SUEP / 驱动：suep_driver"
+  - id: sdep-downstream
+    zoneId: spu-fpga
+    title: &a160
+      zhCN: 7b:00.1 EDP / SDEP 下行端点
+      enUS: 7b:00.1 EDP / SDEP Downstream Endpoint
+    description:
+      zhCN: HOST 侧 Endpoint，SDEP 数据/控制 Function，VID:DID = 5709:1001，驱动 sdep_driver。
+      enUS: Host-side endpoint, SDEP data/control function, VID:DID = 5709:1001, driven by sdep_driver.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:378
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-378
+        note: "[378] EDP / HOST侧Endpoint / 7b:00.1 SDEP数据/控制Function / VID:DID = 5709:1001 / 驱动：sdep_driver"
+  - id: sp37-downstream
+    zoneId: spu-fpga
+    title: &a162
+      zhCN: 7b:00.0 SP37 下行端点
+      enUS: 7b:00.0 SP37 Downstream Endpoint
+    description:
+      zhCN: SP37 控制 Function，VID:DID = 5709:1000；SPU 与 Host 之间最底层的字节搬运通道。
+      enUS: SP37 control function, VID:DID = 5709:1000; the lowest-level byte-transport channel between SPU and host.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:303
+      - vsdx-shape:304
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-303
+        note: "[303] 02:00.0 SP37 / 驱动：sp37 | [304] SP37 / HOST侧Endpoint / 7b:00.0 SP37控制Function / VID:DID = 5709:1000 / 驱动：sp37"
+  - id: bar-suep-pool
+    zoneId: spu-fpga
+    title: &a164
+      zhCN: SUEP 上行 BAR 窗口
+      enUS: SUEP Upstream BAR Windows
+    description:
+      zhCN: Bar0 256MiB / Bar1 512MiB / Bar2 4GiB / Bar2 大型 64 位虚拟 BAR 地址池 128GiB / ROM 虚拟设备 Expansion ROM 地址池 16MiB。地址走查命中的就是 128GiB 这一组。
+      enUS: Bar0 256MiB / Bar1 512MiB / Bar2 4GiB / Bar2 large 64-bit virtual BAR pool 128GiB / ROM virtual expansion ROM pool 16MiB. The address walkthrough lands in the 128GiB group.
+    kind: buffer
+    evidence: RTL_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:408
+      - vsdx-shape:410
+      - vsdx-shape:412
+      - vsdx-shape:414
+      - vsdx-shape:416
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-408
+        note: "[408] Bar0 / SUEP控制、映射表、NTB、vSPUG窗口 | [410] Bar1 / 虚拟设备32位BAR地址池 | [412] Bar2 / 较小64位虚拟BAR地址池 | [414] Bar2 / 大型64位虚拟BAR地址池 | [416] ROM / 虚拟设备Expansion ROM地址池"
+  - id: bar-sdep-pool
+    zoneId: spu-fpga
+    title: &a166
+      zhCN: SDEP 下行 BAR 窗口
+      enUS: SDEP Downstream BAR Windows
+    description:
+      zhCN: Bar0 4MiB / Bar1 4MiB / Bar2 32GiB；Bar2 是 Host 侧 DMA 重定向窗口。
+      enUS: Bar0 4MiB / Bar1 4MiB / Bar2 32GiB; Bar2 is the host-side DMA redirection window.
+    kind: buffer
+    evidence: RTL_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:400
+      - vsdx-shape:402
+      - vsdx-shape:404
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-400
+        note: "[400] Bar0 / SDEP控制、NTB、映射和设备管理 | [402] Bar1 / 安全源代理、描述符和回退Payload窗口 | [404] Bar2 / 大型Host侧地址映射/DMA重定向窗口"
+  - id: bar-sp37-pool
+    zoneId: spu-fpga
+    title: &a168
+      zhCN: SP37 下行 BAR 窗口
+      enUS: SP37 Downstream BAR Windows
+    description:
+      zhCN: Bar0 128KiB（Host 侧与 SPU 侧各一）/ Bar2 64KiB；容量最小，只承载控制与消息。
+      enUS: Bar0 128KiB (one on each side) / Bar2 64KiB; the smallest windows, carrying control and messages only.
+    kind: buffer
+    evidence: RTL_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:396
+      - vsdx-shape:398
+      - vsdx-shape:406
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-396
+        note: "[396] Bar0 / SP37协议、状态、中断和控制寄存器 | [398] Bar2 / SP37协议、状态、中断和控制寄存器 | [406] Bar0 / SPU侧SP37控制和NTB使能"
+  - id: spu-fpga-addr-trans
+    zoneId: spu-fpga
+    title: &a170
+      zhCN: SPU-FPGA 地址转换
+      enUS: SPU-FPGA Address Translation
+    description:
+      zhCN: 从描述符取回原始地址后覆盖代理 TLP 头：s_spu_rq_tdata(63 downto 0) <= s_spu_rq_real_addr。
+      enUS: "Restores the original address from the descriptor and overwrites the proxied TLP header: s_spu_rq_tdata(63 downto 0) <= s_spu_rq_real_addr."
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#168f7b"
+    tags: []
+    interfaces:
+      - vsdx-shape:323
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-323
+        note: "[323] 地址转换"
+  - id: spu-cpu
+    zoneId: spu-cpu
+    title: &a172
+      zhCN: SPU Hygon CPU
+      enUS: SPU Hygon CPU
+    description:
+      zhCN: SPU 内部的 CPU，软件栈与虚拟总线都跑在它上面。
+      enUS: The CPU inside SPU; both the software stack and the virtual bus run on it.
+    kind: hardware
+    evidence: RUNTIME_OBSERVED
+    color: "#2f83e7"
+    tags: []
+    interfaces:
+      - vsdx-shape:268
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-268
+        note: "[268] SPU Hygon CPU"
+  - id: spu-root-port
+    zoneId: spu-cpu
+    title: &a174
+      zhCN: 00:03.1 PCIe Root Port
+      enUS: 00:03.1 PCIe Root Port
+    description:
+      zhCN: SPU 内部的 PCIe 根端口，虚拟总线 f0 挂在其下。
+      enUS: The PCIe root port inside SPU; the virtual bus f0 hangs beneath it.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    tags: []
+    interfaces:
+      - vsdx-shape:264
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-264
+        note: "[264] 00:03.1 PCIe Root Port"
+  - id: spu-vbus-f0
+    zoneId: spu-cpu
+    title: &a176
+      zhCN: spu_vgpu 创建的虚拟 PCI Bus f0
+      enUS: Virtual PCI Bus f0 created by spu_vgpu
+    description:
+      zhCN: spu_vgpu.ko 绑定 FPGA-SPU 侧 5709:1001，把 Host/SPUG 后的设备映射成 SPU 内部可枚举的 PCIe 设备。
+      enUS: spu_vgpu.ko binds the FPGA-SPU side 5709:1001 and maps devices behind host/SPUG into PCIe devices enumerable inside SPU.
+    kind: state
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    tags: []
+    interfaces:
+      - vsdx-shape:387
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-387
+        note: "[387] spu_vgpu创建的虚拟PCI Bus f0"
+  - id: spu-vgpu-a10
+    zoneId: spu-cpu
+    title: &a178
+      zhCN: f0:00.0 虚拟 A10
+      enUS: f0:00.0 Virtual A10
+    description:
+      zhCN: 保留 10de:2236，与物理 A10 同 ID。
+      enUS: Retains 10de:2236, matching the physical A10.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    tags: []
+    interfaces:
+      - vsdx-shape:388
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-388
+        note: "[388] f0:00.0 虚拟A10 / 保留物理A10的10de:2236身份 / 驱动：Nvidia / BAR映射到SUEP的大地址窗口"
+  - id: spu-vgpu-nvme
+    zoneId: spu-cpu
+    title: &a180
+      zhCN: f0:01.0 虚拟 Samsung NVMe
+      enUS: f0:01.0 Virtual Samsung NVMe
+    description:
+      zhCN: 保留 144d:a808，与物理 NVMe 同 ID。
+      enUS: Retains 144d:a808, matching the physical NVMe.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    tags: []
+    interfaces:
+      - vsdx-shape:389
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-389
+        note: "[389] f0:01.0 虚拟Samsung NVMe / 保留物理NVMe的144d:a808身份驱动：nvme-gds / BAR映射到SUEP窗口"
+  - id: spu-ep-direct
+    zoneId: spu-cpu
+    title: &a182
+      zhCN: EP 端口-直连
+      enUS: EP Port (Direct)
+    description:
+      zhCN: SUEP 大 BAR 窗口与 SPU 内部地址空间的接合点。
+      enUS: The junction between the large SUEP BAR window and the SPU internal address space.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    tags: []
+    interfaces:
+      - vsdx-shape:265
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-265
+        note: "[265] EP端口-直连"
+  - id: spu-business
+    zoneId: spu-sw
+    title: &a184
+      zhCN: SPU 业务层
+      enUS: SPU Business Layer
+    description:
+      zhCN: 工作负载镜像、GateWay 与 Application Manager；GPU/NVMe/RDMA/块设备在 SPU 内被消费的位置。
+      enUS: Workload images, GateWay and Application Manager; where GPU/NVMe/RDMA/block devices are consumed inside SPU.
+    kind: application
+    evidence: CODE_PROVEN
+    color: "#c05e2b"
+    tags: []
+    interfaces:
+      - vsdx-shape:599
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-599
+        note: "[599] 业务层"
+  - id: spu-userspace
+    zoneId: spu-sw
+    title: &a186
+      zhCN: SPU 用户态
+      enUS: SPU Userspace
+    description:
+      zhCN: LibOS、spu_connect、spu_tssd、Keyring 与服务层。
+      enUS: LibOS, spu_connect, spu_tssd, Keyring and the service layer.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#c05e2b"
+    tags: []
+    interfaces:
+      - vsdx-shape:583
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-583
+        note: "[583] 用户态"
+  - id: spu-kernel
+    zoneId: spu-sw
+    title: &a188
+      zhCN: SPU 内核部分
+      enUS: SPU Kernel Layer
+    description:
+      zhCN: SPU 侧内核模块的加载区域。
+      enUS: The load area for SPU-side kernel modules.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#c05e2b"
+    tags: []
+    interfaces:
+      - vsdx-shape:207
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-207
+        note: "[207] 内核部分"
+  - id: spu-kernel-custom
+    zoneId: spu-sw
+    title: &a190
+      zhCN: SPU 定制内核 spu_kernel
+      enUS: SPU Custom Kernel spu_kernel
+    description:
+      zhCN: hook_dma / hook_rdma 与系统能力扩展；DMA 重定向的落点。
+      enUS: hook_dma / hook_rdma and system capability extensions; the landing point for DMA redirection.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#c05e2b"
+    tags: []
+    interfaces:
+      - vsdx-shape:477
+      - vsdx-shape:513
+      - vsdx-shape:514
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-477
+        note: "[477] SPU定制内核-spu_kernel / 仓库：spu_kernel / hook_dma/hook_rdma和系统能力 | [513] Hook_dma / spu_vgpu决定是否把原DMA地址重定向 | [514] Hook_dma / 加入注册回调，使SPU虚拟化驱动能跟踪： / - 哪些用户页被注册成RDMA MR； / - 地址、长度和访问权限； / - MR何时释放； / - 何时建立/删除SPUG Region/Bitmap映射。"
+  - id: spu-sp37
+    zoneId: spu-sw
+    title: &a192
+      zhCN: sp37.ko（SPU 侧）
+      enUS: sp37.ko (SPU side)
+    description:
+      zhCN: 与 Host 侧同源模块，提供 /dev/sp37_h2c_0、/dev/sp37_c2h_0、/dev/sp37_efuse0，Buffer 默认 1 MiB。
+      enUS: Same module as the host side; provides /dev/sp37_h2c_0, /dev/sp37_c2h_0, /dev/sp37_efuse0 with a 1 MiB default buffer.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#c05e2b"
+    tags: []
+    interfaces:
+      - vsdx-shape:423
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-423
+        note: "[423] sp37.ko is_spu=1 / 仓库：kernelspace/spu_pcied /  / SPU与Host之间最底层的PCIe“串口/网线驱动”。 / sp37只负责可靠搬运字节和硬件控制。 /  / 绑定设备： / Vendor ID = 0x5709 / Device ID = 0x1000 /  / 字符设备： / /dev/sp37_h2c_0 SPU向Host方向写 / /dev/sp37_c2h_0 SPU接收Host方向数据 / /dev/sp37_efuse0 FPGA eFuse/身份材料 /  / sysfs: / fpga_version / fpga_control / spu_serial / spu_rand / spu_fan_control / spu_hw_ver / spu_has_key /  / 核心数据： / DMA Ring "
+  - id: spu-vgpu
+    zoneId: spu-sw
+    title: &a194
+      zhCN: spu_vgpu.ko
+      enUS: spu_vgpu.ko
+    description:
+      zhCN: 绑定 5709:1001，负责把 Host/SPUG 后的 GPU、NVMe、RNIC 映射成 SPU 内部可枚举的 PCIe 设备。
+      enUS: Binds 5709:1001 and maps the GPU, NVMe and RNIC behind host/SPUG into PCIe devices enumerable inside SPU.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#c05e2b"
+    tags: []
+    interfaces:
+      - vsdx-shape:437
+    sources:
+      - path: SPU&SPUG的架构.vsdx#shape-437
+        note: "[437] spu_vgpu.ko / 仓库：spu-g / 准确定位 / 它是SPU侧SUEP驱动和PCIe设备虚拟化控制器， / 负责把Host/SPUG后的GPU、NVMe、RNIC等设备映射成SPU内部可枚举的PCIe设备。 /  / 绑定FPGA-SPU侧的：5709:1001 /  / 向上： / Linux PCI Core / NVIDIA驱动 / nvme-pci / RDMA驱动 / hook_dma/hook_rdma / 用户态spuctl/管理脚本 /  / 向下： / SUEP PCIe Function / SPU FPGA BAR与NTB寄存器 /  / 核心数据： / 设备身份 / 物理BDF / 虚拟BDF / Vendor/Device ID / Class Code / PCIe能力 / 设备代际和在线状态 /  / BAR资源 / 物理BAR基址和"
+edges:
+  - id: host-scan-root
+    source: host-kernel
+    target: host-root-port
+    title:
+      zhCN: 内核驱动挂载根端口
+      enUS: Kernel drivers attach to the root port
+    description:
+      zhCN: sp37.ko 绑定 Function 0，sdep.ko 绑定 Function 1，二者都从根端口下的上游桥获得 BAR。
+      enUS: sp37.ko binds function 0 and sdep.ko binds function 1; both take their BARs from the upstream bridge below the root port.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: PCIe
+    dashed: false
+  - id: root-to-fabric
+    source: host-root-port
+    target: pex-switch
+    title:
+      zhCN: 根端口上行到 PEX880xx
+      enUS: Root port upstream to PEX880xx
+    description:
+      zhCN: 源图没有画出这条连线，是按 70:03.7 根端口与 71:00.0 上游端口的 BDF 关系推得。
+      enUS: The source diagram does not draw this link; it is inferred from the 70:03.7 root port and 71:00.0 upstream port BDF pairing.
+    kind: physical
+    evidence: INFERRED
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: true
+  - id: fabric-upstream
+    source: pex-switch
+    target: pex-sub-switch
+    title:
+      zhCN: Switch 上游分发到下级支路
+      enUS: Switch fans out to subordinate branches
+    description:
+      zhCN: 72:00.0 / 72:04.0 / 72:08.0 分别接到三条下级支路。
+      enUS: 72:00.0 / 72:04.0 / 72:08.0 feed the three subordinate branches.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: fabric-to-nvme-bridge
+    source: pex-sub-switch
+    target: spug-nvme-branch
+    title:
+      zhCN: 下游支路到 NVMe 侧上游桥
+      enUS: Branch to the NVMe-side upstream bridge
+    description:
+      zhCN: 经 7f:00.0（5709:2000）进入 NVMe 支路。
+      enUS: Enters the NVMe branch through 7f:00.0 (5709:2000).
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: fabric-to-gpu-bridge
+    source: pex-sub-switch
+    target: spug-gpu-branch
+    title:
+      zhCN: 下游支路到 GPU 侧上游桥
+      enUS: Branch to the GPU-side upstream bridge
+    description:
+      zhCN: 经 76:00.0（5709:2000）进入 GPU 支路。
+      enUS: Enters the GPU branch through 76:00.0 (5709:2000).
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: nvme-bridge-to-spug-fpga
+    source: spug-nvme-branch
+    target: spug-fpga-nvme
+    title:
+      zhCN: NVMe 侧 SPUG-FPGA 接管下游桥
+      enUS: NVMe-side SPUG-FPGA owns the downstream bridge
+    description:
+      zhCN: 80:00.0（5709:2001）在 Linux 里显示为 pcieport，但 SDEP 驱动内部仍然获得并操作了 SPUG BAR。
+      enUS: 80:00.0 (5709:2001) shows up as pcieport in Linux, yet the SDEP driver still acquires and operates the SPUG BAR.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: gpu-bridge-to-spug-fpga
+    source: spug-gpu-branch
+    target: spug-fpga-gpu
+    title:
+      zhCN: GPU 侧 SPUG-FPGA 接管下游桥
+      enUS: GPU-side SPUG-FPGA owns the downstream bridge
+    description:
+      zhCN: 77:00.0（5709:2001）经 SPUG-FPGA 接到物理 A10 78:00.0。
+      enUS: 77:00.0 (5709:2001) reaches the physical A10 78:00.0 through the SPUG-FPGA.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: spug-fpga-to-spu-fpga-proxy
+    source: spug-fpga-nvme
+    target: spu-fpga-addr-trans
+    title:
+      zhCN: SPUG-FPGA 发描述符给 SPU-FPGA
+      enUS: SPUG-FPGA sends descriptors to SPU-FPGA
+    description:
+      zhCN: SPUG-FPGA 发两类 TLP：描述符在 SDEP BAR1 + 0x1000~0x1700（携带原始地址/长度/类型/Tag），真实请求与数据在 SDEP BAR1 + 0x80000~0xf0000。
+      enUS: "SPUG-FPGA emits two TLP classes: descriptors at SDEP BAR1 + 0x1000..0x1700 (carrying original address, length, type and tag), and real requests/data at SDEP BAR1 + 0x80000..0xf0000."
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: PCIe
+    dashed: false
+  - id: addr-trans-to-suep-bar
+    source: spu-fpga-addr-trans
+    target: bar-suep-pool
+    title:
+      zhCN: 覆盖 TLP 头后命中 SUEP BAR4
+      enUS: Overwritten TLP header hits SUEP BAR4
+    description:
+      zhCN: RQ 送到 SPU 侧 PCIe 接口后命中 SUEP BAR4，按「物理地址 = 物理A10 BAR1 + (虚拟地址 − 虚拟A10 BAR1)」还原。
+      enUS: The RQ reaches the SPU-side PCIe interface and hits SUEP BAR4, restored as physical = physical-A10-BAR1 + (virtual - virtual-A10-BAR1).
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: PCIe
+    dashed: false
+  - id: suep-bar-to-ep
+    source: bar-suep-pool
+    target: spu-ep-direct
+    title:
+      zhCN: SUEP Bar2 128GiB 窗口到 EP 端口
+      enUS: SUEP Bar2 128GiB window to the EP port
+    description:
+      zhCN: 大型 64 位虚拟 BAR 地址池把下游设备地址空间搬进 SPU 内部。
+      enUS: The large 64-bit virtual BAR pool moves downstream device address space inside SPU.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: PCIe
+    dashed: false
+  - id: ep-to-root-port
+    source: spu-ep-direct
+    target: spu-root-port
+    title:
+      zhCN: EP 端口接到内部根端口
+      enUS: EP port attaches to the internal root port
+    description:
+      zhCN: SPU 内部 PCIe 树的入口。
+      enUS: The entry point of the SPU-internal PCIe tree.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: root-port-to-vbus
+    source: spu-root-port
+    target: spu-vbus-f0
+    title:
+      zhCN: 根端口下的虚拟总线 f0
+      enUS: Virtual bus f0 beneath the root port
+    description:
+      zhCN: spu_vgpu 在 SPU 内部造出这条总线并挂上虚拟设备。
+      enUS: spu_vgpu creates this bus inside SPU and attaches the virtual devices.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: vbus-to-virtual-a10
+    source: spu-vbus-f0
+    target: spu-vgpu-a10
+    title:
+      zhCN: 枚举出 f0:00.0 虚拟 A10
+      enUS: Enumerates f0:00.0 virtual A10
+    description:
+      zhCN: 保留 10de:2236。
+      enUS: Retains 10de:2236.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: vbus-to-virtual-nvme
+    source: spu-vbus-f0
+    target: spu-vgpu-nvme
+    title:
+      zhCN: 枚举出 f0:01.0 虚拟 NVMe
+      enUS: Enumerates f0:01.0 virtual NVMe
+    description:
+      zhCN: 保留 144d:a808。
+      enUS: Retains 144d:a808.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe
+    dashed: false
+  - id: spu-sw-drives-vgpu
+    source: spu-vgpu
+    target: spu-vbus-f0
+    title:
+      zhCN: spu_vgpu 建立虚拟总线
+      enUS: spu_vgpu establishes the virtual bus
+    description:
+      zhCN: 驱动加载后用虚拟总线把下游设备暴露给 SPU。
+      enUS: After loading, the driver exposes downstream devices to SPU through the virtual bus.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: PCIe
+    dashed: false
+  - id: sdep-to-host-addr
+    source: bar-sdep-pool
+    target: host-addr-space
+    title:
+      zhCN: SDEP Bar2 32GiB 到 Host 地址空间
+      enUS: SDEP Bar2 32GiB to the host address space
+    description:
+      zhCN: Host 侧 DMA 重定向窗口，sdep_driver 能看到 A10 / NVMe / 两块 SPUG 的静态 BDF 与 BAR。
+      enUS: The host-side DMA redirection window; sdep_driver can see the static BDF and BAR of the A10, NVMe and both SPUGs.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: PCIe
+    dashed: false
+  - id: sp37-pair
+    source: spu-sp37
+    target: sp37-downstream
+    title:
+      zhCN: 双侧 sp37 通过 Function 0 通信
+      enUS: Both sp37 sides communicate over function 0
+    description:
+      zhCN: Buffer 默认 1 MiB，只负责可靠搬运字节和硬件控制。
+      enUS: 1 MiB default buffer; only responsible for reliable byte transport and hardware control.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: PCIe
+    dashed: false
+  - id: host-kernel-to-sdep
+    source: host-kernel
+    target: sdep-downstream
+    title:
+      zhCN: sdep.ko 绑定 SDEP Function
+      enUS: sdep.ko binds the SDEP function
+    description:
+      zhCN: sdep.ko 绑定 5709:1001，扫 SPUG/GPU 拓扑并管理 NTB 与 P2P。
+      enUS: sdep.ko binds 5709:1001, scans the SPUG/GPU topology and manages NTB and P2P.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: PCIe
+    dashed: false
+journeys:
+  - id: address-translation-walkthrough
+    title:
+      zhCN: 地址映射走查（TLP 代理链路）
+      enUS: Address Translation Walkthrough (TLP Proxy)
+    summary:
+      zhCN: SPUG-FPGA 发描述符 → SPU-FPGA 取回原始地址并覆盖 TLP 头 → 命中 SUEP BAR4 → 还原物理地址。
+      enUS: SPUG-FPGA sends descriptors -> SPU-FPGA restores the original address and overwrites the TLP header -> hits SUEP BAR4 -> restores the physical address.
+    caveat:
+      zhCN: 这是一次现场取证记录，不是结构定义；图中没有 SPUG-FPGA 到 SPU-FPGA 的连接线，链路由区域 E 的六个说明框串起。
+      enUS: This is a field observation, not a structural definition; the diagram draws no connector from SPUG-FPGA to SPU-FPGA. The chain is stitched from the six region-E callouts.
+    steps:
+      - id: step-descriptor
+        title:
+          zhCN: SPUG-FPGA 发描述符
+          enUS: SPUG-FPGA emits descriptors
+        nodeId: spug-fpga-nvme
+        evidence: RUNTIME_OBSERVED
+      - id: step-overwrite
+        title:
+          zhCN: 覆盖代理 TLP 头
+          enUS: Overwrite the proxied TLP header
+        nodeId: spu-fpga-addr-trans
+        evidence: RUNTIME_OBSERVED
+      - id: step-hit-bar4
+        title:
+          zhCN: RQ 命中 SUEP BAR4
+          enUS: The RQ hits SUEP BAR4
+        nodeId: bar-suep-pool
+        evidence: RUNTIME_OBSERVED
+      - id: step-restore
+        title:
+          zhCN: 还原物理地址
+          enUS: Restore the physical address
+        nodeId: spu-ep-direct
+        evidence: RUNTIME_OBSERVED
+    edgeIds:
+      - spug-fpga-to-spu-fpga-proxy
+      - addr-trans-to-suep-bar
+      - suep-bar-to-ep
+functions: []
+layout:
+  nodes:
+    - nodeId: host-business
+      position: &a41
+        - -19.8
+        - 9.6
+        - 0.9
+      size: &a1
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a117
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: host-platform
+      position: &a42
+        - -19.8
+        - 12.4
+        - 0.9
+      size: &a2
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a119
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: host-userspace
+      position: &a43
+        - -19.8
+        - 15.2
+        - 0.9
+      size: &a3
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a121
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: host-kernel
+      position: &a44
+        - -25.2
+        - 6.800000000000001
+        - 0.9
+      size: &a4
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a123
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: host-numa
+      position: &a45
+        - -25.2
+        - 9.6
+        - 0.9
+      size: &a5
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a125
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: host-root-port
+      position: &a46
+        - -25.2
+        - 12.4
+        - 0.9
+      size: &a6
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a127
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: host-addr-space
+      position: &a47
+        - -25.2
+        - 15.2
+        - 0.9
+      size: &a7
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a129
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: pex-switch
+      position: &a48
+        - -4.8
+        - 12.4
+        - 0.9
+      size: &a8
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a131
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: pex-sub-switch
+      position: &a49
+        - -10.2
+        - 9.6
+        - 0.9
+      size: &a9
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a133
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: pex-downstream
+      position: &a50
+        - -10.2
+        - 6.800000000000001
+        - 0.9
+      size: &a10
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a135
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: pex-upstream
+      position: &a51
+        - -4.8
+        - 9.6
+        - 0.9
+      size: &a11
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a137
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: pex-mgmt
+      position: &a52
+        - -4.8
+        - 15.2
+        - 0.9
+      size: &a12
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a139
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: p2p
+      position: &a53
+        - -10.2
+        - 12.4
+        - 0.9
+      size: &a13
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a141
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-addr-space
+      position: &a54
+        - -10.2
+        - 15.2
+        - 0.9
+      size: &a14
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a143
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spug-nvme-branch
+      position: &a55
+        - 7.5
+        - 13.8
+        - 0.9
+      size: &a15
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a145
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spug-gpu-branch
+      position: &a56
+        - 7.5
+        - 11
+        - 0.9
+      size: &a16
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a147
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spug-rdma-branch
+      position: &a57
+        - 7.5
+        - 8.2
+        - 0.9
+      size: &a17
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a149
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spug-fpga-nvme
+      position: &a58
+        - 22.5
+        - 13.8
+        - 0.9
+      size: &a18
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a151
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spug-fpga-gpu
+      position: &a59
+        - 22.5
+        - 11
+        - 0.9
+      size: &a19
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a153
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spug-fpga-rdma
+      position: &a60
+        - 22.5
+        - 8.2
+        - 0.9
+      size: &a20
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a155
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-fpga
+      position: &a61
+        - -12.3
+        - -7.6
+        - 0.9
+      size: &a21
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a157
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: suep-upstream
+      position: &a62
+        - -17.7
+        - -4.800000000000001
+        - 0.9
+      size: &a22
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a159
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: sdep-downstream
+      position: &a63
+        - -12.3
+        - -13.2
+        - 0.9
+      size: &a23
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a161
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: sp37-downstream
+      position: &a64
+        - -17.7
+        - -10.4
+        - 0.9
+      size: &a24
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a163
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: bar-suep-pool
+      position: &a65
+        - -17.7
+        - -7.6
+        - 0.9
+      size: &a25
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a165
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: bar-sdep-pool
+      position: &a66
+        - -12.3
+        - -10.4
+        - 0.9
+      size: &a26
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a167
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: bar-sp37-pool
+      position: &a67
+        - -12.3
+        - -4.800000000000001
+        - 0.9
+      size: &a27
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a169
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-fpga-addr-trans
+      position: &a68
+        - -17.7
+        - -13.2
+        - 0.9
+      size: &a28
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a171
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-cpu
+      position: &a69
+        - -2.7
+        - -6.2
+        - 0.9
+      size: &a29
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a173
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-root-port
+      position: &a70
+        - -2.7
+        - -9
+        - 0.9
+      size: &a30
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a175
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-vbus-f0
+      position: &a71
+        - -2.7
+        - -11.8
+        - 0.9
+      size: &a31
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a177
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-vgpu-a10
+      position: &a72
+        - 2.7
+        - -9
+        - 0.9
+      size: &a32
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a179
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-vgpu-nvme
+      position: &a73
+        - 2.7
+        - -11.8
+        - 0.9
+      size: &a33
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a181
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-ep-direct
+      position: &a74
+        - 2.7
+        - -6.2
+        - 0.9
+      size: &a34
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a183
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-business
+      position: &a75
+        - 12.3
+        - -6.2
+        - 0.9
+      size: &a35
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a185
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-userspace
+      position: &a76
+        - 12.3
+        - -9
+        - 0.9
+      size: &a36
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a187
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-kernel
+      position: &a77
+        - 17.7
+        - -9
+        - 0.9
+      size: &a37
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a189
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-kernel-custom
+      position: &a78
+        - 17.7
+        - -11.8
+        - 0.9
+      size: &a38
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a191
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-sp37
+      position: &a79
+        - 12.3
+        - -11.8
+        - 0.9
+      size: &a39
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a193
+        - -3.4
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-vgpu
+      position: &a80
+        - 17.7
+        - -6.2
+        - 0.9
+      size: &a40
+        - 4.6
+        - 2.2
+        - 1.1
+      labelOffset: &a195
+        - 3.4
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+  zones:
+    - zoneId: host
+      position: &a81
+        - -22.5
+        - 11
+        - 0
+      size: &a91
+        - 11
+        - 15.2
+        - 2
+      backdrop: server
+    - zoneId: pcie-fabric
+      position: &a82
+        - -7.5
+        - 11
+        - 0
+      size: &a95
+        - 11
+        - 15.2
+        - 2
+      backdrop: fabric
+    - zoneId: spug
+      position: &a83
+        - 7.5
+        - 11
+        - 0
+      size: &a99
+        - 7
+        - 12.399999999999999
+        - 2
+      backdrop: device
+    - zoneId: spug-fpga
+      position: &a84
+        - 22.5
+        - 11
+        - 0
+      size: &a103
+        - 7
+        - 12.399999999999999
+        - 2
+      backdrop: board
+    - zoneId: spu-fpga
+      position: &a85
+        - -15
+        - -9
+        - 0
+      size: &a107
+        - 11
+        - 15.2
+        - 2
+      backdrop: board
+    - zoneId: spu-cpu
+      position: &a86
+        - 0
+        - -9
+        - 0
+      size: &a111
+        - 11
+        - 12.399999999999999
+        - 2
+      backdrop: board
+    - zoneId: spu-sw
+      position: &a87
+        - 15
+        - -9
+        - 0
+      size: &a115
+        - 11
+        - 12.399999999999999
+        - 2
+      backdrop: server
+  camera:
+    position:
+      - 2
+      - 16
+      - 88
+    target:
+      - 0
+      - 1
+      - 0
+    fov: 48
+  labelDistance: 1.2
+  farBlockOpacity: 0.22
+  farFlowOpacity: 0.18
+enhanced:
+  defaultView: physical-path
+  content:
+    zhCN:
+      planeMeta:
+        host:
+          label: HOST 侧软件栈
+          short: HOST 侧软件栈
+          color: "#22a7cf"
+        pcie-fabric:
+          label: PCIe Switch 与两侧地址空间
+          short: PCIe Switch 与两侧地址空间
+          color: "#607d8b"
+        spug:
+          label: SPUG 三条设备支路
+          short: SPUG 三条设备支路
+          color: "#b767f1"
+        spug-fpga:
+          label: SPUG-FPGA
+          short: SPUG-FPGA
+          color: "#d64d72"
+        spu-fpga:
+          label: SPU-FPGA 与 BAR 窗口
+          short: SPU-FPGA 与 BAR 窗口
+          color: "#168f7b"
+        spu-cpu:
+          label: SPU 内部 CPU 与虚拟总线
+          short: SPU 内部 CPU 与虚拟总线
+          color: "#2f83e7"
+        spu-sw:
+          label: SPU 软件栈
+          short: SPU 软件栈
+          color: "#c05e2b"
+      edgeMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: 控制
+        DATA:
+          color: "#4d8edb"
+          label: 数据
+        SYNC:
+          color: "#9b6bc4"
+          label: 同步
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: 生命周期
+        PHYSICAL:
+          color: "#607d8b"
+          label: 物理/PCIe
+      laneMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: 控制
+          summary: 控制
+        DATA:
+          color: "#4d8edb"
+          label: 数据
+          summary: 数据
+        SYNC:
+          color: "#9b6bc4"
+          label: 同步
+          summary: 同步
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: 生命周期
+          summary: 生命周期
+        PHYSICAL:
+          color: "#607d8b"
+          label: 物理/PCIe
+          summary: 物理/PCIe
+      functionInteractions:
+        host-business: []
+        host-platform: []
+        host-userspace: []
+        host-kernel: []
+        host-numa: []
+        host-root-port: []
+        host-addr-space: []
+        pex-switch: []
+        pex-sub-switch: []
+        pex-downstream: []
+        pex-upstream: []
+        pex-mgmt: []
+        p2p: []
+        spu-addr-space: []
+        spug-nvme-branch: []
+        spug-gpu-branch: []
+        spug-rdma-branch: []
+        spug-fpga-nvme: []
+        spug-fpga-gpu: []
+        spug-fpga-rdma: []
+        spu-fpga: []
+        suep-upstream: []
+        sdep-downstream: []
+        sp37-downstream: []
+        bar-suep-pool: []
+        bar-sdep-pool: []
+        bar-sp37-pool: []
+        spu-fpga-addr-trans: []
+        spu-cpu: []
+        spu-root-port: []
+        spu-vbus-f0: []
+        spu-vgpu-a10: []
+        spu-vgpu-nvme: []
+        spu-ep-direct: []
+        spu-business: []
+        spu-userspace: []
+        spu-kernel: []
+        spu-kernel-custom: []
+        spu-sp37: []
+        spu-vgpu: []
+      driverCausalLayerMeta:
+        payload:
+          label: 数据与所有权
+          short: DATA
+          color: "#4d8edb"
+          description: 数据生产、传输与消费
+        control:
+          label: 控制执行
+          short: CTRL
+          color: "#d59a2b"
+          description: 配置、调用与状态控制
+        sync:
+          label: 同步与完成
+          short: SYNC
+          color: "#9b6bc4"
+          description: IRQ、等待与握手
+        lifecycle:
+          label: 生命周期与回滚
+          short: LIFE
+          color: "#d35f5f"
+          description: 枚举、绑定、解绑与逆序释放
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#d59a2b"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#2a9d8f"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#e76f51"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a261"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#9b6bc4"
+          label: IRQ
+          dashed: true
+        WAIT:
+          color: "#8d99ae"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#d62828"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        address-translation-walkthrough:
+          id: address-translation-walkthrough
+          title: 地址映射走查（TLP 代理链路）
+          shortTitle: 地址映射走查（TLP 代理链路）
+          summary: SPUG-FPGA 发描述符 → SPU-FPGA 取回原始地址并覆盖 TLP 头 → 命中 SUEP BAR4 → 还原物理地址。
+          caveat: 这是一次现场取证记录，不是结构定义；图中没有 SPUG-FPGA 到 SPU-FPGA 的连接线，链路由区域 E 的六个说明框串起。
+          steps:
+            - id: step-descriptor
+              title: SPUG-FPGA 发描述符
+              detail: 描述符写在 SDEP BAR1 + 0x1000~0x1700，携带原始地址、长度、类型与 Tag。
+              moduleNodeId: spug-fpga-nvme
+              moduleRole: spug-fpga-nvme
+              layers:
+                - payload
+            - id: step-overwrite
+              title: 覆盖代理 TLP 头
+              detail: 取回原地址 = 0x3c000400000，写入 s_spu_rq_tdata(63 downto 0)。
+              moduleNodeId: spu-fpga-addr-trans
+              moduleRole: spu-fpga-addr-trans
+              layers:
+                - control
+            - id: step-hit-bar4
+              title: RQ 命中 SUEP BAR4
+              detail: RQ 送到 SPU 侧 PCIe 接口，落在 SUEP BAR4 的 128GiB 虚拟 BAR 地址池。
+              moduleNodeId: bar-suep-pool
+              moduleRole: bar-suep-pool
+              layers:
+                - payload
+            - id: step-restore
+              title: 还原物理地址
+              detail: "0x34000000000 + (0x3c000400000 − 0x3c000000000) = 0x34000400000，与实机 Region 4: 128G @ 0x3c000000000 对得上。"
+              moduleNodeId: spu-ep-direct
+              moduleRole: spu-ep-direct
+              layers:
+                - payload
+          edges:
+            - source: step-descriptor
+              target: step-overwrite
+              layer: control
+              relation: CALL
+            - source: step-overwrite
+              target: step-hit-bar4
+              layer: payload
+              relation: PAYLOAD
+            - source: step-hit-bar4
+              target: step-restore
+              layer: payload
+              relation: STATE
+      topologyNodes:
+        - id: host-business
+          label: Host 业务阶段
+          fill: "#22a7cf"
+          size: *a1
+          data:
+            title: Host 业务阶段
+            plane: host
+            layer: 区域 01 · 主机侧
+            kind: service
+            description: 设备/应用/部署生命周期、安全会话网关与 SDK 入口：host_ams、SPU SDK、Nereus SDK、host_buildin_admin。
+            evidence: code
+            views:
+              - physical-path
+        - id: host-platform
+          label: Host 平台阶段
+          fill: "#22a7cf"
+          size: *a2
+          data:
+            title: Host 平台阶段
+            plane: host
+            layer: 区域 01 · 主机侧
+            kind: service
+            description: host_nms（L4 TCP 代理/端口映射/加密会话元数据）、host_tun（三层虚拟网络数据面）与 PCS/PCIe。
+            evidence: code
+            views:
+              - physical-path
+        - id: host-userspace
+          label: Host 用户态
+          fill: "#22a7cf"
+          size: *a3
+          data:
+            title: Host 用户态
+            plane: host
+            layer: 区域 01 · 主机侧
+            kind: service
+            description: host_pcs / pcie_server 封装 SP37 节点，向客户端提供 Unix Socket 服务。
+            evidence: code
+            views:
+              - physical-path
+        - id: host-kernel
+          label: Host 内核驱动
+          fill: "#22a7cf"
+          size: *a4
+          data:
+            title: Host 内核驱动
+            plane: host
+            layer: 区域 01 · 主机侧
+            kind: driver
+            description: sp37.ko（绑定 5709:1000）、sdep.ko（绑定 5709:1001，扫 SPUG/GPU 拓扑、NTB 管理、P2P）与 hblkd_end.ko。
+            evidence: code
+            views:
+              - physical-path
+        - id: host-numa
+          label: Hygon CPU0 / NUMA Node 3
+          fill: "#22a7cf"
+          size: *a5
+          data:
+            title: Hygon CPU0 / NUMA Node 3
+            plane: host
+            layer: 区域 01 · 主机侧
+            kind: hardware
+            description: Host 侧的 CPU 与 NUMA 归属，决定根端口和 IOMMU group 的物理位置。
+            evidence: code
+            views:
+              - physical-path
+        - id: host-root-port
+          label: 70:03.7 CPU PCIe Root Port
+          fill: "#22a7cf"
+          size: *a6
+          data:
+            title: 70:03.7 CPU PCIe Root Port
+            plane: host
+            layer: 区域 01 · 主机侧
+            kind: hardware
+            description: Host 根端口，PEX880xx 上游侧的挂载点。
+            evidence: code
+            views:
+              - physical-path
+        - id: host-addr-space
+          label: HOST 系统环境的 PCIE 地址
+          fill: "#22a7cf"
+          size: *a7
+          data:
+            title: HOST 系统环境的 PCIE 地址
+            plane: host
+            layer: 区域 01 · 主机侧
+            kind: state
+            description: Host 侧看到的 PCIe 地址语义；SDEP 下行 Bar2（32GiB）在此被重定向。
+            evidence: code
+            views:
+              - physical-path
+        - id: pex-switch
+          label: Broadcom PEX880xx PCIe Gen4 Switch
+          fill: "#607d8b"
+          size: *a8
+          data:
+            title: Broadcom PEX880xx PCIe Gen4 Switch
+            plane: pcie-fabric
+            layer: 区域 02 · 物理互联
+            kind: hardware
+            description: 71:00.0 上游，72:00.0 / 72:04.0 / 72:08.0 下游，72:1c.0 管理口。
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-sub-switch
+          label: 下级 PEX Switch 支路
+          fill: "#607d8b"
+          size: *a9
+          data:
+            title: 下级 PEX Switch 支路
+            plane: pcie-fabric
+            layer: 区域 02 · 物理互联
+            kind: hardware
+            description: 三条下级支路（73·74、79·7a、7c·7d），把上游端口分到各设备支路。
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-downstream
+          label: Switch 下游端口
+          fill: "#607d8b"
+          size: *a10
+          data:
+            title: Switch 下游端口
+            plane: pcie-fabric
+            layer: 区域 02 · 物理互联
+            kind: hardware
+            description: 72:00.0 / 72:04.0 / 72:08.0；分别通向 NVMe、GPU 与 RDMA 侧上游桥。
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-upstream
+          label: 71:00.0 Switch 上游端口
+          fill: "#607d8b"
+          size: *a11
+          data:
+            title: 71:00.0 Switch 上游端口
+            plane: pcie-fabric
+            layer: 区域 02 · 物理互联
+            kind: hardware
+            description: Switch 面向 Host 根端口的一侧。
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-mgmt
+          label: 72:1c.0 管理口
+          fill: "#607d8b"
+          size: *a12
+          data:
+            title: 72:1c.0 管理口
+            plane: pcie-fabric
+            layer: 区域 02 · 物理互联
+            kind: hardware
+            description: Switch 内部管理端点。
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: p2p
+          label: P2P 直通
+          fill: "#607d8b"
+          size: *a13
+          data:
+            title: P2P 直通
+            plane: pcie-fabric
+            layer: 区域 02 · 物理互联
+            kind: state
+            description: 两块 SPUG 之间的直通映射；现场映射表全空，当前流量并不走这条路。
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: spu-addr-space
+          label: SPU 系统环境的 PCIE 地址
+          fill: "#607d8b"
+          size: *a14
+          data:
+            title: SPU 系统环境的 PCIE 地址
+            plane: pcie-fabric
+            layer: 区域 02 · 物理互联
+            kind: state
+            description: SPU 侧看到的 PCIe 地址语义；SUEP 上行大 BAR 窗口在此落地并被还原成物理地址。
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: spug-nvme-branch
+          label: NVMe 支路
+          fill: "#b767f1"
+          size: *a15
+          data:
+            title: NVMe 支路
+            plane: spug
+            layer: 区域 03 · 支路与桥
+            kind: device
+            description: 上游桥 7f:00.0（5709:2000）→ 下游桥 80:00.0（5709:2001）→ 物理 Samsung NVMe 81:00.0（144d:a808）。Host 侧无驱动，所有权已交给 SPU。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spug-gpu-branch
+          label: GPU 支路
+          fill: "#b767f1"
+          size: *a16
+          data:
+            title: GPU 支路
+            plane: spug
+            layer: 区域 03 · 支路与桥
+            kind: device
+            description: 上游桥 76:00.0（5709:2000）→ 下游桥 77:00.0（5709:2001）→ 物理 NVIDIA A10 78:00.0（10de:2236）。Host 侧同样无驱动。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spug-rdma-branch
+          label: RDMA 支路
+          fill: "#b767f1"
+          size: *a17
+          data:
+            title: RDMA 支路
+            plane: spug
+            layer: 区域 03 · 支路与桥
+            kind: device
+            description: RDMA 网卡及其 SPUG-FPGA；源图中只给出实体，没有下游端口细节。
+            evidence: inference
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spug-fpga-nvme
+          label: SPUG-FPGA（NVMe 侧）
+          fill: "#d64d72"
+          size: *a18
+          data:
+            title: SPUG-FPGA（NVMe 侧）
+            plane: spug-fpga
+            layer: 区域 04 · 下游桥接
+            kind: hardware
+            description: Bar0/1/2/4 地址转换表；Bar0 16MiB 控制寄存器窗口、Bar1 1MiB 下游 Config/IO 代理窗口；另有寄存器地图与代理职责说明。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spug-fpga-gpu
+          label: SPUG-FPGA（GPU 侧）
+          fill: "#d64d72"
+          size: *a19
+          data:
+            title: SPUG-FPGA（GPU 侧）
+            plane: spug-fpga
+            layer: 区域 04 · 下游桥接
+            kind: hardware
+            description: 两组 Bar0/1/2/4 与地址转换逻辑，结构与 NVMe 侧同源。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spug-fpga-rdma
+          label: SPUG-FPGA（RDMA 侧）
+          fill: "#d64d72"
+          size: *a20
+          data:
+            title: SPUG-FPGA（RDMA 侧）
+            plane: spug-fpga
+            layer: 区域 04 · 下游桥接
+            kind: hardware
+            description: 源图只给出实体框；连接线 [261] 一端悬空连到这里，需要对着原图确认是自由线段还是漏连。
+            evidence: inference
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spu-fpga
+          label: SPU-FPGA
+          fill: "#168f7b"
+          size: *a21
+          data:
+            title: SPU-FPGA
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: hardware
+            description: 上行 SUEP、下行 SDEP 与 SP37 三套端点与 BAR 窗口都挂在这块 FPGA 上。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: suep-upstream
+          label: 02:00.1 SUEP 上行端点
+          fill: "#168f7b"
+          size: *a22
+          data:
+            title: 02:00.1 SUEP 上行端点
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: hardware
+            description: 驱动 suep_driver；Host 看到的 SUEP 卡侧端点。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: sdep-downstream
+          label: 7b:00.1 EDP / SDEP 下行端点
+          fill: "#168f7b"
+          size: *a23
+          data:
+            title: 7b:00.1 EDP / SDEP 下行端点
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: hardware
+            description: HOST 侧 Endpoint，SDEP 数据/控制 Function，VID:DID = 5709:1001，驱动 sdep_driver。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: sp37-downstream
+          label: 7b:00.0 SP37 下行端点
+          fill: "#168f7b"
+          size: *a24
+          data:
+            title: 7b:00.0 SP37 下行端点
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: hardware
+            description: SP37 控制 Function，VID:DID = 5709:1000；SPU 与 Host 之间最底层的字节搬运通道。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: bar-suep-pool
+          label: SUEP 上行 BAR 窗口
+          fill: "#168f7b"
+          size: *a25
+          data:
+            title: SUEP 上行 BAR 窗口
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: buffer
+            description: Bar0 256MiB / Bar1 512MiB / Bar2 4GiB / Bar2 大型 64 位虚拟 BAR 地址池 128GiB / ROM 虚拟设备 Expansion ROM 地址池 16MiB。地址走查命中的就是 128GiB 这一组。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: bar-sdep-pool
+          label: SDEP 下行 BAR 窗口
+          fill: "#168f7b"
+          size: *a26
+          data:
+            title: SDEP 下行 BAR 窗口
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: buffer
+            description: Bar0 4MiB / Bar1 4MiB / Bar2 32GiB；Bar2 是 Host 侧 DMA 重定向窗口。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: bar-sp37-pool
+          label: SP37 下行 BAR 窗口
+          fill: "#168f7b"
+          size: *a27
+          data:
+            title: SP37 下行 BAR 窗口
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: buffer
+            description: Bar0 128KiB（Host 侧与 SPU 侧各一）/ Bar2 64KiB；容量最小，只承载控制与消息。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spu-fpga-addr-trans
+          label: SPU-FPGA 地址转换
+          fill: "#168f7b"
+          size: *a28
+          data:
+            title: SPU-FPGA 地址转换
+            plane: spu-fpga
+            layer: 区域 05 · 上行/下行端点
+            kind: hardware
+            description: 从描述符取回原始地址后覆盖代理 TLP 头：s_spu_rq_tdata(63 downto 0) <= s_spu_rq_real_addr。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spu-cpu
+          label: SPU Hygon CPU
+          fill: "#2f83e7"
+          size: *a29
+          data:
+            title: SPU Hygon CPU
+            plane: spu-cpu
+            layer: 区域 06 · 内部枚举
+            kind: hardware
+            description: SPU 内部的 CPU，软件栈与虚拟总线都跑在它上面。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-root-port
+          label: 00:03.1 PCIe Root Port
+          fill: "#2f83e7"
+          size: *a30
+          data:
+            title: 00:03.1 PCIe Root Port
+            plane: spu-cpu
+            layer: 区域 06 · 内部枚举
+            kind: hardware
+            description: SPU 内部的 PCIe 根端口，虚拟总线 f0 挂在其下。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-vbus-f0
+          label: spu_vgpu 创建的虚拟 PCI Bus f0
+          fill: "#2f83e7"
+          size: *a31
+          data:
+            title: spu_vgpu 创建的虚拟 PCI Bus f0
+            plane: spu-cpu
+            layer: 区域 06 · 内部枚举
+            kind: state
+            description: spu_vgpu.ko 绑定 FPGA-SPU 侧 5709:1001，把 Host/SPUG 后的设备映射成 SPU 内部可枚举的 PCIe 设备。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-vgpu-a10
+          label: f0:00.0 虚拟 A10
+          fill: "#2f83e7"
+          size: *a32
+          data:
+            title: f0:00.0 虚拟 A10
+            plane: spu-cpu
+            layer: 区域 06 · 内部枚举
+            kind: device
+            description: 保留 10de:2236，与物理 A10 同 ID。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-vgpu-nvme
+          label: f0:01.0 虚拟 Samsung NVMe
+          fill: "#2f83e7"
+          size: *a33
+          data:
+            title: f0:01.0 虚拟 Samsung NVMe
+            plane: spu-cpu
+            layer: 区域 06 · 内部枚举
+            kind: device
+            description: 保留 144d:a808，与物理 NVMe 同 ID。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-ep-direct
+          label: EP 端口-直连
+          fill: "#2f83e7"
+          size: *a34
+          data:
+            title: EP 端口-直连
+            plane: spu-cpu
+            layer: 区域 06 · 内部枚举
+            kind: hardware
+            description: SUEP 大 BAR 窗口与 SPU 内部地址空间的接合点。
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-business
+          label: SPU 业务层
+          fill: "#c05e2b"
+          size: *a35
+          data:
+            title: SPU 业务层
+            plane: spu-sw
+            layer: 区域 07 · 客侧软件
+            kind: application
+            description: 工作负载镜像、GateWay 与 Application Manager；GPU/NVMe/RDMA/块设备在 SPU 内被消费的位置。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-userspace
+          label: SPU 用户态
+          fill: "#c05e2b"
+          size: *a36
+          data:
+            title: SPU 用户态
+            plane: spu-sw
+            layer: 区域 07 · 客侧软件
+            kind: service
+            description: LibOS、spu_connect、spu_tssd、Keyring 与服务层。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-kernel
+          label: SPU 内核部分
+          fill: "#c05e2b"
+          size: *a37
+          data:
+            title: SPU 内核部分
+            plane: spu-sw
+            layer: 区域 07 · 客侧软件
+            kind: driver
+            description: SPU 侧内核模块的加载区域。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-kernel-custom
+          label: SPU 定制内核 spu_kernel
+          fill: "#c05e2b"
+          size: *a38
+          data:
+            title: SPU 定制内核 spu_kernel
+            plane: spu-sw
+            layer: 区域 07 · 客侧软件
+            kind: driver
+            description: hook_dma / hook_rdma 与系统能力扩展；DMA 重定向的落点。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-sp37
+          label: sp37.ko（SPU 侧）
+          fill: "#c05e2b"
+          size: *a39
+          data:
+            title: sp37.ko（SPU 侧）
+            plane: spu-sw
+            layer: 区域 07 · 客侧软件
+            kind: driver
+            description: 与 Host 侧同源模块，提供 /dev/sp37_h2c_0、/dev/sp37_c2h_0、/dev/sp37_efuse0，Buffer 默认 1 MiB。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-vgpu
+          label: spu_vgpu.ko
+          fill: "#c05e2b"
+          size: *a40
+          data:
+            title: spu_vgpu.ko
+            plane: spu-sw
+            layer: 区域 07 · 客侧软件
+            kind: driver
+            description: 绑定 5709:1001，负责把 Host/SPUG 后的 GPU、NVMe、RNIC 映射成 SPU 内部可枚举的 PCIe 设备。
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+      topologyEdges:
+        - id: host-scan-root
+          source: host-kernel
+          target: host-root-port
+          label: 内核驱动挂载根端口
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: 内核驱动挂载根端口
+            description: sp37.ko 绑定 Function 0，sdep.ko 绑定 Function 1，二者都从根端口下的上游桥获得 BAR。
+            evidence: CODE_PROVEN
+        - id: root-to-fabric
+          source: host-root-port
+          target: pex-switch
+          label: 根端口上行到 PEX880xx
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: 根端口上行到 PEX880xx
+            description: 源图没有画出这条连线，是按 70:03.7 根端口与 71:00.0 上游端口的 BDF 关系推得。
+            evidence: INFERRED
+        - id: fabric-upstream
+          source: pex-switch
+          target: pex-sub-switch
+          label: Switch 上游分发到下级支路
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Switch 上游分发到下级支路
+            description: 72:00.0 / 72:04.0 / 72:08.0 分别接到三条下级支路。
+            evidence: CODE_PROVEN
+        - id: fabric-to-nvme-bridge
+          source: pex-sub-switch
+          target: spug-nvme-branch
+          label: 下游支路到 NVMe 侧上游桥
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: 下游支路到 NVMe 侧上游桥
+            description: 经 7f:00.0（5709:2000）进入 NVMe 支路。
+            evidence: CODE_PROVEN
+        - id: fabric-to-gpu-bridge
+          source: pex-sub-switch
+          target: spug-gpu-branch
+          label: 下游支路到 GPU 侧上游桥
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: 下游支路到 GPU 侧上游桥
+            description: 经 76:00.0（5709:2000）进入 GPU 支路。
+            evidence: CODE_PROVEN
+        - id: nvme-bridge-to-spug-fpga
+          source: spug-nvme-branch
+          target: spug-fpga-nvme
+          label: NVMe 侧 SPUG-FPGA 接管下游桥
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: NVMe 侧 SPUG-FPGA 接管下游桥
+            description: 80:00.0（5709:2001）在 Linux 里显示为 pcieport，但 SDEP 驱动内部仍然获得并操作了 SPUG BAR。
+            evidence: CODE_PROVEN
+        - id: gpu-bridge-to-spug-fpga
+          source: spug-gpu-branch
+          target: spug-fpga-gpu
+          label: GPU 侧 SPUG-FPGA 接管下游桥
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: GPU 侧 SPUG-FPGA 接管下游桥
+            description: 77:00.0（5709:2001）经 SPUG-FPGA 接到物理 A10 78:00.0。
+            evidence: CODE_PROVEN
+        - id: spug-fpga-to-spu-fpga-proxy
+          source: spug-fpga-nvme
+          target: spu-fpga-addr-trans
+          label: SPUG-FPGA 发描述符给 SPU-FPGA
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: SPUG-FPGA 发描述符给 SPU-FPGA
+            description: SPUG-FPGA 发两类 TLP：描述符在 SDEP BAR1 + 0x1000~0x1700（携带原始地址/长度/类型/Tag），真实请求与数据在 SDEP BAR1 + 0x80000~0xf0000。
+            evidence: CODE_PROVEN
+        - id: addr-trans-to-suep-bar
+          source: spu-fpga-addr-trans
+          target: bar-suep-pool
+          label: 覆盖 TLP 头后命中 SUEP BAR4
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: 覆盖 TLP 头后命中 SUEP BAR4
+            description: RQ 送到 SPU 侧 PCIe 接口后命中 SUEP BAR4，按「物理地址 = 物理A10 BAR1 + (虚拟地址 − 虚拟A10 BAR1)」还原。
+            evidence: CODE_PROVEN
+        - id: suep-bar-to-ep
+          source: bar-suep-pool
+          target: spu-ep-direct
+          label: SUEP Bar2 128GiB 窗口到 EP 端口
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: SUEP Bar2 128GiB 窗口到 EP 端口
+            description: 大型 64 位虚拟 BAR 地址池把下游设备地址空间搬进 SPU 内部。
+            evidence: CODE_PROVEN
+        - id: ep-to-root-port
+          source: spu-ep-direct
+          target: spu-root-port
+          label: EP 端口接到内部根端口
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: EP 端口接到内部根端口
+            description: SPU 内部 PCIe 树的入口。
+            evidence: CODE_PROVEN
+        - id: root-port-to-vbus
+          source: spu-root-port
+          target: spu-vbus-f0
+          label: 根端口下的虚拟总线 f0
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: 根端口下的虚拟总线 f0
+            description: spu_vgpu 在 SPU 内部造出这条总线并挂上虚拟设备。
+            evidence: CODE_PROVEN
+        - id: vbus-to-virtual-a10
+          source: spu-vbus-f0
+          target: spu-vgpu-a10
+          label: 枚举出 f0:00.0 虚拟 A10
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: 枚举出 f0:00.0 虚拟 A10
+            description: 保留 10de:2236。
+            evidence: CODE_PROVEN
+        - id: vbus-to-virtual-nvme
+          source: spu-vbus-f0
+          target: spu-vgpu-nvme
+          label: 枚举出 f0:01.0 虚拟 NVMe
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: 枚举出 f0:01.0 虚拟 NVMe
+            description: 保留 144d:a808。
+            evidence: CODE_PROVEN
+        - id: spu-sw-drives-vgpu
+          source: spu-vgpu
+          target: spu-vbus-f0
+          label: spu_vgpu 建立虚拟总线
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: spu_vgpu 建立虚拟总线
+            description: 驱动加载后用虚拟总线把下游设备暴露给 SPU。
+            evidence: CODE_PROVEN
+        - id: sdep-to-host-addr
+          source: bar-sdep-pool
+          target: host-addr-space
+          label: SDEP Bar2 32GiB 到 Host 地址空间
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: SDEP Bar2 32GiB 到 Host 地址空间
+            description: Host 侧 DMA 重定向窗口，sdep_driver 能看到 A10 / NVMe / 两块 SPUG 的静态 BDF 与 BAR。
+            evidence: CODE_PROVEN
+        - id: sp37-pair
+          source: spu-sp37
+          target: sp37-downstream
+          label: 双侧 sp37 通过 Function 0 通信
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: 双侧 sp37 通过 Function 0 通信
+            description: Buffer 默认 1 MiB，只负责可靠搬运字节和硬件控制。
+            evidence: CODE_PROVEN
+        - id: host-kernel-to-sdep
+          source: host-kernel
+          target: sdep-downstream
+          label: sdep.ko 绑定 SDEP Function
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: sdep.ko 绑定 SDEP Function
+            description: sdep.ko 绑定 5709:1001，扫 SPUG/GPU 拓扑并管理 NTB 与 P2P。
+            evidence: CODE_PROVEN
+      viewOptions:
+        - id: physical-path
+          label: 物理路径
+          hint: 从 Host 根端口经 PEX880xx 到三条设备支路，再回到 SPU-FPGA 的上行/下行端点。
+        - id: bar-windows
+          label: BAR 窗口
+          hint: SUEP 上行、SDEP 与 SP37 下行三组 BAR，以及三块 SPUG-FPGA 的地址转换表。
+        - id: virtual-bus
+          label: 虚拟总线
+          hint: spu_vgpu 如何把 SPUG 后的物理设备映射成 SPU 内部可枚举的 PCIe 设备。
+        - id: address-walk
+          label: 地址映射走查
+          hint: 一条现场取证链：描述符 → TLP 头覆盖 → 命中 SUEP BAR4 → 还原物理地址。
+      systemTree:
+        - label: HOST 侧软件栈
+          plane: host
+          nodes:
+            - host-business
+            - host-platform
+            - host-userspace
+            - host-kernel
+            - host-numa
+            - host-root-port
+            - host-addr-space
+        - label: PCIe Switch 与两侧地址空间
+          plane: pcie-fabric
+          nodes:
+            - pex-switch
+            - pex-sub-switch
+            - pex-downstream
+            - pex-upstream
+            - pex-mgmt
+            - p2p
+            - spu-addr-space
+        - label: SPUG 三条设备支路
+          plane: spug
+          nodes:
+            - spug-nvme-branch
+            - spug-gpu-branch
+            - spug-rdma-branch
+        - label: SPUG-FPGA
+          plane: spug-fpga
+          nodes:
+            - spug-fpga-nvme
+            - spug-fpga-gpu
+            - spug-fpga-rdma
+        - label: SPU-FPGA 与 BAR 窗口
+          plane: spu-fpga
+          nodes:
+            - spu-fpga
+            - suep-upstream
+            - sdep-downstream
+            - sp37-downstream
+            - bar-suep-pool
+            - bar-sdep-pool
+            - bar-sp37-pool
+            - spu-fpga-addr-trans
+        - label: SPU 内部 CPU 与虚拟总线
+          plane: spu-cpu
+          nodes:
+            - spu-cpu
+            - spu-root-port
+            - spu-vbus-f0
+            - spu-vgpu-a10
+            - spu-vgpu-nvme
+            - spu-ep-direct
+        - label: SPU 软件栈
+          plane: spu-sw
+          nodes:
+            - spu-business
+            - spu-userspace
+            - spu-kernel
+            - spu-kernel-custom
+            - spu-sp37
+            - spu-vgpu
+      storageTrees: []
+      runtimeFacts:
+        - label: 证据基线
+          value: SPU&SPUG的架构.vsdx
+          tone: ok
+        - label: 源图形状
+          value: "164"
+          tone: ok
+        - label: 源图连接线
+          value: "62"
+          tone: ok
+        - label: 实机观测
+          value: 仅地址走查
+          tone: warn
+      cameraHudViews:
+        physical-path:
+          eyebrow: SPU-SPUG-GLOBAL
+          title: 物理路径
+          detail: 从 Host 根端口经 PEX880xx 到三条设备支路，再回到 SPU-FPGA 的上行/下行端点。
+        bar-windows:
+          eyebrow: SPU-SPUG-GLOBAL
+          title: BAR 窗口
+          detail: SUEP 上行、SDEP 与 SP37 下行三组 BAR，以及三块 SPUG-FPGA 的地址转换表。
+        virtual-bus:
+          eyebrow: SPU-SPUG-GLOBAL
+          title: 虚拟总线
+          detail: spu_vgpu 如何把 SPUG 后的物理设备映射成 SPU 内部可枚举的 PCIe 设备。
+        address-walk:
+          eyebrow: 因果旅程
+          title: 地址映射走查
+          detail: 一条现场取证链：描述符 → TLP 头覆盖 → 命中 SUEP BAR4 → 还原物理地址。
+    enUS:
+      planeMeta:
+        host:
+          label: Host Software Stack
+          short: Host Software Stack
+          color: "#22a7cf"
+        pcie-fabric:
+          label: PCIe Switch and Address Spaces
+          short: PCIe Switch and Address Spaces
+          color: "#607d8b"
+        spug:
+          label: SPUG Device Branches
+          short: SPUG Device Branches
+          color: "#b767f1"
+        spug-fpga:
+          label: SPUG-FPGA
+          short: SPUG-FPGA
+          color: "#d64d72"
+        spu-fpga:
+          label: SPU-FPGA and BAR Windows
+          short: SPU-FPGA and BAR Windows
+          color: "#168f7b"
+        spu-cpu:
+          label: SPU Internal CPU and Virtual Bus
+          short: SPU Internal CPU and Virtual Bus
+          color: "#2f83e7"
+        spu-sw:
+          label: SPU Software Stack
+          short: SPU Software Stack
+          color: "#c05e2b"
+      edgeMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: Control
+        DATA:
+          color: "#4d8edb"
+          label: Data
+        SYNC:
+          color: "#9b6bc4"
+          label: Sync
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: Lifecycle
+        PHYSICAL:
+          color: "#607d8b"
+          label: Physical/PCIe
+      laneMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: Control
+          summary: Control
+        DATA:
+          color: "#4d8edb"
+          label: Data
+          summary: Data
+        SYNC:
+          color: "#9b6bc4"
+          label: Sync
+          summary: Sync
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: Lifecycle
+          summary: Lifecycle
+        PHYSICAL:
+          color: "#607d8b"
+          label: Physical/PCIe
+          summary: Physical/PCIe
+      functionInteractions:
+        host-business: []
+        host-platform: []
+        host-userspace: []
+        host-kernel: []
+        host-numa: []
+        host-root-port: []
+        host-addr-space: []
+        pex-switch: []
+        pex-sub-switch: []
+        pex-downstream: []
+        pex-upstream: []
+        pex-mgmt: []
+        p2p: []
+        spu-addr-space: []
+        spug-nvme-branch: []
+        spug-gpu-branch: []
+        spug-rdma-branch: []
+        spug-fpga-nvme: []
+        spug-fpga-gpu: []
+        spug-fpga-rdma: []
+        spu-fpga: []
+        suep-upstream: []
+        sdep-downstream: []
+        sp37-downstream: []
+        bar-suep-pool: []
+        bar-sdep-pool: []
+        bar-sp37-pool: []
+        spu-fpga-addr-trans: []
+        spu-cpu: []
+        spu-root-port: []
+        spu-vbus-f0: []
+        spu-vgpu-a10: []
+        spu-vgpu-nvme: []
+        spu-ep-direct: []
+        spu-business: []
+        spu-userspace: []
+        spu-kernel: []
+        spu-kernel-custom: []
+        spu-sp37: []
+        spu-vgpu: []
+      driverCausalLayerMeta:
+        payload:
+          label: Data and ownership
+          short: DATA
+          color: "#4d8edb"
+          description: Production, transport, consumption
+        control:
+          label: Control execution
+          short: CTRL
+          color: "#d59a2b"
+          description: Configuration, invocation, state control
+        sync:
+          label: Synchronisation
+          short: SYNC
+          color: "#9b6bc4"
+          description: IRQ, wait, handshake
+        lifecycle:
+          label: Lifecycle and rollback
+          short: LIFE
+          color: "#d35f5f"
+          description: Enumeration, bind, unbind, teardown
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#d59a2b"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#2a9d8f"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#e76f51"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a261"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#9b6bc4"
+          label: IRQ
+          dashed: true
+        WAIT:
+          color: "#8d99ae"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#d62828"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        address-translation-walkthrough:
+          id: address-translation-walkthrough
+          title: Address Translation Walkthrough (TLP Proxy)
+          shortTitle: Address Translation Walkthrough (TLP Proxy)
+          summary: SPUG-FPGA sends descriptors -> SPU-FPGA restores the original address and overwrites the TLP header -> hits SUEP BAR4 -> restores the physical address.
+          caveat: This is a field observation, not a structural definition; the diagram draws no connector from SPUG-FPGA to SPU-FPGA. The chain is stitched from the six region-E callouts.
+          steps:
+            - id: step-descriptor
+              title: SPUG-FPGA emits descriptors
+              detail: Descriptors are written at SDEP BAR1 + 0x1000..0x1700 carrying original address, length, type and tag.
+              moduleNodeId: spug-fpga-nvme
+              moduleRole: spug-fpga-nvme
+              layers:
+                - payload
+            - id: step-overwrite
+              title: Overwrite the proxied TLP header
+              detail: Original address 0x3c000400000 is restored into s_spu_rq_tdata(63 downto 0).
+              moduleNodeId: spu-fpga-addr-trans
+              moduleRole: spu-fpga-addr-trans
+              layers:
+                - control
+            - id: step-hit-bar4
+              title: The RQ hits SUEP BAR4
+              detail: The RQ reaches the SPU-side PCIe interface and lands in the 128GiB virtual BAR pool of SUEP BAR4.
+              moduleNodeId: bar-suep-pool
+              moduleRole: bar-suep-pool
+              layers:
+                - payload
+            - id: step-restore
+              title: Restore the physical address
+              detail: "0x34000000000 + (0x3c000400000 - 0x3c000000000) = 0x34000400000, matching the measured Region 4: 128G @ 0x3c000000000."
+              moduleNodeId: spu-ep-direct
+              moduleRole: spu-ep-direct
+              layers:
+                - payload
+          edges:
+            - source: step-descriptor
+              target: step-overwrite
+              layer: control
+              relation: CALL
+            - source: step-overwrite
+              target: step-hit-bar4
+              layer: payload
+              relation: PAYLOAD
+            - source: step-hit-bar4
+              target: step-restore
+              layer: payload
+              relation: STATE
+      topologyNodes:
+        - id: host-business
+          label: Host Business Layer
+          fill: "#22a7cf"
+          size: *a1
+          data:
+            title: Host Business Layer
+            plane: host
+            layer: ZONE 01 · HOST SIDE
+            kind: service
+            description: "Device/app/deployment lifecycle, secure session gateway and SDK entry points: host_ams, SPU SDK, Nereus SDK, host_buildin_admin."
+            evidence: code
+            views:
+              - physical-path
+        - id: host-platform
+          label: Host Platform Layer
+          fill: "#22a7cf"
+          size: *a2
+          data:
+            title: Host Platform Layer
+            plane: host
+            layer: ZONE 01 · HOST SIDE
+            kind: service
+            description: host_nms (L4 TCP proxy, port mapping, encrypted session metadata), host_tun (L3 virtual network data plane) and PCS/PCIe.
+            evidence: code
+            views:
+              - physical-path
+        - id: host-userspace
+          label: Host Userspace
+          fill: "#22a7cf"
+          size: *a3
+          data:
+            title: Host Userspace
+            plane: host
+            layer: ZONE 01 · HOST SIDE
+            kind: service
+            description: host_pcs / pcie_server wraps the SP37 node and exposes a Unix socket service to clients.
+            evidence: code
+            views:
+              - physical-path
+        - id: host-kernel
+          label: Host Kernel Drivers
+          fill: "#22a7cf"
+          size: *a4
+          data:
+            title: Host Kernel Drivers
+            plane: host
+            layer: ZONE 01 · HOST SIDE
+            kind: driver
+            description: sp37.ko (binds 5709:1000), sdep.ko (binds 5709:1001; scans SPUG/GPU topology, manages NTB and P2P) and hblkd_end.ko.
+            evidence: code
+            views:
+              - physical-path
+        - id: host-numa
+          label: Hygon CPU0 / NUMA Node 3
+          fill: "#22a7cf"
+          size: *a5
+          data:
+            title: Hygon CPU0 / NUMA Node 3
+            plane: host
+            layer: ZONE 01 · HOST SIDE
+            kind: hardware
+            description: Host CPU and NUMA placement, which fixes the physical location of the root port and IOMMU group.
+            evidence: code
+            views:
+              - physical-path
+        - id: host-root-port
+          label: 70:03.7 CPU PCIe Root Port
+          fill: "#22a7cf"
+          size: *a6
+          data:
+            title: 70:03.7 CPU PCIe Root Port
+            plane: host
+            layer: ZONE 01 · HOST SIDE
+            kind: hardware
+            description: Host root port; the attach point for the upstream side of the PEX880xx.
+            evidence: code
+            views:
+              - physical-path
+        - id: host-addr-space
+          label: Host PCIe Address Space
+          fill: "#22a7cf"
+          size: *a7
+          data:
+            title: Host PCIe Address Space
+            plane: host
+            layer: ZONE 01 · HOST SIDE
+            kind: state
+            description: PCIe address semantics as seen from the host; the SDEP downstream Bar2 (32GiB) is redirected here.
+            evidence: code
+            views:
+              - physical-path
+        - id: pex-switch
+          label: Broadcom PEX880xx PCIe Gen4 Switch
+          fill: "#607d8b"
+          size: *a8
+          data:
+            title: Broadcom PEX880xx PCIe Gen4 Switch
+            plane: pcie-fabric
+            layer: ZONE 02 · PHYSICAL FABRIC
+            kind: hardware
+            description: 71:00.0 upstream; 72:00.0 / 72:04.0 / 72:08.0 downstream; 72:1c.0 management.
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-sub-switch
+          label: Subordinate PEX Switch Branches
+          fill: "#607d8b"
+          size: *a9
+          data:
+            title: Subordinate PEX Switch Branches
+            plane: pcie-fabric
+            layer: ZONE 02 · PHYSICAL FABRIC
+            kind: hardware
+            description: Three subordinate branches (73/74, 79/7a, 7c/7d) fanning the upstream port out to the device branches.
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-downstream
+          label: Switch Downstream Ports
+          fill: "#607d8b"
+          size: *a10
+          data:
+            title: Switch Downstream Ports
+            plane: pcie-fabric
+            layer: ZONE 02 · PHYSICAL FABRIC
+            kind: hardware
+            description: 72:00.0 / 72:04.0 / 72:08.0; feeding the NVMe, GPU and RDMA upstream bridges respectively.
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-upstream
+          label: 71:00.0 Switch Upstream Port
+          fill: "#607d8b"
+          size: *a11
+          data:
+            title: 71:00.0 Switch Upstream Port
+            plane: pcie-fabric
+            layer: ZONE 02 · PHYSICAL FABRIC
+            kind: hardware
+            description: The switch side facing the host root port.
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: pex-mgmt
+          label: 72:1c.0 Management Port
+          fill: "#607d8b"
+          size: *a12
+          data:
+            title: 72:1c.0 Management Port
+            plane: pcie-fabric
+            layer: ZONE 02 · PHYSICAL FABRIC
+            kind: hardware
+            description: Switch internal management endpoint.
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: p2p
+          label: P2P Direct Path
+          fill: "#607d8b"
+          size: *a13
+          data:
+            title: P2P Direct Path
+            plane: pcie-fabric
+            layer: ZONE 02 · PHYSICAL FABRIC
+            kind: state
+            description: Direct mapping between the two SPUGs; the live mapping tables are empty, so traffic does not currently take this path.
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: spu-addr-space
+          label: SPU PCIe Address Space
+          fill: "#607d8b"
+          size: *a14
+          data:
+            title: SPU PCIe Address Space
+            plane: pcie-fabric
+            layer: ZONE 02 · PHYSICAL FABRIC
+            kind: state
+            description: PCIe address semantics as seen from SPU; the large SUEP upstream BAR window lands here and is restored to a physical address.
+            evidence: code
+            views:
+              - physical-path
+              - address-walk
+        - id: spug-nvme-branch
+          label: NVMe Branch
+          fill: "#b767f1"
+          size: *a15
+          data:
+            title: NVMe Branch
+            plane: spug
+            layer: ZONE 03 · BRANCHES AND BRIDGES
+            kind: device
+            description: "Upstream 7f:00.0 (5709:2000) -> downstream 80:00.0 (5709:2001) -> physical Samsung NVMe 81:00.0 (144d:a808). No host driver: ownership has been handed to SPU."
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spug-gpu-branch
+          label: GPU Branch
+          fill: "#b767f1"
+          size: *a16
+          data:
+            title: GPU Branch
+            plane: spug
+            layer: ZONE 03 · BRANCHES AND BRIDGES
+            kind: device
+            description: Upstream 76:00.0 (5709:2000) -> downstream 77:00.0 (5709:2001) -> physical NVIDIA A10 78:00.0 (10de:2236). Also no host driver.
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spug-rdma-branch
+          label: RDMA Branch
+          fill: "#b767f1"
+          size: *a17
+          data:
+            title: RDMA Branch
+            plane: spug
+            layer: ZONE 03 · BRANCHES AND BRIDGES
+            kind: device
+            description: The RDMA NIC and its SPUG-FPGA. The source diagram gives the entity only, without downstream port detail.
+            evidence: inference
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spug-fpga-nvme
+          label: SPUG-FPGA (NVMe side)
+          fill: "#d64d72"
+          size: *a18
+          data:
+            title: SPUG-FPGA (NVMe side)
+            plane: spug-fpga
+            layer: ZONE 04 · DOWNSTREAM BRIDGE
+            kind: hardware
+            description: Bar0/1/2/4 address translation tables; Bar0 16MiB control-register window, Bar1 1MiB downstream config/IO proxy window; plus register map and proxy responsibilities.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spug-fpga-gpu
+          label: SPUG-FPGA (GPU side)
+          fill: "#d64d72"
+          size: *a19
+          data:
+            title: SPUG-FPGA (GPU side)
+            plane: spug-fpga
+            layer: ZONE 04 · DOWNSTREAM BRIDGE
+            kind: hardware
+            description: Two Bar0/1/2/4 groups and address translation logic, structurally identical to the NVMe side.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spug-fpga-rdma
+          label: SPUG-FPGA (RDMA side)
+          fill: "#d64d72"
+          size: *a20
+          data:
+            title: SPUG-FPGA (RDMA side)
+            plane: spug-fpga
+            layer: ZONE 04 · DOWNSTREAM BRIDGE
+            kind: hardware
+            description: The source diagram gives the entity box only; connector [261] is dangling at one end into this shape, so confirm against the original whether it is a free segment or a missed connection.
+            evidence: inference
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spu-fpga
+          label: SPU-FPGA
+          fill: "#168f7b"
+          size: *a21
+          data:
+            title: SPU-FPGA
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: hardware
+            description: The upstream SUEP, downstream SDEP and SP37 endpoints and their BAR windows all hang off this FPGA.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: suep-upstream
+          label: 02:00.1 SUEP Upstream Endpoint
+          fill: "#168f7b"
+          size: *a22
+          data:
+            title: 02:00.1 SUEP Upstream Endpoint
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: hardware
+            description: Driven by suep_driver; the SUEP endpoint as seen by the host.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: sdep-downstream
+          label: 7b:00.1 EDP / SDEP Downstream Endpoint
+          fill: "#168f7b"
+          size: *a23
+          data:
+            title: 7b:00.1 EDP / SDEP Downstream Endpoint
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: hardware
+            description: Host-side endpoint, SDEP data/control function, VID:DID = 5709:1001, driven by sdep_driver.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: sp37-downstream
+          label: 7b:00.0 SP37 Downstream Endpoint
+          fill: "#168f7b"
+          size: *a24
+          data:
+            title: 7b:00.0 SP37 Downstream Endpoint
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: hardware
+            description: SP37 control function, VID:DID = 5709:1000; the lowest-level byte-transport channel between SPU and host.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: bar-suep-pool
+          label: SUEP Upstream BAR Windows
+          fill: "#168f7b"
+          size: *a25
+          data:
+            title: SUEP Upstream BAR Windows
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: buffer
+            description: Bar0 256MiB / Bar1 512MiB / Bar2 4GiB / Bar2 large 64-bit virtual BAR pool 128GiB / ROM virtual expansion ROM pool 16MiB. The address walkthrough lands in the 128GiB group.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: bar-sdep-pool
+          label: SDEP Downstream BAR Windows
+          fill: "#168f7b"
+          size: *a26
+          data:
+            title: SDEP Downstream BAR Windows
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: buffer
+            description: Bar0 4MiB / Bar1 4MiB / Bar2 32GiB; Bar2 is the host-side DMA redirection window.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: bar-sp37-pool
+          label: SP37 Downstream BAR Windows
+          fill: "#168f7b"
+          size: *a27
+          data:
+            title: SP37 Downstream BAR Windows
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: buffer
+            description: Bar0 128KiB (one on each side) / Bar2 64KiB; the smallest windows, carrying control and messages only.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spu-fpga-addr-trans
+          label: SPU-FPGA Address Translation
+          fill: "#168f7b"
+          size: *a28
+          data:
+            title: SPU-FPGA Address Translation
+            plane: spu-fpga
+            layer: ZONE 05 · UPSTREAM AND DOWNSTREAM ENDPOINTS
+            kind: hardware
+            description: "Restores the original address from the descriptor and overwrites the proxied TLP header: s_spu_rq_tdata(63 downto 0) <= s_spu_rq_real_addr."
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - address-walk
+        - id: spu-cpu
+          label: SPU Hygon CPU
+          fill: "#2f83e7"
+          size: *a29
+          data:
+            title: SPU Hygon CPU
+            plane: spu-cpu
+            layer: ZONE 06 · INTERNAL ENUMERATION
+            kind: hardware
+            description: The CPU inside SPU; both the software stack and the virtual bus run on it.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-root-port
+          label: 00:03.1 PCIe Root Port
+          fill: "#2f83e7"
+          size: *a30
+          data:
+            title: 00:03.1 PCIe Root Port
+            plane: spu-cpu
+            layer: ZONE 06 · INTERNAL ENUMERATION
+            kind: hardware
+            description: The PCIe root port inside SPU; the virtual bus f0 hangs beneath it.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-vbus-f0
+          label: Virtual PCI Bus f0 created by spu_vgpu
+          fill: "#2f83e7"
+          size: *a31
+          data:
+            title: Virtual PCI Bus f0 created by spu_vgpu
+            plane: spu-cpu
+            layer: ZONE 06 · INTERNAL ENUMERATION
+            kind: state
+            description: spu_vgpu.ko binds the FPGA-SPU side 5709:1001 and maps devices behind host/SPUG into PCIe devices enumerable inside SPU.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-vgpu-a10
+          label: f0:00.0 Virtual A10
+          fill: "#2f83e7"
+          size: *a32
+          data:
+            title: f0:00.0 Virtual A10
+            plane: spu-cpu
+            layer: ZONE 06 · INTERNAL ENUMERATION
+            kind: device
+            description: Retains 10de:2236, matching the physical A10.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-vgpu-nvme
+          label: f0:01.0 Virtual Samsung NVMe
+          fill: "#2f83e7"
+          size: *a33
+          data:
+            title: f0:01.0 Virtual Samsung NVMe
+            plane: spu-cpu
+            layer: ZONE 06 · INTERNAL ENUMERATION
+            kind: device
+            description: Retains 144d:a808, matching the physical NVMe.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-ep-direct
+          label: EP Port (Direct)
+          fill: "#2f83e7"
+          size: *a34
+          data:
+            title: EP Port (Direct)
+            plane: spu-cpu
+            layer: ZONE 06 · INTERNAL ENUMERATION
+            kind: hardware
+            description: The junction between the large SUEP BAR window and the SPU internal address space.
+            evidence: code
+            views:
+              - physical-path
+              - bar-windows
+              - virtual-bus
+        - id: spu-business
+          label: SPU Business Layer
+          fill: "#c05e2b"
+          size: *a35
+          data:
+            title: SPU Business Layer
+            plane: spu-sw
+            layer: ZONE 07 · SPU SIDE SOFTWARE
+            kind: application
+            description: Workload images, GateWay and Application Manager; where GPU/NVMe/RDMA/block devices are consumed inside SPU.
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-userspace
+          label: SPU Userspace
+          fill: "#c05e2b"
+          size: *a36
+          data:
+            title: SPU Userspace
+            plane: spu-sw
+            layer: ZONE 07 · SPU SIDE SOFTWARE
+            kind: service
+            description: LibOS, spu_connect, spu_tssd, Keyring and the service layer.
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-kernel
+          label: SPU Kernel Layer
+          fill: "#c05e2b"
+          size: *a37
+          data:
+            title: SPU Kernel Layer
+            plane: spu-sw
+            layer: ZONE 07 · SPU SIDE SOFTWARE
+            kind: driver
+            description: The load area for SPU-side kernel modules.
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-kernel-custom
+          label: SPU Custom Kernel spu_kernel
+          fill: "#c05e2b"
+          size: *a38
+          data:
+            title: SPU Custom Kernel spu_kernel
+            plane: spu-sw
+            layer: ZONE 07 · SPU SIDE SOFTWARE
+            kind: driver
+            description: hook_dma / hook_rdma and system capability extensions; the landing point for DMA redirection.
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-sp37
+          label: sp37.ko (SPU side)
+          fill: "#c05e2b"
+          size: *a39
+          data:
+            title: sp37.ko (SPU side)
+            plane: spu-sw
+            layer: ZONE 07 · SPU SIDE SOFTWARE
+            kind: driver
+            description: Same module as the host side; provides /dev/sp37_h2c_0, /dev/sp37_c2h_0, /dev/sp37_efuse0 with a 1 MiB default buffer.
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+        - id: spu-vgpu
+          label: spu_vgpu.ko
+          fill: "#c05e2b"
+          size: *a40
+          data:
+            title: spu_vgpu.ko
+            plane: spu-sw
+            layer: ZONE 07 · SPU SIDE SOFTWARE
+            kind: driver
+            description: Binds 5709:1001 and maps the GPU, NVMe and RNIC behind host/SPUG into PCIe devices enumerable inside SPU.
+            evidence: code
+            views:
+              - physical-path
+              - virtual-bus
+      topologyEdges:
+        - id: host-scan-root
+          source: host-kernel
+          target: host-root-port
+          label: Kernel drivers attach to the root port
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: Kernel drivers attach to the root port
+            description: sp37.ko binds function 0 and sdep.ko binds function 1; both take their BARs from the upstream bridge below the root port.
+            evidence: CODE_PROVEN
+        - id: root-to-fabric
+          source: host-root-port
+          target: pex-switch
+          label: Root port upstream to PEX880xx
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Root port upstream to PEX880xx
+            description: The source diagram does not draw this link; it is inferred from the 70:03.7 root port and 71:00.0 upstream port BDF pairing.
+            evidence: INFERRED
+        - id: fabric-upstream
+          source: pex-switch
+          target: pex-sub-switch
+          label: Switch fans out to subordinate branches
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Switch fans out to subordinate branches
+            description: 72:00.0 / 72:04.0 / 72:08.0 feed the three subordinate branches.
+            evidence: CODE_PROVEN
+        - id: fabric-to-nvme-bridge
+          source: pex-sub-switch
+          target: spug-nvme-branch
+          label: Branch to the NVMe-side upstream bridge
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Branch to the NVMe-side upstream bridge
+            description: Enters the NVMe branch through 7f:00.0 (5709:2000).
+            evidence: CODE_PROVEN
+        - id: fabric-to-gpu-bridge
+          source: pex-sub-switch
+          target: spug-gpu-branch
+          label: Branch to the GPU-side upstream bridge
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Branch to the GPU-side upstream bridge
+            description: Enters the GPU branch through 76:00.0 (5709:2000).
+            evidence: CODE_PROVEN
+        - id: nvme-bridge-to-spug-fpga
+          source: spug-nvme-branch
+          target: spug-fpga-nvme
+          label: NVMe-side SPUG-FPGA owns the downstream bridge
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: NVMe-side SPUG-FPGA owns the downstream bridge
+            description: 80:00.0 (5709:2001) shows up as pcieport in Linux, yet the SDEP driver still acquires and operates the SPUG BAR.
+            evidence: CODE_PROVEN
+        - id: gpu-bridge-to-spug-fpga
+          source: spug-gpu-branch
+          target: spug-fpga-gpu
+          label: GPU-side SPUG-FPGA owns the downstream bridge
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: GPU-side SPUG-FPGA owns the downstream bridge
+            description: 77:00.0 (5709:2001) reaches the physical A10 78:00.0 through the SPUG-FPGA.
+            evidence: CODE_PROVEN
+        - id: spug-fpga-to-spu-fpga-proxy
+          source: spug-fpga-nvme
+          target: spu-fpga-addr-trans
+          label: SPUG-FPGA sends descriptors to SPU-FPGA
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: SPUG-FPGA sends descriptors to SPU-FPGA
+            description: "SPUG-FPGA emits two TLP classes: descriptors at SDEP BAR1 + 0x1000..0x1700 (carrying original address, length, type and tag), and real requests/data at SDEP BAR1 + 0x80000..0xf0000."
+            evidence: CODE_PROVEN
+        - id: addr-trans-to-suep-bar
+          source: spu-fpga-addr-trans
+          target: bar-suep-pool
+          label: Overwritten TLP header hits SUEP BAR4
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: Overwritten TLP header hits SUEP BAR4
+            description: The RQ reaches the SPU-side PCIe interface and hits SUEP BAR4, restored as physical = physical-A10-BAR1 + (virtual - virtual-A10-BAR1).
+            evidence: CODE_PROVEN
+        - id: suep-bar-to-ep
+          source: bar-suep-pool
+          target: spu-ep-direct
+          label: SUEP Bar2 128GiB window to the EP port
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: SUEP Bar2 128GiB window to the EP port
+            description: The large 64-bit virtual BAR pool moves downstream device address space inside SPU.
+            evidence: CODE_PROVEN
+        - id: ep-to-root-port
+          source: spu-ep-direct
+          target: spu-root-port
+          label: EP port attaches to the internal root port
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: EP port attaches to the internal root port
+            description: The entry point of the SPU-internal PCIe tree.
+            evidence: CODE_PROVEN
+        - id: root-port-to-vbus
+          source: spu-root-port
+          target: spu-vbus-f0
+          label: Virtual bus f0 beneath the root port
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Virtual bus f0 beneath the root port
+            description: spu_vgpu creates this bus inside SPU and attaches the virtual devices.
+            evidence: CODE_PROVEN
+        - id: vbus-to-virtual-a10
+          source: spu-vbus-f0
+          target: spu-vgpu-a10
+          label: Enumerates f0:00.0 virtual A10
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Enumerates f0:00.0 virtual A10
+            description: Retains 10de:2236.
+            evidence: CODE_PROVEN
+        - id: vbus-to-virtual-nvme
+          source: spu-vbus-f0
+          target: spu-vgpu-nvme
+          label: Enumerates f0:01.0 virtual NVMe
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            title: Enumerates f0:01.0 virtual NVMe
+            description: Retains 144d:a808.
+            evidence: CODE_PROVEN
+        - id: spu-sw-drives-vgpu
+          source: spu-vgpu
+          target: spu-vbus-f0
+          label: spu_vgpu establishes the virtual bus
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: spu_vgpu establishes the virtual bus
+            description: After loading, the driver exposes downstream devices to SPU through the virtual bus.
+            evidence: CODE_PROVEN
+        - id: sdep-to-host-addr
+          source: bar-sdep-pool
+          target: host-addr-space
+          label: SDEP Bar2 32GiB to the host address space
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            title: SDEP Bar2 32GiB to the host address space
+            description: The host-side DMA redirection window; sdep_driver can see the static BDF and BAR of the A10, NVMe and both SPUGs.
+            evidence: CODE_PROVEN
+        - id: sp37-pair
+          source: spu-sp37
+          target: sp37-downstream
+          label: Both sp37 sides communicate over function 0
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: Both sp37 sides communicate over function 0
+            description: 1 MiB default buffer; only responsible for reliable byte transport and hardware control.
+            evidence: CODE_PROVEN
+        - id: host-kernel-to-sdep
+          source: host-kernel
+          target: sdep-downstream
+          label: sdep.ko binds the SDEP function
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            title: sdep.ko binds the SDEP function
+            description: sdep.ko binds 5709:1001, scans the SPUG/GPU topology and manages NTB and P2P.
+            evidence: CODE_PROVEN
+      viewOptions:
+        - id: physical-path
+          label: Physical path
+          hint: From the host root port through the PEX880xx to the three device branches, then back to the SPU-FPGA upstream/downstream endpoints.
+        - id: bar-windows
+          label: BAR windows
+          hint: The SUEP upstream, SDEP and SP37 downstream BAR groups, plus the translation tables on the three SPUG-FPGAs.
+        - id: virtual-bus
+          label: Virtual bus
+          hint: How spu_vgpu maps physical devices behind SPUG into PCIe devices enumerable inside SPU.
+        - id: address-walk
+          label: Address walkthrough
+          hint: "A field-observed chain: descriptor -> TLP header overwrite -> SUEP BAR4 hit -> physical address restored."
+      systemTree:
+        - label: Host Software Stack
+          plane: host
+          nodes:
+            - host-business
+            - host-platform
+            - host-userspace
+            - host-kernel
+            - host-numa
+            - host-root-port
+            - host-addr-space
+        - label: PCIe Switch and Address Spaces
+          plane: pcie-fabric
+          nodes:
+            - pex-switch
+            - pex-sub-switch
+            - pex-downstream
+            - pex-upstream
+            - pex-mgmt
+            - p2p
+            - spu-addr-space
+        - label: SPUG Device Branches
+          plane: spug
+          nodes:
+            - spug-nvme-branch
+            - spug-gpu-branch
+            - spug-rdma-branch
+        - label: SPUG-FPGA
+          plane: spug-fpga
+          nodes:
+            - spug-fpga-nvme
+            - spug-fpga-gpu
+            - spug-fpga-rdma
+        - label: SPU-FPGA and BAR Windows
+          plane: spu-fpga
+          nodes:
+            - spu-fpga
+            - suep-upstream
+            - sdep-downstream
+            - sp37-downstream
+            - bar-suep-pool
+            - bar-sdep-pool
+            - bar-sp37-pool
+            - spu-fpga-addr-trans
+        - label: SPU Internal CPU and Virtual Bus
+          plane: spu-cpu
+          nodes:
+            - spu-cpu
+            - spu-root-port
+            - spu-vbus-f0
+            - spu-vgpu-a10
+            - spu-vgpu-nvme
+            - spu-ep-direct
+        - label: SPU Software Stack
+          plane: spu-sw
+          nodes:
+            - spu-business
+            - spu-userspace
+            - spu-kernel
+            - spu-kernel-custom
+            - spu-sp37
+            - spu-vgpu
+      storageTrees: []
+      runtimeFacts:
+        - label: Evidence baseline
+          value: SPU&SPUG的架构.vsdx
+          tone: ok
+        - label: Source shapes
+          value: "164"
+          tone: ok
+        - label: Source connectors
+          value: "62"
+          tone: ok
+        - label: Live observation
+          value: Address walkthrough only
+          tone: warn
+      cameraHudViews:
+        physical-path:
+          eyebrow: SPU-SPUG-GLOBAL
+          title: Physical path
+          detail: From the host root port through the PEX880xx to the three device branches, then back to the SPU-FPGA upstream/downstream endpoints.
+        bar-windows:
+          eyebrow: SPU-SPUG-GLOBAL
+          title: BAR windows
+          detail: The SUEP upstream, SDEP and SP37 downstream BAR groups, plus the translation tables on the three SPUG-FPGAs.
+        virtual-bus:
+          eyebrow: SPU-SPUG-GLOBAL
+          title: Virtual bus
+          detail: How spu_vgpu maps physical devices behind SPUG into PCIe devices enumerable inside SPU.
+        address-walk:
+          eyebrow: CAUSAL JOURNEY
+          title: Address walkthrough
+          detail: "A field-observed chain: descriptor -> TLP header overwrite -> SUEP BAR4 hit -> physical address restored."
+  common:
+    focusModuleGroups:
+      host-business:
+        - host-business
+      host-platform:
+        - host-platform
+      host-userspace:
+        - host-userspace
+      host-kernel:
+        - host-kernel
+      host-numa:
+        - host-numa
+      host-root-port:
+        - host-root-port
+      host-addr-space:
+        - host-addr-space
+      pex-switch:
+        - pex-switch
+      pex-sub-switch:
+        - pex-sub-switch
+      pex-downstream:
+        - pex-downstream
+      pex-upstream:
+        - pex-upstream
+      pex-mgmt:
+        - pex-mgmt
+      p2p:
+        - p2p
+      spu-addr-space:
+        - spu-addr-space
+      spug-nvme-branch:
+        - spug-nvme-branch
+      spug-gpu-branch:
+        - spug-gpu-branch
+      spug-rdma-branch:
+        - spug-rdma-branch
+      spug-fpga-nvme:
+        - spug-fpga-nvme
+      spug-fpga-gpu:
+        - spug-fpga-gpu
+      spug-fpga-rdma:
+        - spug-fpga-rdma
+      spu-fpga:
+        - spu-fpga
+      suep-upstream:
+        - suep-upstream
+      sdep-downstream:
+        - sdep-downstream
+      sp37-downstream:
+        - sp37-downstream
+      bar-suep-pool:
+        - bar-suep-pool
+      bar-sdep-pool:
+        - bar-sdep-pool
+      bar-sp37-pool:
+        - bar-sp37-pool
+      spu-fpga-addr-trans:
+        - spu-fpga-addr-trans
+      spu-cpu:
+        - spu-cpu
+      spu-root-port:
+        - spu-root-port
+      spu-vbus-f0:
+        - spu-vbus-f0
+      spu-vgpu-a10:
+        - spu-vgpu-a10
+      spu-vgpu-nvme:
+        - spu-vgpu-nvme
+      spu-ep-direct:
+        - spu-ep-direct
+      spu-business:
+        - spu-business
+      spu-userspace:
+        - spu-userspace
+      spu-kernel:
+        - spu-kernel
+      spu-kernel-custom:
+        - spu-kernel-custom
+      spu-sp37:
+        - spu-sp37
+      spu-vgpu:
+        - spu-vgpu
+    driverJourneyModuleRoleByNodeId:
+      host-business: host-business
+      host-platform: host-platform
+      host-userspace: host-userspace
+      host-kernel: host-kernel
+      host-numa: host-numa
+      host-root-port: host-root-port
+      host-addr-space: host-addr-space
+      pex-switch: pex-switch
+      pex-sub-switch: pex-sub-switch
+      pex-downstream: pex-downstream
+      pex-upstream: pex-upstream
+      pex-mgmt: pex-mgmt
+      p2p: p2p
+      spu-addr-space: spu-addr-space
+      spug-nvme-branch: spug-nvme-branch
+      spug-gpu-branch: spug-gpu-branch
+      spug-rdma-branch: spug-rdma-branch
+      spug-fpga-nvme: spug-fpga-nvme
+      spug-fpga-gpu: spug-fpga-gpu
+      spug-fpga-rdma: spug-fpga-rdma
+      spu-fpga: spu-fpga
+      suep-upstream: suep-upstream
+      sdep-downstream: sdep-downstream
+      sp37-downstream: sp37-downstream
+      bar-suep-pool: bar-suep-pool
+      bar-sdep-pool: bar-sdep-pool
+      bar-sp37-pool: bar-sp37-pool
+      spu-fpga-addr-trans: spu-fpga-addr-trans
+      spu-cpu: spu-cpu
+      spu-root-port: spu-root-port
+      spu-vbus-f0: spu-vbus-f0
+      spu-vgpu-a10: spu-vgpu-a10
+      spu-vgpu-nvme: spu-vgpu-nvme
+      spu-ep-direct: spu-ep-direct
+      spu-business: spu-business
+      spu-userspace: spu-userspace
+      spu-kernel: spu-kernel
+      spu-kernel-custom: spu-kernel-custom
+      spu-sp37: spu-sp37
+      spu-vgpu: spu-vgpu
+    driverJourneyOrder:
+      - address-translation-walkthrough
+    nodePositions:
+      host-business: *a41
+      host-platform: *a42
+      host-userspace: *a43
+      host-kernel: *a44
+      host-numa: *a45
+      host-root-port: *a46
+      host-addr-space: *a47
+      pex-switch: *a48
+      pex-sub-switch: *a49
+      pex-downstream: *a50
+      pex-upstream: *a51
+      pex-mgmt: *a52
+      p2p: *a53
+      spu-addr-space: *a54
+      spug-nvme-branch: *a55
+      spug-gpu-branch: *a56
+      spug-rdma-branch: *a57
+      spug-fpga-nvme: *a58
+      spug-fpga-gpu: *a59
+      spug-fpga-rdma: *a60
+      spu-fpga: *a61
+      suep-upstream: *a62
+      sdep-downstream: *a63
+      sp37-downstream: *a64
+      bar-suep-pool: *a65
+      bar-sdep-pool: *a66
+      bar-sp37-pool: *a67
+      spu-fpga-addr-trans: *a68
+      spu-cpu: *a69
+      spu-root-port: *a70
+      spu-vbus-f0: *a71
+      spu-vgpu-a10: *a72
+      spu-vgpu-nvme: *a73
+      spu-ep-direct: *a74
+      spu-business: *a75
+      spu-userspace: *a76
+      spu-kernel: *a77
+      spu-kernel-custom: *a78
+      spu-sp37: *a79
+      spu-vgpu: *a80
+    macroZones:
+      host:
+        center: *a81
+        halfSize:
+          - 5.5
+          - 7.6
+          - 1
+        nodeIds:
+          - host-business
+          - host-platform
+          - host-userspace
+          - host-kernel
+          - host-numa
+          - host-root-port
+          - host-addr-space
+      pcie-fabric:
+        center: *a82
+        halfSize:
+          - 5.5
+          - 7.6
+          - 1
+        nodeIds:
+          - pex-switch
+          - pex-sub-switch
+          - pex-downstream
+          - pex-upstream
+          - pex-mgmt
+          - p2p
+          - spu-addr-space
+      spug:
+        center: *a83
+        halfSize:
+          - 3.5
+          - 6.199999999999999
+          - 1
+        nodeIds:
+          - spug-nvme-branch
+          - spug-gpu-branch
+          - spug-rdma-branch
+      spug-fpga:
+        center: *a84
+        halfSize:
+          - 3.5
+          - 6.199999999999999
+          - 1
+        nodeIds:
+          - spug-fpga-nvme
+          - spug-fpga-gpu
+          - spug-fpga-rdma
+      spu-fpga:
+        center: *a85
+        halfSize:
+          - 5.5
+          - 7.6
+          - 1
+        nodeIds:
+          - spu-fpga
+          - suep-upstream
+          - sdep-downstream
+          - sp37-downstream
+          - bar-suep-pool
+          - bar-sdep-pool
+          - bar-sp37-pool
+          - spu-fpga-addr-trans
+      spu-cpu:
+        center: *a86
+        halfSize:
+          - 5.5
+          - 6.199999999999999
+          - 1
+        nodeIds:
+          - spu-cpu
+          - spu-root-port
+          - spu-vbus-f0
+          - spu-vgpu-a10
+          - spu-vgpu-nvme
+          - spu-ep-direct
+      spu-sw:
+        center: *a87
+        halfSize:
+          - 5.5
+          - 6.199999999999999
+          - 1
+        nodeIds:
+          - spu-business
+          - spu-userspace
+          - spu-kernel
+          - spu-kernel-custom
+          - spu-sp37
+          - spu-vgpu
+    globalModuleLabels:
+      - id: host-business
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: host-platform
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: host-userspace
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: host-kernel
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: host-numa
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: host-root-port
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: host-addr-space
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: pex-switch
+        color: "#607d8b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: pex-sub-switch
+        color: "#607d8b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: pex-downstream
+        color: "#607d8b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: pex-upstream
+        color: "#607d8b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: pex-mgmt
+        color: "#607d8b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: p2p
+        color: "#607d8b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-addr-space
+        color: "#607d8b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spug-nvme-branch
+        color: "#b767f1"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spug-gpu-branch
+        color: "#b767f1"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spug-rdma-branch
+        color: "#b767f1"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spug-fpga-nvme
+        color: "#d64d72"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spug-fpga-gpu
+        color: "#d64d72"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spug-fpga-rdma
+        color: "#d64d72"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-fpga
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: suep-upstream
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: sdep-downstream
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: sp37-downstream
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: bar-suep-pool
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: bar-sdep-pool
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: bar-sp37-pool
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-fpga-addr-trans
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-cpu
+        color: "#2f83e7"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-root-port
+        color: "#2f83e7"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-vbus-f0
+        color: "#2f83e7"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-vgpu-a10
+        color: "#2f83e7"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-vgpu-nvme
+        color: "#2f83e7"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-ep-direct
+        color: "#2f83e7"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-business
+        color: "#c05e2b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-userspace
+        color: "#c05e2b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-kernel
+        color: "#c05e2b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-kernel-custom
+        color: "#c05e2b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-sp37
+        color: "#c05e2b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-vgpu
+        color: "#c05e2b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+    routeNodeIds:
+      address-translation-walkthrough:
+        - spug-fpga-nvme
+        - spu-fpga-addr-trans
+        - bar-suep-pool
+        - spu-ep-direct
+    directionCards: []
+    visuals:
+      zones:
+        - id: host
+          anchorNodeId: host-business
+          eyebrow: *a88
+          title: *a89
+          summary: *a90
+          position: *a81
+          size: *a91
+          color: "#22a7cf"
+          detailGroup: host
+          backdrop: server
+        - id: pcie-fabric
+          anchorNodeId: pex-switch
+          eyebrow: *a92
+          title: *a93
+          summary: *a94
+          position: *a82
+          size: *a95
+          color: "#607d8b"
+          detailGroup: pcie-fabric
+          backdrop: fabric
+        - id: spug
+          anchorNodeId: spug-nvme-branch
+          eyebrow: *a96
+          title: *a97
+          summary: *a98
+          position: *a83
+          size: *a99
+          color: "#b767f1"
+          detailGroup: spug
+          backdrop: device
+        - id: spug-fpga
+          anchorNodeId: spug-fpga-nvme
+          eyebrow: *a100
+          title: *a101
+          summary: *a102
+          position: *a84
+          size: *a103
+          color: "#d64d72"
+          detailGroup: spug-fpga
+          backdrop: board
+        - id: spu-fpga
+          anchorNodeId: spu-fpga
+          eyebrow: *a104
+          title: *a105
+          summary: *a106
+          position: *a85
+          size: *a107
+          color: "#168f7b"
+          detailGroup: spu-fpga
+          backdrop: board
+        - id: spu-cpu
+          anchorNodeId: spu-cpu
+          eyebrow: *a108
+          title: *a109
+          summary: *a110
+          position: *a86
+          size: *a111
+          color: "#2f83e7"
+          detailGroup: spu-cpu
+          backdrop: board
+        - id: spu-sw
+          anchorNodeId: spu-business
+          eyebrow: *a112
+          title: *a113
+          summary: *a114
+          position: *a87
+          size: *a115
+          color: "#c05e2b"
+          detailGroup: spu-sw
+          backdrop: server
+      modules:
+        - nodeId: host-business
+          title: *a116
+          eyebrow: *a88
+          position: *a41
+          size: *a1
+          color: "#22a7cf"
+          labelOffset: *a117
+          detailGroup: host
+        - nodeId: host-platform
+          title: *a118
+          eyebrow: *a88
+          position: *a42
+          size: *a2
+          color: "#22a7cf"
+          labelOffset: *a119
+          detailGroup: host
+        - nodeId: host-userspace
+          title: *a120
+          eyebrow: *a88
+          position: *a43
+          size: *a3
+          color: "#22a7cf"
+          labelOffset: *a121
+          detailGroup: host
+        - nodeId: host-kernel
+          title: *a122
+          eyebrow: *a88
+          position: *a44
+          size: *a4
+          color: "#22a7cf"
+          labelOffset: *a123
+          detailGroup: host
+        - nodeId: host-numa
+          title: *a124
+          eyebrow: *a88
+          position: *a45
+          size: *a5
+          color: "#22a7cf"
+          labelOffset: *a125
+          detailGroup: host
+        - nodeId: host-root-port
+          title: *a126
+          eyebrow: *a88
+          position: *a46
+          size: *a6
+          color: "#22a7cf"
+          labelOffset: *a127
+          detailGroup: host
+        - nodeId: host-addr-space
+          title: *a128
+          eyebrow: *a88
+          position: *a47
+          size: *a7
+          color: "#22a7cf"
+          labelOffset: *a129
+          detailGroup: host
+        - nodeId: pex-switch
+          title: *a130
+          eyebrow: *a92
+          position: *a48
+          size: *a8
+          color: "#607d8b"
+          labelOffset: *a131
+          detailGroup: pcie-fabric
+        - nodeId: pex-sub-switch
+          title: *a132
+          eyebrow: *a92
+          position: *a49
+          size: *a9
+          color: "#607d8b"
+          labelOffset: *a133
+          detailGroup: pcie-fabric
+        - nodeId: pex-downstream
+          title: *a134
+          eyebrow: *a92
+          position: *a50
+          size: *a10
+          color: "#607d8b"
+          labelOffset: *a135
+          detailGroup: pcie-fabric
+        - nodeId: pex-upstream
+          title: *a136
+          eyebrow: *a92
+          position: *a51
+          size: *a11
+          color: "#607d8b"
+          labelOffset: *a137
+          detailGroup: pcie-fabric
+        - nodeId: pex-mgmt
+          title: *a138
+          eyebrow: *a92
+          position: *a52
+          size: *a12
+          color: "#607d8b"
+          labelOffset: *a139
+          detailGroup: pcie-fabric
+        - nodeId: p2p
+          title: *a140
+          eyebrow: *a92
+          position: *a53
+          size: *a13
+          color: "#607d8b"
+          labelOffset: *a141
+          detailGroup: pcie-fabric
+        - nodeId: spu-addr-space
+          title: *a142
+          eyebrow: *a92
+          position: *a54
+          size: *a14
+          color: "#607d8b"
+          labelOffset: *a143
+          detailGroup: pcie-fabric
+        - nodeId: spug-nvme-branch
+          title: *a144
+          eyebrow: *a96
+          position: *a55
+          size: *a15
+          color: "#b767f1"
+          labelOffset: *a145
+          detailGroup: spug
+        - nodeId: spug-gpu-branch
+          title: *a146
+          eyebrow: *a96
+          position: *a56
+          size: *a16
+          color: "#b767f1"
+          labelOffset: *a147
+          detailGroup: spug
+        - nodeId: spug-rdma-branch
+          title: *a148
+          eyebrow: *a96
+          position: *a57
+          size: *a17
+          color: "#b767f1"
+          labelOffset: *a149
+          detailGroup: spug
+        - nodeId: spug-fpga-nvme
+          title: *a150
+          eyebrow: *a100
+          position: *a58
+          size: *a18
+          color: "#d64d72"
+          labelOffset: *a151
+          detailGroup: spug-fpga
+        - nodeId: spug-fpga-gpu
+          title: *a152
+          eyebrow: *a100
+          position: *a59
+          size: *a19
+          color: "#d64d72"
+          labelOffset: *a153
+          detailGroup: spug-fpga
+        - nodeId: spug-fpga-rdma
+          title: *a154
+          eyebrow: *a100
+          position: *a60
+          size: *a20
+          color: "#d64d72"
+          labelOffset: *a155
+          detailGroup: spug-fpga
+        - nodeId: spu-fpga
+          title: *a156
+          eyebrow: *a104
+          position: *a61
+          size: *a21
+          color: "#168f7b"
+          labelOffset: *a157
+          detailGroup: spu-fpga
+        - nodeId: suep-upstream
+          title: *a158
+          eyebrow: *a104
+          position: *a62
+          size: *a22
+          color: "#168f7b"
+          labelOffset: *a159
+          detailGroup: spu-fpga
+        - nodeId: sdep-downstream
+          title: *a160
+          eyebrow: *a104
+          position: *a63
+          size: *a23
+          color: "#168f7b"
+          labelOffset: *a161
+          detailGroup: spu-fpga
+        - nodeId: sp37-downstream
+          title: *a162
+          eyebrow: *a104
+          position: *a64
+          size: *a24
+          color: "#168f7b"
+          labelOffset: *a163
+          detailGroup: spu-fpga
+        - nodeId: bar-suep-pool
+          title: *a164
+          eyebrow: *a104
+          position: *a65
+          size: *a25
+          color: "#168f7b"
+          labelOffset: *a165
+          detailGroup: spu-fpga
+        - nodeId: bar-sdep-pool
+          title: *a166
+          eyebrow: *a104
+          position: *a66
+          size: *a26
+          color: "#168f7b"
+          labelOffset: *a167
+          detailGroup: spu-fpga
+        - nodeId: bar-sp37-pool
+          title: *a168
+          eyebrow: *a104
+          position: *a67
+          size: *a27
+          color: "#168f7b"
+          labelOffset: *a169
+          detailGroup: spu-fpga
+        - nodeId: spu-fpga-addr-trans
+          title: *a170
+          eyebrow: *a104
+          position: *a68
+          size: *a28
+          color: "#168f7b"
+          labelOffset: *a171
+          detailGroup: spu-fpga
+        - nodeId: spu-cpu
+          title: *a172
+          eyebrow: *a108
+          position: *a69
+          size: *a29
+          color: "#2f83e7"
+          labelOffset: *a173
+          detailGroup: spu-cpu
+        - nodeId: spu-root-port
+          title: *a174
+          eyebrow: *a108
+          position: *a70
+          size: *a30
+          color: "#2f83e7"
+          labelOffset: *a175
+          detailGroup: spu-cpu
+        - nodeId: spu-vbus-f0
+          title: *a176
+          eyebrow: *a108
+          position: *a71
+          size: *a31
+          color: "#2f83e7"
+          labelOffset: *a177
+          detailGroup: spu-cpu
+        - nodeId: spu-vgpu-a10
+          title: *a178
+          eyebrow: *a108
+          position: *a72
+          size: *a32
+          color: "#2f83e7"
+          labelOffset: *a179
+          detailGroup: spu-cpu
+        - nodeId: spu-vgpu-nvme
+          title: *a180
+          eyebrow: *a108
+          position: *a73
+          size: *a33
+          color: "#2f83e7"
+          labelOffset: *a181
+          detailGroup: spu-cpu
+        - nodeId: spu-ep-direct
+          title: *a182
+          eyebrow: *a108
+          position: *a74
+          size: *a34
+          color: "#2f83e7"
+          labelOffset: *a183
+          detailGroup: spu-cpu
+        - nodeId: spu-business
+          title: *a184
+          eyebrow: *a112
+          position: *a75
+          size: *a35
+          color: "#c05e2b"
+          labelOffset: *a185
+          detailGroup: spu-sw
+        - nodeId: spu-userspace
+          title: *a186
+          eyebrow: *a112
+          position: *a76
+          size: *a36
+          color: "#c05e2b"
+          labelOffset: *a187
+          detailGroup: spu-sw
+        - nodeId: spu-kernel
+          title: *a188
+          eyebrow: *a112
+          position: *a77
+          size: *a37
+          color: "#c05e2b"
+          labelOffset: *a189
+          detailGroup: spu-sw
+        - nodeId: spu-kernel-custom
+          title: *a190
+          eyebrow: *a112
+          position: *a78
+          size: *a38
+          color: "#c05e2b"
+          labelOffset: *a191
+          detailGroup: spu-sw
+        - nodeId: spu-sp37
+          title: *a192
+          eyebrow: *a112
+          position: *a79
+          size: *a39
+          color: "#c05e2b"
+          labelOffset: *a193
+          detailGroup: spu-sw
+        - nodeId: spu-vgpu
+          title: *a194
+          eyebrow: *a112
+          position: *a80
+          size: *a40
+          color: "#c05e2b"
+          labelOffset: *a195
+          detailGroup: spu-sw
+      layers: []
+      depths: []
+  displayDefaults:
+    pipeThickness: 3
+    hudDistance: 1.15
+    moduleLabelDistance: 1.15
+    labelLayoutMode: module
+    labelLineThickness: 1.4
+    moduleLabelScale: 0.92
+    focusAnnotationScale: 1.6
+    focusHudTextScale: 1.8
+    subLabelDistance: 34
+    subLabelFadeRange: 9
+    farFadeStart: 100
+    farBlockOpacity: 0.22
+    farFlowOpacity: 0.18
