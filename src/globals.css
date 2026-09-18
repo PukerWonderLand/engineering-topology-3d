@@ -326,12 +326,14 @@ input:focus-visible,
 .canvas-fullscreen-button { position: absolute; right: 12px; bottom: 10px; z-index: 64; display: flex; align-items: center; gap: 7px; min-width: 116px; min-height: 34px; padding: 0 13px; border: 1px solid #1f6fc4; border-radius: 8px; background: rgba(37, 121, 213, 0.96); box-shadow: 0 8px 22px rgba(24, 82, 145, 0.28); color: #fff; font-size: 9px; font-weight: 800; cursor: pointer; transition: 150ms ease; }
 .canvas-fullscreen-button > span { color: #fff; font-size: 15px; line-height: 1; }
 .canvas-fullscreen-button:hover { border-color: #175ca7; background: #1e6fca; color: #fff; transform: translateY(-1px); }
-.line-settings-trigger { position: absolute; right: 12px; bottom: 52px; z-index: 66; display: flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 11px; border: 1px solid #8fb7df; border-radius: 8px; background: rgba(255, 255, 255, 0.96); box-shadow: 0 8px 22px rgba(25, 66, 105, 0.18); color: #48677f; font-size: 8px; font-weight: 750; cursor: pointer; backdrop-filter: blur(10px); transition: 150ms ease; }
+.line-settings-trigger { position: absolute; right: 140px; bottom: 10px; z-index: 66; display: flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 11px; border: 1px solid #8fb7df; border-radius: 8px; background: rgba(255, 255, 255, 0.96); box-shadow: 0 8px 22px rgba(25, 66, 105, 0.18); color: #48677f; font-size: 8px; font-weight: 750; cursor: pointer; backdrop-filter: blur(10px); transition: 150ms ease; }
 .line-settings-trigger > span { width: 24px; height: 5px; border-radius: 999px; background: linear-gradient(90deg, #2f83e7 0 48%, #13a681 52% 100%); box-shadow: 0 0 0 2px rgba(68, 144, 198, 0.11); }
 .line-settings-trigger strong { color: #1c67af; font-family: Consolas, "Cascadia Mono", monospace; font-size: 9px; }
 .line-settings-trigger:hover,
 .line-settings-trigger.active { border-color: #2f83e7; background: #fff; box-shadow: 0 0 0 3px rgba(47, 131, 231, 0.12), 0 10px 26px rgba(25, 66, 105, 0.2); color: #245e91; transform: translateY(-1px); }
-.line-settings-panel { position: absolute; right: 12px; bottom: 92px; z-index: 82; box-sizing: border-box; width: min(342px, calc(100% - 24px)); max-height: calc(100% - 108px); overflow-x: hidden; overflow-y: auto; border: 1px solid rgba(114, 154, 193, 0.9); border-radius: 13px; background: rgba(247, 251, 255, 0.96); box-shadow: 0 20px 48px rgba(20, 48, 77, 0.24); color: #20384f; backdrop-filter: blur(18px); }
+.line-settings-panel { position: absolute; right: 12px; bottom: 108px; z-index: 82; box-sizing: border-box; width: min(342px, calc(100% - 24px)); max-height: calc(100% - 124px); overflow-x: hidden; overflow-y: auto; border: 1px solid rgba(114, 154, 193, 0.9); border-radius: 13px; background: rgba(247, 251, 255, 0.96); box-shadow: 0 20px 48px rgba(20, 48, 77, 0.24); color: #20384f; backdrop-filter: blur(18px); }
+.canvas-panel.focus-mode .line-settings-trigger { right: 14px; bottom: 58px; left: auto; }
+.canvas-panel.focus-mode .line-settings-panel { right: 14px; bottom: 100px; left: auto; max-height: calc(100% - 116px); }
 .line-settings-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; padding: 8px 10px 8px 15px; border-bottom: 1px solid #d8e4ee; background: linear-gradient(100deg, rgba(224, 239, 254, 0.9), rgba(241, 250, 247, 0.9)); }
 .line-settings-panel header .eyebrow { margin: 0 0 3px; color: #517493; font-family: Consolas, "Cascadia Mono", monospace; font-size: 7px; font-weight: 800; letter-spacing: 0.12em; }
 .line-settings-panel header h3 { margin: 0; color: #19334c; font-size: 14px; }
@@ -990,10 +992,12 @@ html[data-locale="en-US"] .module-info p { -webkit-line-clamp: 3; line-clamp: 3;
   .canvas-panel.clean-view .camera-presets { top: 18px; }
   .physical-map-key { top: 58px; right: 18px; gap: 14px; padding: 10px 13px; border-radius: 10px; font-size: 11px; }
   .physical-map-key i { width: 19px; height: 13px; }
-  .line-settings-trigger { right: 20px; bottom: 62px; gap: 9px; min-height: 40px; padding: 0 15px; border-radius: 10px; font-size: 11px; }
+  .line-settings-trigger { right: 174px; bottom: 14px; left: auto; gap: 9px; min-height: 40px; padding: 0 15px; border-radius: 10px; font-size: 11px; }
   .line-settings-trigger > span { width: 32px; height: 7px; }
   .line-settings-trigger strong { font-size: 12px; }
-  .line-settings-panel { right: 20px; bottom: 110px; width: min(430px, calc(100% - 40px)); border-radius: 16px; }
+  .line-settings-panel { right: 20px; bottom: 132px; left: auto; width: min(430px, calc(100% - 40px)); max-height: calc(100% - 152px); border-radius: 16px; }
+  .canvas-panel.focus-mode .line-settings-trigger { right: 20px; bottom: 68px; left: auto; }
+  .canvas-panel.focus-mode .line-settings-panel { right: 20px; bottom: 116px; left: auto; max-height: calc(100% - 136px); }
   .line-settings-panel header { min-height: 68px; padding: 10px 13px 10px 19px; }
   .line-settings-panel header .eyebrow { font-size: 9px; }
   .line-settings-panel header h3 { font-size: 18px; }
@@ -1204,10 +1208,12 @@ html[data-locale="en-US"] .module-info p { -webkit-line-clamp: 3; line-clamp: 3;
   .canvas-legend button { flex: 0 0 auto; }
   .canvas-help { display: none; }
   .canvas-fullscreen-button { right: 7px; bottom: 7px; min-height: 29px; padding: 0 8px; font-size: 7.5px; }
-  .line-settings-trigger { right: 7px; bottom: 43px; min-height: 29px; padding: 0 8px; font-size: 7px; }
+  .line-settings-trigger { right: 104px; bottom: 7px; left: auto; min-height: 29px; padding: 0 8px; font-size: 7px; }
   .line-settings-trigger > span { width: 18px; height: 4px; }
   .line-settings-trigger strong { font-size: 7.5px; }
-  .line-settings-panel { right: 7px; bottom: 78px; width: calc(100% - 14px); max-height: calc(100% - 88px); overflow-y: auto; border-radius: 10px; }
+  .line-settings-panel { right: 7px; bottom: 90px; left: 7px; width: calc(100% - 14px); max-height: calc(100% - 100px); overflow-y: auto; border-radius: 10px; }
+  .canvas-panel.focus-mode .line-settings-trigger { right: 8px; bottom: 43px; left: auto; }
+  .canvas-panel.focus-mode .line-settings-panel { right: 7px; bottom: 78px; left: 7px; max-height: calc(100% - 88px); }
   .label-layout-mode-options { gap: 5px; margin-top: 8px; }
   .label-layout-mode-options button { min-height: 28px; font-size: 7px; }
   .camera-hud-overlay { inset: 76px 6px 46px; }

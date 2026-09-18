@@ -1,0 +1,6088 @@
+schemaVersion: "2.0"
+id: spu-spug-driver-overview
+title:
+  zhCN: SPU / SPUG 全驱动、仓库与 FPGA 交互总览
+  enUS: SPU / SPUG Driver, Repository, and FPGA Interaction Overview
+description:
+  zhCN: 展示 Host 与 SPU 驱动的 Git 归属、加载位置、启动依赖、SPU/SPUG FPGA 交互以及五条关键生命周期旅程。
+  enUS: Maps Git ownership, load placement, startup dependencies, SPU/SPUG FPGA interactions, and five key lifecycle journeys for Host and SPU drivers.
+evidence: CODE_PROVEN
+locales:
+  default: zh-CN
+  supported:
+    - zh-CN
+    - en-US
+zones:
+  - id: host-userspace
+    title:
+      zhCN: Host 用户态与服务
+      enUS: Host Userspace and Services
+    eyebrow: &a117
+      zhCN: 区域 01 · 服务入口
+      enUS: ZONE 01 · SERVICE ENTRY
+    summary:
+      zhCN: PCS、管理服务与 SPUG 控制工具
+      enUS: PCS, management services, and SPUG control tools
+    color: "#22a7cf"
+    nodeIds: &a69
+      - host-pcs
+      - host-platform
+      - host-spug-tools
+  - id: host-kernel
+    title:
+      zhCN: Host 内核驱动
+      enUS: Host Kernel Drivers
+    eyebrow: &a121
+      zhCN: 区域 02 · Host 驱动边界
+      enUS: ZONE 02 · HOST DRIVER BOUNDARY
+    summary:
+      zhCN: SP37、SDEP 与可选块设备端
+      enUS: SP37, SDEP, and optional block endpoint
+    color: "#7657c8"
+    nodeIds: &a70
+      - host-sp37
+      - host-sdep
+      - host-spug-subdriver
+      - host-block
+  - id: spu-fpga
+    title:
+      zhCN: SPU FPGA
+      enUS: SPU FPGA
+    eyebrow: &a126
+      zhCN: 区域 03 · 双 PCIe 与 NTB
+      enUS: ZONE 03 · DUAL PCIE AND NTB
+    summary:
+      zhCN: Function 0、Function 1、协议与安全逻辑
+      enUS: Function 0, Function 1, protocol, and security logic
+    color: "#168f7b"
+    nodeIds: &a71
+      - spu-f0
+      - spu-ntb
+      - spu-security-rtl
+  - id: spu-kernel
+    title:
+      zhCN: SPU 内核驱动
+      enUS: SPU Kernel Drivers
+    eyebrow: &a130
+      zhCN: 区域 04 · SPU 内核边界
+      enUS: ZONE 04 · SPU KERNEL BOUNDARY
+    summary:
+      zhCN: SP37、SUEP、虚拟 PCI 与定制 Hook
+      enUS: SP37, SUEP, virtual PCI, and custom hooks
+    color: "#2f83e7"
+    nodeIds: &a72
+      - spu-sp37
+      - spu-connect
+      - spu-vgpu
+      - spu-kernel-hooks
+      - spu-security-adapters
+      - spu-block
+  - id: spu-userspace
+    title:
+      zhCN: SPU 用户态与平台
+      enUS: SPU Userspace and Platform
+    eyebrow: &a137
+      zhCN: 区域 05 · 可信服务
+      enUS: ZONE 05 · TRUSTED SERVICES
+    summary:
+      zhCN: PCS、GPU 驱动装配、TSSD 与平台服务
+      enUS: PCS, GPU driver assembly, TSSD, and platform services
+    color: "#c05e2b"
+    nodeIds: &a73
+      - spu-pcs
+      - spu-gpu-loader
+      - spu-platform
+  - id: spug-fpga
+    title:
+      zhCN: SPUG FPGA
+      enUS: SPUG FPGA
+    eyebrow: &a141
+      zhCN: 区域 06 · GPU 安全桥
+      enUS: ZONE 06 · GPU SECURITY BRIDGE
+    summary:
+      zhCN: 上下游 PCIe、状态机与密码数据面
+      enUS: Upstream/downstream PCIe, state machine, and crypto plane
+    color: "#d64d72"
+    nodeIds: &a74
+      - spug-pcie
+      - spug-control
+      - spug-crypto
+  - id: gpu-external
+    title:
+      zhCN: GPU、外部驱动与可选存储
+      enUS: GPU, External Drivers, and Optional Storage
+    eyebrow: &a145
+      zhCN: 区域 07 · 外部端点
+      enUS: ZONE 07 · EXTERNAL ENDPOINTS
+    summary:
+      zhCN: 虚拟 GPU、厂商驱动、物理 GPU 与安全块设备
+      enUS: Virtual GPU, vendor drivers, physical GPU, and secure block device
+    color: "#7fae3f"
+    nodeIds: &a75
+      - virtual-gpu
+      - vendor-gpu-driver
+      - physical-gpu
+      - secure-block-device
+nodes:
+  - id: host-pcs
+    zoneId: host-userspace
+    title: &a116
+      zhCN: Host PCS / pcie_server
+      enUS: Host PCS / pcie_server
+    description:
+      zhCN: 将本地 client 请求封装为 SP37 帧，并通过 Host 字符设备收发。
+      enUS: Encapsulates local client requests into SP37 frames and exchanges them through Host character devices.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    tags: &a17 []
+    interfaces: &a18
+      - Unix Socket
+      - /dev/sp37_h2c_X
+      - /dev/sp37_c2h_X
+    sources:
+      - path: nereus/nereus_pcie
+        note: Host/SPU PCS userspace transport repository
+  - id: host-platform
+    zoneId: host-userspace
+    title: &a118
+      zhCN: Host 管理服务
+      enUS: Host Management Services
+    description:
+      zhCN: host_ams、host_nms、host_tun 与本地管理 API；只在底层链路稳定后启动。
+      enUS: host_ams, host_nms, host_tun, and local management APIs; started only after the lower link is stable.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#2997bd"
+    tags: &a19 []
+    interfaces: &a20
+      - host_ams
+      - host_nms
+      - host_tun
+    sources:
+      - path: nereus/build
+        note: Candidate aggregate and startup orchestration
+  - id: host-spug-tools
+    zoneId: host-userspace
+    title: &a119
+      zhCN: SPUG 控制与诊断工具
+      enUS: SPUG Control and Diagnostics
+    description:
+      zhCN: 通过 SDEP sysfs、BAR 工具和工作模式接口检查或切换 SPUG 状态。
+      enUS: Uses SDEP sysfs, BAR utilities, and work-mode interfaces to inspect or switch SPUG state.
+    kind: application
+    evidence: CODE_PROVEN
+    color: "#37b4d2"
+    tags: &a21 []
+    interfaces: &a22
+      - sdep.service
+      - pcimem
+      - sysfs
+    sources:
+      - path: nereus/spu-g/sdep_config
+        note: Host-side SDEP installation and control scripts
+  - id: host-sp37
+    zoneId: host-kernel
+    title: &a120
+      zhCN: sp37.ko（Host）
+      enUS: sp37.ko (Host)
+    description:
+      zhCN: 绑定 5709:1000，管理 BAR、MSI-X、DMA ring 和 H2C/C2H 字符设备。
+      enUS: Binds 5709:1000 and owns BARs, MSI-X, DMA rings, and H2C/C2H character devices.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#7657c8"
+    tags: &a23 []
+    interfaces: &a24
+      - PCI 5709:1000
+      - BAR
+      - MSI-X
+      - DMA
+    sources:
+      - path: nereus/kernelspace/spu_pcied
+        note: SP37 driver repository
+  - id: host-sdep
+    zoneId: host-kernel
+    title: &a122
+      zhCN: sdep.ko（Host SDEP）
+      enUS: sdep.ko (Host SDEP)
+    description:
+      zhCN: 绑定 5709:1001，扫描 Host 设备拓扑并交换 NTB 管理信息。
+      enUS: Binds 5709:1001, scans Host device topology, and exchanges NTB management information.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#6549af"
+    tags: &a25 []
+    interfaces: &a26
+      - PCI 5709:1001
+      - NTB
+      - MSI-X
+      - sysfs
+    sources:
+      - path: nereus/spu-g/sdep_driver/sdep_driver.c
+        note: SDEP PCI driver entry
+  - id: host-spug-subdriver
+    zoneId: host-kernel
+    title: &a123
+      zhCN: SDEP 内嵌 SPUG bridge 管理
+      enUS: SPUG Bridge Management Embedded in SDEP
+    description:
+      zhCN: spug_driver.c 编译进 sdep.ko；管理 5709:2000 BAR/sysfs，并非独立现行 spug.ko。
+      enUS: spug_driver.c is linked into sdep.ko to manage 5709:2000 BAR/sysfs; it is not a separate current spug.ko.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#855fc7"
+    tags: &a27 []
+    interfaces: &a28
+      - PCI 5709:2000
+      - BAR0/BAR1
+      - sysfs
+    sources:
+      - path: nereus/spu-g/sdep_driver/Makefile
+        note: sdep.ko object list
+      - path: nereus/spu-g/sdep_driver/spug_driver.c
+        note: Integrated SPUG bridge handling
+  - id: host-block
+    zoneId: host-kernel
+    title: &a124
+      zhCN: hblkd_end.ko（可选）
+      enUS: hblkd_end.ko (Optional)
+    description:
+      zhCN: 安全存储 Host 端；通过 Host-SPU 通道与 sblkd_end 配对。
+      enUS: Optional Host endpoint for secure storage, paired with sblkd_end over the Host-SPU channel.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#9b79d0"
+    tags: &a29 []
+    interfaces: &a30
+      - block
+      - bcache
+      - optional
+    sources:
+      - path: nereus/spu_blk_bridge
+        note: Optional secure block bridge repository
+  - id: spu-f0
+    zoneId: spu-fpga
+    title: &a125
+      zhCN: SPU FPGA Function 0 / SP37
+      enUS: SPU FPGA Function 0 / SP37
+    description:
+      zhCN: 向 Host 和 SPU CPU 两侧提供 5709:1000、BAR、MSI-X、DMA 与协议通道。
+      enUS: Exposes 5709:1000, BARs, MSI-X, DMA, and protocol channels to Host and SPU CPU sides.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#168f7b"
+    tags: &a31 []
+    interfaces: &a32
+      - 5709:1000
+      - SP37
+      - RQ/RC/CQ/CC
+    sources:
+      - path: qiongyu/fpga_spu
+        note: SPU main RTL repository
+  - id: spu-ntb
+    zoneId: spu-fpga
+    title: &a127
+      zhCN: SPU FPGA Function 1 / NTB
+      enUS: SPU FPGA Function 1 / NTB
+    description:
+      zhCN: 桥接 Host 与 SPU CPU 地址域，交换拓扑、BAR、MSI-X、P2P 和工作模式。
+      enUS: Bridges Host and SPU CPU address domains and exchanges topology, BAR, MSI-X, P2P, and work-mode state.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#1e9c86"
+    tags: &a33 []
+    interfaces: &a34
+      - 5709:1001
+      - NTB
+      - address translation
+    sources:
+      - path: qiongyu/fpga_spu
+        note: NTB and Function 1 RTL
+  - id: spu-security-rtl
+    zoneId: spu-fpga
+    title: &a128
+      zhCN: SPU 协议与安全 RTL
+      enUS: SPU Protocol and Security RTL
+    description:
+      zhCN: 包含协议、SM2、GCM、EEPROM、Recovery 和可选 SStorage 路径。
+      enUS: Contains protocol, SM2, GCM, EEPROM, Recovery, and optional SStorage paths.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#36aa91"
+    tags: &a35 []
+    interfaces: &a36
+      - SM2
+      - GCM
+      - EEPROM
+      - SStorage
+    sources:
+      - path: qiongyu/fpga_spu
+        note: Protocol and security RTL
+  - id: spu-sp37
+    zoneId: spu-kernel
+    title: &a129
+      zhCN: sp37.ko is_spu=1
+      enUS: sp37.ko is_spu=1
+    description:
+      zhCN: SPU CPU 侧加载的同源 SP37 模块，提供 SPU 侧字符设备和 DMA/MSI-X。
+      enUS: The same-source SP37 module loaded on the SPU CPU side, providing SPU character devices and DMA/MSI-X.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    tags: &a37 []
+    interfaces: &a38
+      - PCI 5709:1000
+      - is_spu=1
+      - /dev/sp37_*
+    sources:
+      - path: nereus/kernelspace/spu_pcied
+        note: SP37 driver repository
+  - id: spu-connect
+    zoneId: spu-kernel
+    title: &a131
+      zhCN: spu_connect.ko
+      enUS: spu_connect.ko
+    description:
+      zhCN: 在 SP37 ready 后处理 SPU 连接、重连和链路状态。
+      enUS: Handles SPU connection, reconnection, and link state after SP37 becomes ready.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#4d94e8"
+    tags: &a39 []
+    interfaces: &a40
+      - SP37 ready
+      - reconnect
+    sources:
+      - path: nereus/kernelspace/spu_connect
+        note: SPU connection helper repository
+  - id: spu-vgpu
+    zoneId: spu-kernel
+    title: &a132
+      zhCN: spu_vgpu.ko / SUEP
+      enUS: spu_vgpu.ko / SUEP
+    description:
+      zhCN: 绑定 SPU 侧 5709:1001，接收 Host 拓扑，创建虚拟 PCI 设备并重定向 DMA。
+      enUS: Binds SPU-side 5709:1001, receives Host topology, creates virtual PCI devices, and redirects DMA.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#2676ca"
+    tags: &a41 []
+    interfaces: &a42
+      - PCI 5709:1001
+      - virtual PCI
+      - DMA redirect
+      - sysfs
+    sources:
+      - path: nereus/spu-g/spu_driver/Makefile
+        note: spu_vgpu.ko object list
+      - path: nereus/spu-g/spu_driver/spu_upstream_driver.c
+        note: SUEP PCI entry
+  - id: spu-kernel-hooks
+    zoneId: spu-kernel
+    title: &a133
+      zhCN: spu_kernel DMA / RDMA Hooks
+      enUS: spu_kernel DMA / RDMA Hooks
+    description:
+      zhCN: 定制内核接口；hook_dma 支撑 vGPU DMA 重定向，hook_rdma 属于独立实验版本线。
+      enUS: "Custom kernel interfaces: hook_dma supports vGPU DMA redirection, while hook_rdma belongs to a separate experimental version line."
+    kind: protocol
+    evidence: CODE_PROVEN
+    color: "#579ee4"
+    tags: &a43 []
+    interfaces: &a44
+      - suep_hook_dma.h
+      - suep_hook_rdma.h
+    sources:
+      - path: nereus/spu_kernel
+        note: Custom SPU Linux kernel and hook branches
+  - id: spu-security-adapters
+    zoneId: spu-kernel
+    title: &a134
+      zhCN: TSSD / TES / keyring / integrity
+      enUS: TSSD / TES / keyring / integrity
+    description:
+      zhCN: 可信安全服务及内核适配集合；现有汇总证据尚不足以列出全部最终 .ko 名称。
+      enUS: Trusted security services and kernel adapters; current aggregate evidence is insufficient to name every final .ko artifact.
+    kind: driver
+    evidence: INFERRED
+    color: "#5ba8d9"
+    tags: &a45 []
+    interfaces: &a46
+      - TSSD
+      - TES
+      - keyring
+      - integrity
+    sources:
+      - path: nereus/spu_tssd
+        note: Trusted security service repository; exact artifact inventory requires source audit
+  - id: spu-block
+    zoneId: spu-kernel
+    title: &a135
+      zhCN: sblkd_end.ko（可选）
+      enUS: sblkd_end.ko (Optional)
+    description:
+      zhCN: 安全存储 SPU 端，生成 /dev/spu_mem_blk 并与 Host 块端配对。
+      enUS: Optional SPU endpoint for secure storage; creates /dev/spu_mem_blk and pairs with the Host endpoint.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#6eb5ee"
+    tags: &a47 []
+    interfaces: &a48
+      - /dev/spu_mem_blk
+      - optional
+    sources:
+      - path: nereus/spu_blk_bridge
+        note: Optional secure block bridge repository
+  - id: spu-pcs
+    zoneId: spu-userspace
+    title: &a136
+      zhCN: SPU PCS / pcie_server
+      enUS: SPU PCS / pcie_server
+    description:
+      zhCN: 读取 SPU 侧 SP37 字符设备，解析帧并分发给本地服务。
+      enUS: Reads SPU-side SP37 character devices, parses frames, and dispatches them to local services.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#c05e2b"
+    tags: &a49 []
+    interfaces: &a50
+      - Unix Socket
+      - /dev/sp37_*
+    sources:
+      - path: nereus/nereus_pcie
+        note: SPU PCS userspace transport
+  - id: spu-gpu-loader
+    zoneId: spu-userspace
+    title: &a138
+      zhCN: GPU 驱动装配脚本
+      enUS: GPU Driver Assembly Scripts
+    description:
+      zhCN: 等待 vGPU 初始化，备份并按设备类型加载 NVIDIA、寒武纪或天数智芯模块。
+      enUS: Waits for vGPU initialization, backs up modules, and loads NVIDIA, Cambricon, or Iluvatar drivers by device type.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#ce7438"
+    tags: &a51 []
+    interfaces: &a52
+      - spug.service
+      - start_spug.sh
+      - upstreamctl
+    sources:
+      - path: nereus/spu-g/config/start_spug.sh
+        note: SPU-side vendor GPU driver loading
+  - id: spu-platform
+    zoneId: spu-userspace
+    title: &a139
+      zhCN: TSSD / NMS / Server / LibOS
+      enUS: TSSD / NMS / Server / LibOS
+    description:
+      zhCN: 驱动和 PCS 稳定后的可信服务、隔离运行时与业务平台。
+      enUS: Trusted services, isolated runtime, and business platform started after drivers and PCS stabilize.
+    kind: service
+    evidence: CODE_PROVEN
+    color: "#d1844c"
+    tags: &a53 []
+    interfaces: &a54
+      - TSSD
+      - NMS
+      - LibOS
+      - spu_server
+    sources:
+      - path: nereus/build
+        note: Candidate software aggregate
+      - path: nereus/spu_server/trunk
+        note: Seven-service aggregate
+  - id: spug-pcie
+    zoneId: spug-fpga
+    title: &a140
+      zhCN: SPUG PCIe 安全桥
+      enUS: SPUG PCIe Security Bridge
+    description:
+      zhCN: 上游 EP 面向 Host、下游 RP 面向 GPU，转发 RQ/RC/CQ/CC 四类 TLP。
+      enUS: Upstream EP faces the Host and downstream RP faces the GPU, forwarding RQ/RC/CQ/CC TLPs.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#d64d72"
+    tags: &a55 []
+    interfaces: &a56
+      - 5709:2000
+      - 5709:2001 candidate
+      - PCIe x16
+      - RQ/RC/CQ/CC
+    sources:
+      - path: nereus_fpga/spug_fpga
+        note: SPUG main RTL
+      - path: wuhaocheng/dwc_pcie
+        note: DWC PCIe controller dependency
+      - path: nereus_fpga/pcie_base_ip
+        note: PCIe base IP dependency
+  - id: spug-control
+    zoneId: spug-fpga
+    title: &a142
+      zhCN: SPUG 状态、认证与电源控制
+      enUS: SPUG State, Authentication, and Power Control
+    description:
+      zhCN: 维护 Idle/Init/Available/Nonsecure/Auth/Secure/Error，并控制认证、错误恢复和下游供电。
+      enUS: Maintains Idle/Init/Available/Nonsecure/Auth/Secure/Error and controls authentication, recovery, and downstream power.
+    kind: state
+    evidence: RTL_PROVEN
+    color: "#e16683"
+    tags: &a57 []
+    interfaces: &a58
+      - state machine 0..6
+      - authentication
+      - power/reset
+    sources:
+      - path: nereus_fpga/spug_fpga
+        note: SPUG control-plane RTL
+  - id: spug-crypto
+    zoneId: spug-fpga
+    title: &a143
+      zhCN: SPUG 密钥与加解密数据面
+      enUS: SPUG Key and Crypto Data Plane
+    description:
+      zhCN: 密钥管理、随机数、持久存储以及 GCM/SM4 流量处理。
+      enUS: Key management, random sources, persistent storage, and GCM/SM4 traffic processing.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#ef7691"
+    tags: &a59 []
+    interfaces: &a60
+      - GCM
+      - SM4
+      - key management
+      - RNG
+    sources:
+      - path: nereus_fpga/spug_fpga
+        note: SPUG crypto-plane RTL
+  - id: virtual-gpu
+    zoneId: gpu-external
+    title: &a144
+      zhCN: SPU 虚拟 PCI GPU
+      enUS: SPU Virtual PCI GPU
+    description:
+      zhCN: SUEP 在 SPU OS 中创建的 vBEP/虚拟设备，供原生厂商驱动绑定。
+      enUS: vBEP/virtual device created by SUEP in the SPU OS for binding by the native vendor driver.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#7fae3f"
+    tags: &a61 []
+    interfaces: &a62
+      - vBEP
+      - virtual PCI bus
+    sources:
+      - path: nereus/spu-g/spu_driver/suep_virtual_device.c
+        note: Virtual PCI device lifecycle
+  - id: vendor-gpu-driver
+    zoneId: gpu-external
+    title: &a146
+      zhCN: 原生 GPU 厂商驱动
+      enUS: Native GPU Vendor Driver
+    description:
+      zhCN: NVIDIA、寒武纪或天数智芯驱动；虚拟化模式下由 SPU 脚本加载。Host 直连模式位置仍需实机区分。
+      enUS: NVIDIA, Cambricon, or Iluvatar drivers; loaded by SPU scripts in virtualized mode. Host direct-mode placement still requires runtime distinction.
+    kind: driver
+    evidence: INFERRED
+    color: "#8bb34c"
+    tags: &a63 []
+    interfaces: &a64
+      - nvidia*.ko
+      - cambricon*.ko
+      - iluvatar.ko
+    sources:
+      - path: nereus/spu-g/config/start_spug.sh
+        note: Virtualized-mode module loading
+      - path: nereus/spu-g/sdep_config/remove_gpu_driver.sh
+        note: Host-side handling is currently largely disabled
+  - id: physical-gpu
+    zoneId: gpu-external
+    title: &a147
+      zhCN: 物理 GPU Endpoint
+      enUS: Physical GPU Endpoint
+    description:
+      zhCN: 位于 SPUG 下游的真实 GPU；具体型号、BDF、VBIOS 和运行驱动组合尚未采集。
+      enUS: Physical GPU behind SPUG; exact model, BDF, VBIOS, and runtime driver combination have not been captured.
+    kind: device
+    evidence: INFERRED
+    color: "#96bd5d"
+    tags: &a65 []
+    interfaces: &a66
+      - PCIe Endpoint
+      - GPU
+      - runtime capture required
+    sources:
+      - path: 06-软件驱动与启动架构.md
+        note: Architecture-level placement; runtime identity unresolved
+  - id: secure-block-device
+    zoneId: gpu-external
+    title: &a148
+      zhCN: 安全块设备 / bcache（可选）
+      enUS: Secure Block Device / bcache (Optional)
+    description:
+      zhCN: hblkd_end 与 sblkd_end 的可选产品链；不得与 NVMe/SM4 透明桥实验混为一谈。
+      enUS: Optional product path formed by hblkd_end and sblkd_end; distinct from the NVMe/SM4 transparent-bridge experiment.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#a8c96d"
+    tags: &a67 []
+    interfaces: &a68
+      - /dev/spu_mem_blk
+      - bcache
+      - optional
+    sources:
+      - path: nereus/spu_blk_bridge
+        note: Secure block bridge
+edges:
+  - id: host-client-pcs
+    source: host-platform
+    target: host-pcs
+    title:
+      zhCN: 本地请求
+      enUS: Local request
+    description:
+      zhCN: 管理服务经 PCS client/Unix Socket 发起 Host-SPU 消息。
+      enUS: Management services issue Host-SPU messages through the PCS client and Unix Socket.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: Unix Socket
+    dashed: false
+  - id: host-pcs-sp37
+    source: host-pcs
+    target: host-sp37
+    title:
+      zhCN: 字符设备写入
+      enUS: Character-device write
+    description:
+      zhCN: PCS 向 /dev/sp37_h2c_X 写帧，并从 c2h 节点收包。
+      enUS: PCS writes frames to /dev/sp37_h2c_X and receives from the c2h node.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: SP37 character ABI
+    dashed: false
+  - id: host-sp37-f0
+    source: host-sp37
+    target: spu-f0
+    title:
+      zhCN: Host PCIe Function 0
+      enUS: Host PCIe Function 0
+    description:
+      zhCN: Host sp37.ko 通过 BAR、DMA ring 和 MSI-X 与 SPU FPGA Function 0 交互。
+      enUS: Host sp37.ko interacts with SPU FPGA Function 0 through BARs, DMA rings, and MSI-X.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe 5709:1000
+    dashed: false
+  - id: f0-spu-sp37
+    source: spu-f0
+    target: spu-sp37
+    title:
+      zhCN: CPU 侧 SP37
+      enUS: CPU-side SP37
+    description:
+      zhCN: SPU FPGA CPU 侧 Function 0 与 SPU sp37.ko 建立字符通道。
+      enUS: The SPU FPGA CPU-side Function 0 establishes the character channel with SPU sp37.ko.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe 5709:1000
+    dashed: false
+  - id: spu-sp37-pcs
+    source: spu-sp37
+    target: spu-pcs
+    title:
+      zhCN: SPU 字符设备
+      enUS: SPU character devices
+    description:
+      zhCN: SPU PCS 从 sp37 字符设备读取并解析消息。
+      enUS: SPU PCS reads and parses messages from SP37 character devices.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: SP37 character ABI
+    dashed: false
+  - id: spu-pcs-platform
+    source: spu-pcs
+    target: spu-platform
+    title:
+      zhCN: 平台消息
+      enUS: Platform messages
+    description:
+      zhCN: PCS 把帧分发给 TSSD、NMS、Server 等本地服务。
+      enUS: PCS dispatches frames to local TSSD, NMS, Server, and related services.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: PCS IPC
+    dashed: false
+  - id: spu-sp37-connect
+    source: spu-sp37
+    target: spu-connect
+    title:
+      zhCN: ready 后连接
+      enUS: Connect after ready
+    description:
+      zhCN: spu_connect 在 SP37 ready 后加载并维护连接状态。
+      enUS: spu_connect loads after SP37 is ready and maintains connection state.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: module dependency
+    dashed: false
+  - id: tools-sdep
+    source: host-spug-tools
+    target: host-sdep
+    title:
+      zhCN: sysfs / 工作模式
+      enUS: sysfs / work mode
+    description:
+      zhCN: Host 工具通过 SDEP 管理接口读取状态或切换模式。
+      enUS: Host tools read state or switch mode through SDEP management interfaces.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: sysfs
+    dashed: false
+  - id: sdep-ntb
+    source: host-sdep
+    target: spu-ntb
+    title:
+      zhCN: Host Function 1
+      enUS: Host Function 1
+    description:
+      zhCN: SDEP 绑定 5709:1001 并通过 BAR/MSI-X/NTB 交换拓扑与管理消息。
+      enUS: SDEP binds 5709:1001 and exchanges topology and management messages through BAR/MSI-X/NTB.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe 5709:1001
+    dashed: false
+  - id: ntb-suep
+    source: spu-ntb
+    target: spu-vgpu
+    title:
+      zhCN: SPU Function 1
+      enUS: SPU Function 1
+    description:
+      zhCN: SUEP 绑定 SPU 侧 5709:1001 并消费 NTB 消息。
+      enUS: SUEP binds SPU-side 5709:1001 and consumes NTB messages.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe 5709:1001
+    dashed: false
+  - id: sdep-subdriver
+    source: host-sdep
+    target: host-spug-subdriver
+    title:
+      zhCN: 扫描并初始化 SPUG
+      enUS: Scan and initialize SPUG
+    description:
+      zhCN: SDEP 设备管理代码发现 SPUG 后调用内嵌 spug_driver_init。
+      enUS: SDEP device management invokes embedded spug_driver_init after discovering SPUG.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: in-module call
+    dashed: false
+  - id: subdriver-spug
+    source: host-spug-subdriver
+    target: spug-pcie
+    title:
+      zhCN: SPUG BAR / sysfs
+      enUS: SPUG BAR / sysfs
+    description:
+      zhCN: 内嵌 bridge 管理映射 SPUG BAR 并创建 sysfs。
+      enUS: Embedded bridge management maps SPUG BARs and creates sysfs entries.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: PCIe 5709:2000
+    dashed: false
+  - id: suep-virtual-gpu
+    source: spu-vgpu
+    target: virtual-gpu
+    title:
+      zhCN: 创建虚拟 PCI 设备
+      enUS: Create virtual PCI device
+    description:
+      zhCN: SUEP 根据 Host 拓扑创建 vBEP 和虚拟 PCI GPU。
+      enUS: SUEP creates vBEP and virtual PCI GPU objects from Host topology.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: virtual PCI
+    dashed: false
+  - id: hooks-vgpu
+    source: spu-kernel-hooks
+    target: spu-vgpu
+    title:
+      zhCN: DMA Hook 回调
+      enUS: DMA Hook callback
+    description:
+      zhCN: 定制 hook_dma 把厂商驱动 DMA 映射交给 SUEP 重定向。
+      enUS: The custom hook_dma routes vendor-driver DMA mappings through SUEP redirection.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: suep_hook_dma
+    dashed: false
+  - id: loader-vendor
+    source: spu-gpu-loader
+    target: vendor-gpu-driver
+    title:
+      zhCN: 加载厂商模块
+      enUS: Load vendor modules
+    description:
+      zhCN: start_spug.sh 按发现的设备类型加载厂商驱动模块。
+      enUS: start_spug.sh loads vendor driver modules according to the discovered device type.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: insmod
+    dashed: false
+  - id: vendor-virtual
+    source: vendor-gpu-driver
+    target: virtual-gpu
+    title:
+      zhCN: 驱动绑定
+      enUS: Driver binding
+    description:
+      zhCN: 虚拟化模式下原生驱动绑定 SUEP 创建的虚拟 PCI 设备。
+      enUS: In virtualized mode, the native driver binds the virtual PCI device created by SUEP.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: Linux PCI driver model
+    dashed: false
+  - id: virtual-dma-spug
+    source: virtual-gpu
+    target: spug-pcie
+    title:
+      zhCN: 重定向 DMA / TLP
+      enUS: Redirected DMA / TLP
+    description:
+      zhCN: 虚拟设备访问经 SUEP/NTB 地址合同映射到 SPUG/GPU 数据路径；完整运行组合待实机确认。
+      enUS: Virtual-device access is mapped through the SUEP/NTB address contract into the SPUG/GPU path; the complete runtime combination remains unverified.
+    kind: payload
+    evidence: INFERRED
+    color: "#4d8edb"
+    lane: DATA
+    protocol: PCIe DMA
+    dashed: true
+  - id: spug-control-pcie
+    source: spug-control
+    target: spug-pcie
+    title:
+      zhCN: 状态门控
+      enUS: State gating
+    description:
+      zhCN: 状态机决定旁路、非安全、认证、安全或错误处理路径。
+      enUS: The state machine selects bypass, nonsecure, authentication, secure, or error handling paths.
+    kind: control
+    evidence: RTL_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: RTL state
+    dashed: false
+  - id: spug-crypto-pcie
+    source: spug-crypto
+    target: spug-pcie
+    title:
+      zhCN: GCM / SM4 流处理
+      enUS: GCM / SM4 flow processing
+    description:
+      zhCN: 安全模式下密码数据面处理选中的 PCIe payload。
+      enUS: In secure mode, the crypto plane processes selected PCIe payloads.
+    kind: payload
+    evidence: RTL_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: AXI-Stream
+    dashed: false
+  - id: spug-physical-gpu
+    source: spug-pcie
+    target: physical-gpu
+    title:
+      zhCN: 下游 PCIe x16
+      enUS: Downstream PCIe x16
+    description:
+      zhCN: SPUG 下游 Root Port 与物理 GPU Endpoint 交换四类 TLP。
+      enUS: The SPUG downstream Root Port exchanges all four TLP classes with the physical GPU endpoint.
+    kind: physical
+    evidence: RTL_PROVEN
+    color: "#607d8b"
+    lane: PHYSICAL
+    protocol: PCIe x16
+    dashed: false
+  - id: platform-security
+    source: spu-platform
+    target: spu-security-adapters
+    title:
+      zhCN: 可信服务调用
+      enUS: Trusted-service calls
+    description:
+      zhCN: 平台服务在底层设备就绪后使用 TSSD/TES/keyring/integrity 能力。
+      enUS: Platform services use TSSD/TES/keyring/integrity after lower devices are ready.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: service/kernel ABI
+    dashed: false
+  - id: security-rtl
+    source: spu-security-adapters
+    target: spu-security-rtl
+    title:
+      zhCN: 协议 / 密码请求
+      enUS: Protocol / crypto request
+    description:
+      zhCN: 安全服务经 PCS/协议路径访问 FPGA 能力；精确直接 MMIO 边界尚未逐仓闭合。
+      enUS: Security services reach FPGA capabilities through PCS/protocol paths; the exact direct-MMIO boundary is not yet closed repository by repository.
+    kind: control
+    evidence: INFERRED
+    color: "#d59a2b"
+    lane: CONTROL
+    protocol: SP37 protocol
+    dashed: true
+  - id: host-block-sp37
+    source: host-block
+    target: host-sp37
+    title:
+      zhCN: 安全块请求
+      enUS: Secure block request
+    description:
+      zhCN: 可选 Host 块端复用 Host-SPU 通信链。
+      enUS: The optional Host block endpoint reuses the Host-SPU communication path.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: block bridge
+    dashed: false
+  - id: spu-sp37-block
+    source: spu-sp37
+    target: spu-block
+    title:
+      zhCN: SPU 块端接收
+      enUS: SPU block receive
+    description:
+      zhCN: SPU 块端接收对端请求并提供块设备。
+      enUS: The SPU block endpoint receives peer requests and exposes the block device.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#4d8edb"
+    lane: DATA
+    protocol: block bridge
+    dashed: false
+  - id: spu-block-device
+    source: spu-block
+    target: secure-block-device
+    title:
+      zhCN: /dev/spu_mem_blk
+      enUS: /dev/spu_mem_blk
+    description:
+      zhCN: sblkd_end 创建可供文件系统/bcache 使用的块设备。
+      enUS: sblkd_end creates the block device used by filesystems or bcache.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: Linux block device
+    dashed: false
+  - id: shutdown-platform-pcs
+    source: spu-platform
+    target: spu-pcs
+    title:
+      zhCN: 停止上层请求
+      enUS: Stop upper requests
+    description:
+      zhCN: 卸载前先停止平台新请求并排空 PCS。
+      enUS: Before unload, stop new platform requests and drain PCS.
+    kind: lifecycle
+    evidence: INFERRED
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: target shutdown order
+    dashed: true
+  - id: shutdown-vendor-loader
+    source: vendor-gpu-driver
+    target: spu-gpu-loader
+    title:
+      zhCN: 卸载厂商模块
+      enUS: Unload vendor modules
+    description:
+      zhCN: stop_spug.sh 终止设备用户并逆序卸载 GPU 模块。
+      enUS: stop_spug.sh terminates device users and unloads GPU modules in reverse order.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: rmmod
+    dashed: false
+  - id: shutdown-virtual-suep
+    source: virtual-gpu
+    target: spu-vgpu
+    title:
+      zhCN: 销毁虚拟设备
+      enUS: Destroy virtual devices
+    description:
+      zhCN: 先销毁 vBEP/虚拟 PCI 资源，再卸载 spu_vgpu。
+      enUS: Destroy vBEP/virtual PCI resources before unloading spu_vgpu.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: vgpu_init / remove
+    dashed: false
+  - id: shutdown-suep-sdep
+    source: spu-vgpu
+    target: host-sdep
+    title:
+      zhCN: 停止 NTB 管理
+      enUS: Stop NTB management
+    description:
+      zhCN: 两侧停止中断和管理协议；跨机精确顺序需实机故障注入验证。
+      enUS: Both sides stop interrupts and the management protocol; exact cross-system ordering requires runtime fault injection.
+    kind: sync
+    evidence: INFERRED
+    color: "#9b6bc4"
+    lane: SYNC
+    protocol: shutdown handshake
+    dashed: true
+  - id: shutdown-sdep-sp37
+    source: host-sdep
+    target: host-sp37
+    title:
+      zhCN: 最终卸载基础驱动
+      enUS: Unload base driver last
+    description:
+      zhCN: SDEP/SUEP 资源清理后才卸载两侧 SP37 基础链路。
+      enUS: Unload the two SP37 endpoints only after SDEP/SUEP resource cleanup.
+    kind: lifecycle
+    evidence: INFERRED
+    color: "#d35f5f"
+    lane: LIFECYCLE
+    protocol: target rollback order
+    dashed: true
+journeys:
+  - id: sp37-startup-pcs
+    title:
+      zhCN: SP37 双侧启动与 PCS 通信
+      enUS: SP37 dual-side startup and PCS communication
+    summary:
+      zhCN: 从 Host/SPU Function 0 驱动 probe 到 PCS 双向消息闭环。
+      enUS: From Host/SPU Function 0 probes to the bidirectional PCS message loop.
+    caveat:
+      zhCN: 当前无实机模块哈希、BDF 和双向 trace，不能提升为运行观测。
+      enUS: No runtime module hashes, BDFs, or bidirectional traces are available, so this is not runtime-observed.
+    steps:
+      - id: sp37-startup-pcs-s1
+        functionId: fn-host-sp37-probe
+        title:
+          zhCN: sp37_probe (Host)
+          enUS: sp37_probe (Host)
+        evidence: CODE_PROVEN
+      - id: sp37-startup-pcs-s2
+        functionId: fn-host-pcs-send
+        title:
+          zhCN: pcie_server send path
+          enUS: pcie_server send path
+        evidence: CODE_PROVEN
+      - id: sp37-startup-pcs-s3
+        nodeId: spu-f0
+        title:
+          zhCN: SPU FPGA Function 0 / SP37
+          enUS: SPU FPGA Function 0 / SP37
+        evidence: RTL_PROVEN
+      - id: sp37-startup-pcs-s4
+        functionId: fn-spu-sp37-probe
+        title:
+          zhCN: sp37_probe (is_spu=1)
+          enUS: sp37_probe (is_spu=1)
+        evidence: CODE_PROVEN
+      - id: sp37-startup-pcs-s5
+        functionId: fn-spu-pcs-receive
+        title:
+          zhCN: pcie_server receive path
+          enUS: pcie_server receive path
+        evidence: CODE_PROVEN
+      - id: sp37-startup-pcs-s6
+        nodeId: spu-platform
+        title:
+          zhCN: TSSD / NMS / Server / LibOS
+          enUS: TSSD / NMS / Server / LibOS
+        evidence: CODE_PROVEN
+    edgeIds:
+      - host-pcs-sp37
+      - host-sp37-f0
+      - f0-spu-sp37
+      - spu-sp37-pcs
+      - spu-pcs-platform
+  - id: sdep-suep-virtualization
+    title:
+      zhCN: SDEP/SUEP 初始化及虚拟设备创建
+      enUS: SDEP/SUEP initialization and virtual-device creation
+    summary:
+      zhCN: Host SDEP 经 NTB 把设备拓扑交给 SPU SUEP，并创建虚拟 PCI GPU。
+      enUS: Host SDEP passes device topology through NTB to SPU SUEP, which creates a virtual PCI GPU.
+    caveat:
+      zhCN: 实际 SPUG/GPU BDF、IOMMU group、设备数量和热插拔行为仍需现场采集。
+      enUS: Actual SPUG/GPU BDFs, IOMMU groups, device counts, and hotplug behavior require runtime capture.
+    steps:
+      - id: sdep-suep-virtualization-s1
+        functionId: fn-sdep-probe
+        title:
+          zhCN: sdep_probe
+          enUS: sdep_probe
+        evidence: CODE_PROVEN
+      - id: sdep-suep-virtualization-s2
+        nodeId: spu-ntb
+        title:
+          zhCN: SPU FPGA Function 1 / NTB
+          enUS: SPU FPGA Function 1 / NTB
+        evidence: RTL_PROVEN
+      - id: sdep-suep-virtualization-s3
+        functionId: fn-suep-probe
+        title:
+          zhCN: upstream_probe_one
+          enUS: upstream_probe_one
+        evidence: CODE_PROVEN
+      - id: sdep-suep-virtualization-s4
+        functionId: fn-spug-subdriver-init
+        title:
+          zhCN: spug_driver_init
+          enUS: spug_driver_init
+        evidence: CODE_PROVEN
+      - id: sdep-suep-virtualization-s5
+        functionId: fn-vdevice-init
+        title:
+          zhCN: suep_virtual_device_init
+          enUS: suep_virtual_device_init
+        evidence: CODE_PROVEN
+      - id: sdep-suep-virtualization-s6
+        nodeId: virtual-gpu
+        title:
+          zhCN: SPU 虚拟 PCI GPU
+          enUS: SPU Virtual PCI GPU
+        evidence: CODE_PROVEN
+    edgeIds:
+      - sdep-ntb
+      - ntb-suep
+      - sdep-subdriver
+      - subdriver-spug
+      - suep-virtual-gpu
+  - id: gpu-bind-dma
+    title:
+      zhCN: 原生 GPU 驱动绑定和 DMA 重定向
+      enUS: Native GPU driver binding and DMA redirection
+    summary:
+      zhCN: SPU 脚本加载厂商模块，模块绑定虚拟 GPU，DMA 经定制 Hook 进入 SUEP/SPUG 地址路径。
+      enUS: SPU scripts load vendor modules, which bind the virtual GPU; DMA enters the SUEP/SPUG address path through custom hooks.
+    caveat:
+      zhCN: Host 直连模式与 SPU 虚拟化模式的生产选择尚未冻结；图中虚拟化路径为代码事实，最终部署组合仍为推断。
+      enUS: The production choice between Host direct mode and SPU virtualization is not frozen; the virtualization path is code-proven but the deployed combination remains inferred.
+    steps:
+      - id: gpu-bind-dma-s1
+        functionId: fn-load-gpu-driver
+        title:
+          zhCN: start_spug.sh
+          enUS: start_spug.sh
+        evidence: CODE_PROVEN
+      - id: gpu-bind-dma-s2
+        functionId: fn-vendor-bind
+        title:
+          zhCN: native PCI probe
+          enUS: native PCI probe
+        evidence: CODE_PROVEN
+      - id: gpu-bind-dma-s3
+        functionId: fn-dma-redirect
+        title:
+          zhCN: suep_hook_dma callback
+          enUS: suep_hook_dma callback
+        evidence: CODE_PROVEN
+      - id: gpu-bind-dma-s4
+        nodeId: spu-vgpu
+        title:
+          zhCN: spu_vgpu.ko / SUEP
+          enUS: spu_vgpu.ko / SUEP
+        evidence: CODE_PROVEN
+      - id: gpu-bind-dma-s5
+        nodeId: spug-pcie
+        title:
+          zhCN: SPUG PCIe 安全桥
+          enUS: SPUG PCIe Security Bridge
+        evidence: RTL_PROVEN
+      - id: gpu-bind-dma-s6
+        nodeId: physical-gpu
+        title:
+          zhCN: 物理 GPU Endpoint
+          enUS: Physical GPU Endpoint
+        evidence: INFERRED
+    edgeIds:
+      - loader-vendor
+      - vendor-virtual
+      - hooks-vgpu
+      - virtual-dma-spug
+      - spug-physical-gpu
+  - id: spug-secure-tlp
+    title:
+      zhCN: SPUG GPU TLP 与安全状态链
+      enUS: SPUG GPU TLP and secure-state path
+    summary:
+      zhCN: SPUG 状态机门控上下游 TLP，安全模式下调用密钥与 GCM/SM4 数据面。
+      enUS: The SPUG state machine gates upstream/downstream TLPs and invokes key/GCM/SM4 processing in secure mode.
+    caveat:
+      zhCN: RTL 能证明模块和合同，不能证明当前烧写 bit、密钥代际或板上时序已经验收。
+      enUS: RTL proves modules and contracts, not the currently programmed bitstream, key generation, or board timing acceptance.
+    steps:
+      - id: spug-secure-tlp-s1
+        nodeId: host-spug-tools
+        title:
+          zhCN: SPUG 控制与诊断工具
+          enUS: SPUG Control and Diagnostics
+        evidence: CODE_PROVEN
+      - id: spug-secure-tlp-s2
+        functionId: fn-spug-state
+        title:
+          zhCN: spug_state_control
+          enUS: spug_state_control
+        evidence: RTL_PROVEN
+      - id: spug-secure-tlp-s3
+        functionId: fn-spug-forward
+        title:
+          zhCN: sp37_p2p_bridge_u2d / d2u
+          enUS: sp37_p2p_bridge_u2d / d2u
+        evidence: RTL_PROVEN
+      - id: spug-secure-tlp-s4
+        functionId: fn-spug-crypto
+        title:
+          zhCN: spug_flow_cypher_ctrl
+          enUS: spug_flow_cypher_ctrl
+        evidence: RTL_PROVEN
+      - id: spug-secure-tlp-s5
+        nodeId: physical-gpu
+        title:
+          zhCN: 物理 GPU Endpoint
+          enUS: Physical GPU Endpoint
+        evidence: INFERRED
+    edgeIds:
+      - tools-sdep
+      - subdriver-spug
+      - spug-control-pcie
+      - spug-crypto-pcie
+      - spug-physical-gpu
+  - id: unload-reset-hotplug
+    title:
+      zhCN: 卸载、reset、热拔出与资源回收
+      enUS: Unload, reset, hot-unplug, and resource reclamation
+    summary:
+      zhCN: 先停业务和厂商驱动，再销毁虚拟设备、停止 SUEP/SDEP，最后释放基础 SP37。
+      enUS: Stop workloads and vendor drivers first, destroy virtual devices, stop SUEP/SDEP, then release the base SP37 path.
+    caveat:
+      zhCN: 局部 remove 函数有代码证据，但完整跨 Host/SPU 的严格逆序、reset 和热拔出仍是待验证目标顺序。
+      enUS: Local remove functions are code-proven, but strict cross-Host/SPU reverse ordering, reset, and hot-unplug remain a target requiring validation.
+    steps:
+      - id: unload-reset-hotplug-s1
+        nodeId: spu-platform
+        title:
+          zhCN: TSSD / NMS / Server / LibOS
+          enUS: TSSD / NMS / Server / LibOS
+        evidence: CODE_PROVEN
+      - id: unload-reset-hotplug-s2
+        nodeId: vendor-gpu-driver
+        title:
+          zhCN: 原生 GPU 厂商驱动
+          enUS: Native GPU Vendor Driver
+        evidence: INFERRED
+      - id: unload-reset-hotplug-s3
+        functionId: fn-vdevice-exit
+        title:
+          zhCN: suep_virtual_device_exit
+          enUS: suep_virtual_device_exit
+        evidence: CODE_PROVEN
+      - id: unload-reset-hotplug-s4
+        nodeId: spu-vgpu
+        title:
+          zhCN: spu_vgpu.ko / SUEP
+          enUS: spu_vgpu.ko / SUEP
+        evidence: CODE_PROVEN
+      - id: unload-reset-hotplug-s5
+        functionId: fn-sdep-remove
+        title:
+          zhCN: sdep_remove
+          enUS: sdep_remove
+        evidence: CODE_PROVEN
+      - id: unload-reset-hotplug-s6
+        nodeId: host-sp37
+        title:
+          zhCN: sp37.ko（Host）
+          enUS: sp37.ko (Host)
+        evidence: CODE_PROVEN
+    edgeIds:
+      - shutdown-platform-pcs
+      - shutdown-vendor-loader
+      - shutdown-virtual-suep
+      - shutdown-suep-sdep
+      - shutdown-sdep-sp37
+functions:
+  - id: fn-host-sp37-probe
+    moduleId: host-sp37
+    name: sp37_probe (Host)
+    description: 绑定 Function 0 并建立 BAR、DMA、MSI-X 和字符设备。
+    evidence: CODE_PROVEN
+    contract: &a1
+      trigger: PCI probe for 5709:1000
+      context: Host kernel probe context
+      consumes: pci_dev and BAR/MSI-X capabilities
+      produces: Host SP37 device and character nodes
+      stateResource: BAR mappings, DMA rings, IRQ vectors
+      completionError: Success enables character I/O; failure unwinds acquired resources
+      hardwareEffect: Maps PCI resources and enables bus mastering
+    sources:
+      - path: nereus/kernelspace/spu_pcied
+        note: Function or implementation evidence
+  - id: fn-host-pcs-send
+    moduleId: host-pcs
+    name: pcie_server send path
+    description: 把本地消息编码后写入 SP37 H2C 字符设备。
+    evidence: CODE_PROVEN
+    contract: &a2
+      trigger: Local client request
+      context: Host userspace send thread
+      consumes: IPC request and payload
+      produces: SP37 protocol frame
+      stateResource: send queue, socket session, device fd
+      completionError: Write completes or returns bounded error
+      hardwareEffect: Writes /dev/sp37_h2c_X
+    sources:
+      - path: nereus/nereus_pcie
+        note: Function or implementation evidence
+  - id: fn-spu-sp37-probe
+    moduleId: spu-sp37
+    name: sp37_probe (is_spu=1)
+    description: 在 SPU CPU 侧建立同源 SP37 端点。
+    evidence: CODE_PROVEN
+    contract: &a3
+      trigger: PCI probe for SPU-side 5709:1000
+      context: SPU kernel probe context
+      consumes: pci_dev and is_spu parameter
+      produces: SPU SP37 device and character nodes
+      stateResource: BAR mappings, DMA rings, IRQ vectors
+      completionError: Success enables SPU PCS; failure rolls back resources
+      hardwareEffect: Maps CPU-side PCI resources
+    sources:
+      - path: nereus/kernelspace/spu_pcied
+        note: Function or implementation evidence
+  - id: fn-spu-pcs-receive
+    moduleId: spu-pcs
+    name: pcie_server receive path
+    description: 从 SP37 读取、寻找帧边界并分发给本地会话。
+    evidence: CODE_PROVEN
+    contract: &a4
+      trigger: SP37 data/interrupt availability
+      context: SPU userspace receive thread
+      consumes: bytes from /dev/sp37_c2h_X
+      produces: validated message for a local client
+      stateResource: receive buffer, framing state, wait queues
+      completionError: Dispatches a complete frame or isolates malformed input
+      hardwareEffect: Reads SP37 character device
+    sources:
+      - path: nereus/nereus_pcie
+        note: Function or implementation evidence
+  - id: fn-sdep-probe
+    moduleId: host-sdep
+    name: sdep_probe
+    description: 绑定 Function 1，映射 BAR 并初始化中断、sysfs 和 NTB。
+    evidence: CODE_PROVEN
+    contract: &a5
+      trigger: PCI probe for 5709:1001
+      context: Host kernel probe context
+      consumes: Function 1 pci_dev
+      produces: SDEP management endpoint
+      stateResource: BAR maps, IRQ vectors, device tables
+      completionError: Registers management state or unwinds on error
+      hardwareEffect: Programs Function 1 BAR and MSI-X
+    sources:
+      - path: nereus/spu-g/sdep_driver/sdep_driver.c
+        note: Function or implementation evidence
+  - id: fn-spug-subdriver-init
+    moduleId: host-spug-subdriver
+    name: spug_driver_init
+    description: SDEP 扫描到 SPUG 后映射其 BAR 并创建 sysfs。
+    evidence: CODE_PROVEN
+    contract: &a7
+      trigger: SPUG discovered in Host PCI topology
+      context: Host kernel SDEP management context
+      consumes: 5709:2000 pci_dev
+      produces: SPUG management object and sysfs
+      stateResource: BAR0/BAR1 mappings and drvdata
+      completionError: Returns success or releases mapped resources
+      hardwareEffect: Enables SPUG PCI device and maps BARs
+    sources:
+      - path: nereus/spu-g/sdep_driver/spug_driver.c
+        note: Function or implementation evidence
+  - id: fn-suep-probe
+    moduleId: spu-vgpu
+    name: upstream_probe_one
+    description: 绑定 SPU Function 1，建立 SUEP 管理根对象。
+    evidence: CODE_PROVEN
+    contract: &a6
+      trigger: PCI probe for SPU-side 5709:1001
+      context: SPU kernel probe context
+      consumes: Function 1 pci_dev and NTB state
+      produces: SUEP root object
+      stateResource: BAR resources, DMA mask, IRQ and sysfs state
+      completionError: Probe succeeds or unwinds resource acquisition
+      hardwareEffect: Enables PCI function and NTB access
+    sources:
+      - path: nereus/spu-g/spu_driver/spu_upstream_driver.c
+        note: Function or implementation evidence
+  - id: fn-vdevice-init
+    moduleId: spu-vgpu
+    name: suep_virtual_device_init
+    description: 按 Host 拓扑创建虚拟总线、vSPUG 和 vBEP。
+    evidence: CODE_PROVEN
+    contract: &a8
+      trigger: SUEP topology initialization
+      context: SPU kernel initialization context
+      consumes: Host endpoint descriptors and SPUG count
+      produces: Virtual PCI devices
+      stateResource: virtual bus, vSPUG/vBEP ownership tables
+      completionError: Devices become bindable or partial creation is rolled back
+      hardwareEffect: Selects config-access and DMA-redirection modes
+    sources:
+      - path: nereus/spu-g/spu_driver/suep_virtual_device.c
+        note: Function or implementation evidence
+  - id: fn-dma-redirect
+    moduleId: spu-kernel-hooks
+    name: suep_hook_dma callback
+    description: 把厂商驱动 DMA 映射转换为 SUEP/SPUG 可用地址关系。
+    evidence: CODE_PROVEN
+    contract: &a11
+      trigger: Vendor driver DMA map/unmap
+      context: SPU kernel DMA callback context
+      consumes: pci_dev, DMA mapping, virtual-device ownership
+      produces: redirected DMA mapping state
+      stateResource: hook registration and mapping ownership
+      completionError: Returns mapped state or fails closed; unmap must reverse it
+      hardwareEffect: Changes device-visible DMA address mapping
+    sources:
+      - path: nereus/spu_kernel + nereus/spu-g
+        note: Function or implementation evidence
+  - id: fn-load-gpu-driver
+    moduleId: spu-gpu-loader
+    name: start_spug.sh
+    description: 识别虚拟 GPU 并加载相应厂商模块。
+    evidence: CODE_PROVEN
+    contract: &a9
+      trigger: SPUG service start after vGPU initialization
+      context: SPU root userspace/systemd
+      consumes: device IDs and backed-up kernel modules
+      produces: loaded vendor GPU module set
+      stateResource: module backup directory and service state
+      completionError: Loads modules in order or stops with an error
+      hardwareEffect: insmod vendor modules
+    sources:
+      - path: nereus/spu-g/config/start_spug.sh
+        note: Function or implementation evidence
+  - id: fn-vendor-bind
+    moduleId: vendor-gpu-driver
+    name: native PCI probe
+    description: 厂商驱动绑定 SUEP 创建的虚拟 GPU。
+    evidence: CODE_PROVEN
+    contract: &a10
+      trigger: Linux PCI device match
+      context: SPU kernel vendor-driver probe
+      consumes: virtual pci_dev and proxied resources
+      produces: vendor GPU device instance
+      stateResource: vendor-private state, IRQ and DMA mappings
+      completionError: Device becomes usable or probe releases resources
+      hardwareEffect: Programs proxied GPU resources
+    sources:
+      - path: Linux PCI model + nereus/spu-g virtual PCI
+        note: Function or implementation evidence
+  - id: fn-spug-state
+    moduleId: spug-control
+    name: spug_state_control
+    description: 执行 SPUG 状态转换并门控数据面。
+    evidence: RTL_PROVEN
+    contract: &a12
+      trigger: Host/SPU control command or hardware event
+      context: SPUG RTL clocked state machine
+      consumes: current state, authentication and error inputs
+      produces: next state and path enables
+      stateResource: state registers, timeout/error state
+      completionError: Transitions to allowed state or Error
+      hardwareEffect: Controls downstream power and traffic gates
+    sources:
+      - path: nereus_fpga/spug_fpga
+        note: Function or implementation evidence
+  - id: fn-spug-forward
+    moduleId: spug-pcie
+    name: sp37_p2p_bridge_u2d / d2u
+    description: 组合、分发并转发四类 PCIe TLP。
+    evidence: RTL_PROVEN
+    contract: &a13
+      trigger: Valid upstream or downstream TLP
+      context: SPUG RTL PCIe data plane
+      consumes: RQ/RC/CQ/CC streams and flow-control credits
+      produces: forwarded TLP stream
+      stateResource: FIFOs, tags, ordering and backpressure state
+      completionError: TLP accepted/forwarded or held under backpressure
+      hardwareEffect: Drives opposite PCIe port AXI-Stream
+    sources:
+      - path: nereus_fpga/spug_fpga
+        note: Function or implementation evidence
+  - id: fn-spug-crypto
+    moduleId: spug-crypto
+    name: spug_flow_cypher_ctrl
+    description: 按安全状态对选中 payload 执行 GCM/SM4。
+    evidence: RTL_PROVEN
+    contract: &a14
+      trigger: Secure flow selected by state/policy
+      context: SPUG RTL crypto pipeline
+      consumes: payload, key selection and direction
+      produces: encrypted/decrypted payload
+      stateResource: key slots, crypto pipeline and completion state
+      completionError: Returns transformed payload or signals crypto error
+      hardwareEffect: Feeds processed data back into PCIe flow
+    sources:
+      - path: nereus_fpga/spug_fpga
+        note: Function or implementation evidence
+  - id: fn-vdevice-exit
+    moduleId: spu-vgpu
+    name: suep_virtual_device_exit
+    description: 销毁虚拟设备并回收虚拟总线资源。
+    evidence: CODE_PROVEN
+    contract: &a15
+      trigger: SPUG service stop or module remove
+      context: SPU kernel teardown context
+      consumes: vSPUG/vBEP ownership state
+      produces: released virtual PCI resources
+      stateResource: device lists, IRQ and mapping ownership
+      completionError: Completes only after child devices are released
+      hardwareEffect: Removes device-visible virtual PCI objects
+    sources:
+      - path: nereus/spu-g/spu_driver/suep_virtual_device.c
+        note: Function or implementation evidence
+  - id: fn-sdep-remove
+    moduleId: host-sdep
+    name: sdep_remove
+    description: 停止 NTB/sysfs/IRQ 并释放 SDEP 资源。
+    evidence: CODE_PROVEN
+    contract: &a16
+      trigger: Module unload or PCI remove
+      context: Host kernel remove context
+      consumes: SDEP state and SPUG child objects
+      produces: released Host management resources
+      stateResource: BAR maps, IRQ, sysfs and topology tables
+      completionError: Unwinds in reverse order; cross-host ordering remains unverified
+      hardwareEffect: Disables Function 1 resources
+    sources:
+      - path: nereus/spu-g/sdep_driver/sdep_driver.c
+        note: Function or implementation evidence
+layout:
+  nodes:
+    - nodeId: host-pcs
+      position: &a76
+        - -32.7
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: host-platform
+      position: &a77
+        - -27.3
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: host-spug-tools
+      position: &a78
+        - -32.7
+        - 7.8999999999999995
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: host-sp37
+      position: &a79
+        - -18.7
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: host-sdep
+      position: &a80
+        - -13.3
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: host-spug-subdriver
+      position: &a81
+        - -18.7
+        - 7.8999999999999995
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: host-block
+      position: &a82
+        - -13.3
+        - 7.8999999999999995
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-f0
+      position: &a83
+        - -3.7
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-ntb
+      position: &a84
+        - 1.7000000000000002
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-security-rtl
+      position: &a85
+        - -3.7
+        - 7.8999999999999995
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-sp37
+      position: &a86
+        - 11.3
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-connect
+      position: &a87
+        - 16.7
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-vgpu
+      position: &a88
+        - 11.3
+        - 7.8999999999999995
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-kernel-hooks
+      position: &a89
+        - 16.7
+        - 7.8999999999999995
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-security-adapters
+      position: &a90
+        - 11.3
+        - 3.5999999999999996
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-block
+      position: &a91
+        - 16.7
+        - 3.5999999999999996
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-pcs
+      position: &a92
+        - 27.3
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spu-gpu-loader
+      position: &a93
+        - 32.7
+        - 12.2
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spu-platform
+      position: &a94
+        - 27.3
+        - 7.8999999999999995
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spug-pcie
+      position: &a95
+        - -0.7000000000000002
+        - -6.8
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spug-control
+      position: &a96
+        - 4.7
+        - -6.8
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: spug-crypto
+      position: &a97
+        - -0.7000000000000002
+        - -11.1
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: virtual-gpu
+      position: &a98
+        - 20.3
+        - -6.8
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: vendor-gpu-driver
+      position: &a99
+        - 25.7
+        - -6.8
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: physical-gpu
+      position: &a100
+        - 20.3
+        - -11.1
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - -3.2
+        - 0.2
+        - 1.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: secure-block-device
+      position: &a101
+        - 25.7
+        - -11.1
+        - 0.9
+      size:
+        - 4.6
+        - 2.4
+        - 1.1
+      labelOffset:
+        - 3.2
+        - 0.2
+        - 1.8
+      moduleSide: right
+      cameraSide: right
+  zones:
+    - zoneId: host-userspace
+      position: &a102
+        - -30
+        - 8
+        - 0
+      size: &a109
+        - 12
+        - 14
+        - 2
+      backdrop: server
+    - zoneId: host-kernel
+      position: &a103
+        - -16
+        - 8
+        - 0
+      size: &a110
+        - 13
+        - 16
+        - 2
+      backdrop: server
+    - zoneId: spu-fpga
+      position: &a104
+        - -1
+        - 8
+        - 0
+      size: &a111
+        - 13
+        - 16
+        - 2
+      backdrop: board
+    - zoneId: spu-kernel
+      position: &a105
+        - 14
+        - 8
+        - 0
+      size: &a112
+        - 14
+        - 18
+        - 2
+      backdrop: server
+    - zoneId: spu-userspace
+      position: &a106
+        - 30
+        - 8
+        - 0
+      size: &a113
+        - 14
+        - 16
+        - 2
+      backdrop: server
+    - zoneId: spug-fpga
+      position: &a107
+        - 2
+        - -11
+        - 0
+      size: &a114
+        - 17
+        - 14
+        - 2
+      backdrop: fabric
+    - zoneId: gpu-external
+      position: &a108
+        - 23
+        - -11
+        - 0
+      size: &a115
+        - 20
+        - 14
+        - 2
+      backdrop: device
+  camera:
+    position:
+      - 4
+      - 11
+      - 64
+    target:
+      - 2
+      - 1
+      - 0
+    fov: 48
+  labelDistance: 1.2
+  farBlockOpacity: 0.22
+  farFlowOpacity: 0.18
+enhanced:
+  defaultView: runtime-placement
+  content:
+    zhCN:
+      planeMeta:
+        host-userspace:
+          label: Host 用户态与服务
+          short: Host 用户态与服务
+          color: "#22a7cf"
+        host-kernel:
+          label: Host 内核驱动
+          short: Host 内核驱动
+          color: "#7657c8"
+        spu-fpga:
+          label: SPU FPGA
+          short: SPU FPGA
+          color: "#168f7b"
+        spu-kernel:
+          label: SPU 内核驱动
+          short: SPU 内核驱动
+          color: "#2f83e7"
+        spu-userspace:
+          label: SPU 用户态与平台
+          short: SPU 用户态与平台
+          color: "#c05e2b"
+        spug-fpga:
+          label: SPUG FPGA
+          short: SPUG FPGA
+          color: "#d64d72"
+        gpu-external:
+          label: GPU、外部驱动与可选存储
+          short: GPU、外部驱动与可选存储
+          color: "#7fae3f"
+      edgeMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: 控制
+        DATA:
+          color: "#4d8edb"
+          label: 数据
+        SYNC:
+          color: "#9b6bc4"
+          label: 同步
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: 生命周期
+        PHYSICAL:
+          color: "#607d8b"
+          label: 物理/PCIe
+      laneMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: 控制
+          summary: 控制
+        DATA:
+          color: "#4d8edb"
+          label: 数据
+          summary: 数据
+        SYNC:
+          color: "#9b6bc4"
+          label: 同步
+          summary: 同步
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: 生命周期
+          summary: 生命周期
+        PHYSICAL:
+          color: "#607d8b"
+          label: 物理/PCIe
+          summary: 物理/PCIe
+      functionInteractions:
+        host-pcs: []
+        host-platform: []
+        host-spug-tools: []
+        host-sp37: []
+        host-sdep: []
+        host-spug-subdriver: []
+        host-block: []
+        spu-f0: []
+        spu-ntb: []
+        spu-security-rtl: []
+        spu-sp37: []
+        spu-connect: []
+        spu-vgpu: []
+        spu-kernel-hooks: []
+        spu-security-adapters: []
+        spu-block: []
+        spu-pcs: []
+        spu-gpu-loader: []
+        spu-platform: []
+        spug-pcie: []
+        spug-control: []
+        spug-crypto: []
+        virtual-gpu: []
+        vendor-gpu-driver: []
+        physical-gpu: []
+        secure-block-device: []
+      driverCausalLayerMeta:
+        payload:
+          label: 数据与所有权
+          short: DATA
+          color: "#4d8edb"
+          description: 数据生产、传输与消费
+        control:
+          label: 控制执行
+          short: CTRL
+          color: "#d59a2b"
+          description: probe、调用、状态控制
+        sync:
+          label: 同步与完成
+          short: SYNC
+          color: "#9b6bc4"
+          description: IRQ、等待与握手
+        lifecycle:
+          label: 生命周期与回滚
+          short: LIFE
+          color: "#d35f5f"
+          description: 分配、加载、卸载与逆序释放
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#d59a2b"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#2a9d8f"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#e76f51"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a261"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#9b6bc4"
+          label: IRQ
+          dashed: true
+        WAIT:
+          color: "#8d99ae"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#d62828"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        sp37-startup-pcs:
+          id: sp37-startup-pcs
+          title: SP37 双侧启动与 PCS 通信
+          shortTitle: SP37 双侧启动与 PCS 通信
+          summary: 从 Host/SPU Function 0 驱动 probe 到 PCS 双向消息闭环。
+          caveat: 当前无实机模块哈希、BDF 和双向 trace，不能提升为运行观测。
+          steps:
+            - id: sp37-startup-pcs-s1
+              title: sp37_probe (Host)
+              shortTitle: sp37_probe (Host)
+              moduleRole: host-sp37
+              contextLane: host-kernel
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/kernelspace/spu_pcied
+              contract: *a1
+            - id: sp37-startup-pcs-s2
+              title: pcie_server send path
+              shortTitle: pcie_server send path
+              moduleRole: host-pcs
+              contextLane: host-userspace
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/nereus_pcie
+              contract: *a2
+            - id: sp37-startup-pcs-s3
+              title: SPU FPGA Function 0 / SP37
+              shortTitle: SPU FPGA Function 0 / SP37
+              moduleRole: spu-f0
+              contextLane: spu-fpga
+              layers:
+                - payload
+              kind: hardware
+              evidence: RTL_PROVEN
+            - id: sp37-startup-pcs-s4
+              title: sp37_probe (is_spu=1)
+              shortTitle: sp37_probe (is_spu=1)
+              moduleRole: spu-sp37
+              contextLane: spu-kernel
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/kernelspace/spu_pcied
+              contract: *a3
+            - id: sp37-startup-pcs-s5
+              title: pcie_server receive path
+              shortTitle: pcie_server receive path
+              moduleRole: spu-pcs
+              contextLane: spu-userspace
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/nereus_pcie
+              contract: *a4
+            - id: sp37-startup-pcs-s6
+              title: TSSD / NMS / Server / LibOS
+              shortTitle: TSSD / NMS / Server / LibOS
+              moduleRole: spu-platform
+              contextLane: spu-userspace
+              layers:
+                - payload
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: sp37-startup-pcs-s1
+              target: sp37-startup-pcs-s2
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s2
+              target: sp37-startup-pcs-s3
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s3
+              target: sp37-startup-pcs-s4
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s4
+              target: sp37-startup-pcs-s5
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s5
+              target: sp37-startup-pcs-s6
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+        sdep-suep-virtualization:
+          id: sdep-suep-virtualization
+          title: SDEP/SUEP 初始化及虚拟设备创建
+          shortTitle: SDEP/SUEP 初始化及虚拟设备创建
+          summary: Host SDEP 经 NTB 把设备拓扑交给 SPU SUEP，并创建虚拟 PCI GPU。
+          caveat: 实际 SPUG/GPU BDF、IOMMU group、设备数量和热插拔行为仍需现场采集。
+          steps:
+            - id: sdep-suep-virtualization-s1
+              title: sdep_probe
+              shortTitle: sdep_probe
+              moduleRole: host-sdep
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/sdep_driver/sdep_driver.c
+              contract: *a5
+            - id: sdep-suep-virtualization-s2
+              title: SPU FPGA Function 1 / NTB
+              shortTitle: SPU FPGA Function 1 / NTB
+              moduleRole: spu-ntb
+              contextLane: spu-fpga
+              layers:
+                - control
+              kind: hardware
+              evidence: RTL_PROVEN
+            - id: sdep-suep-virtualization-s3
+              title: upstream_probe_one
+              shortTitle: upstream_probe_one
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/spu_driver/spu_upstream_driver.c
+              contract: *a6
+            - id: sdep-suep-virtualization-s4
+              title: spug_driver_init
+              shortTitle: spug_driver_init
+              moduleRole: host-spug-subdriver
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/sdep_driver/spug_driver.c
+              contract: *a7
+            - id: sdep-suep-virtualization-s5
+              title: suep_virtual_device_init
+              shortTitle: suep_virtual_device_init
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/spu_driver/suep_virtual_device.c
+              contract: *a8
+            - id: sdep-suep-virtualization-s6
+              title: SPU 虚拟 PCI GPU
+              shortTitle: SPU 虚拟 PCI GPU
+              moduleRole: virtual-gpu
+              contextLane: gpu-external
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: sdep-suep-virtualization-s1
+              target: sdep-suep-virtualization-s2
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s2
+              target: sdep-suep-virtualization-s3
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s3
+              target: sdep-suep-virtualization-s4
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s4
+              target: sdep-suep-virtualization-s5
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s5
+              target: sdep-suep-virtualization-s6
+              label: CALL
+              relation: CALL
+              layer: control
+        gpu-bind-dma:
+          id: gpu-bind-dma
+          title: 原生 GPU 驱动绑定和 DMA 重定向
+          shortTitle: 原生 GPU 驱动绑定和 DMA 重定向
+          summary: SPU 脚本加载厂商模块，模块绑定虚拟 GPU，DMA 经定制 Hook 进入 SUEP/SPUG 地址路径。
+          caveat: Host 直连模式与 SPU 虚拟化模式的生产选择尚未冻结；图中虚拟化路径为代码事实，最终部署组合仍为推断。
+          steps:
+            - id: gpu-bind-dma-s1
+              title: start_spug.sh
+              shortTitle: start_spug.sh
+              moduleRole: spu-gpu-loader
+              contextLane: spu-userspace
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/config/start_spug.sh
+              contract: *a9
+            - id: gpu-bind-dma-s2
+              title: native PCI probe
+              shortTitle: native PCI probe
+              moduleRole: vendor-gpu-driver
+              contextLane: gpu-external
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: Linux PCI model + nereus/spu-g virtual PCI
+              contract: *a10
+            - id: gpu-bind-dma-s3
+              title: suep_hook_dma callback
+              shortTitle: suep_hook_dma callback
+              moduleRole: spu-kernel-hooks
+              contextLane: spu-kernel
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu_kernel + nereus/spu-g
+              contract: *a11
+            - id: gpu-bind-dma-s4
+              title: spu_vgpu.ko / SUEP
+              shortTitle: spu_vgpu.ko / SUEP
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - payload
+              kind: data
+              evidence: CODE_PROVEN
+            - id: gpu-bind-dma-s5
+              title: SPUG PCIe 安全桥
+              shortTitle: SPUG PCIe 安全桥
+              moduleRole: spug-pcie
+              contextLane: spug-fpga
+              layers:
+                - payload
+              kind: hardware
+              evidence: RTL_PROVEN
+            - id: gpu-bind-dma-s6
+              title: 物理 GPU Endpoint
+              shortTitle: 物理 GPU Endpoint
+              moduleRole: physical-gpu
+              contextLane: gpu-external
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: gpu-bind-dma-s1
+              target: gpu-bind-dma-s2
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s2
+              target: gpu-bind-dma-s3
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s3
+              target: gpu-bind-dma-s4
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s4
+              target: gpu-bind-dma-s5
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s5
+              target: gpu-bind-dma-s6
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+        spug-secure-tlp:
+          id: spug-secure-tlp
+          title: SPUG GPU TLP 与安全状态链
+          shortTitle: SPUG GPU TLP 与安全状态链
+          summary: SPUG 状态机门控上下游 TLP，安全模式下调用密钥与 GCM/SM4 数据面。
+          caveat: RTL 能证明模块和合同，不能证明当前烧写 bit、密钥代际或板上时序已经验收。
+          steps:
+            - id: spug-secure-tlp-s1
+              title: SPUG 控制与诊断工具
+              shortTitle: SPUG 控制与诊断工具
+              moduleRole: host-spug-tools
+              contextLane: host-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: spug-secure-tlp-s2
+              title: spug_state_control
+              shortTitle: spug_state_control
+              moduleRole: spug-control
+              contextLane: spug-fpga
+              layers:
+                - control
+              kind: function
+              evidence: RTL_PROVEN
+              source: nereus_fpga/spug_fpga
+              contract: *a12
+            - id: spug-secure-tlp-s3
+              title: sp37_p2p_bridge_u2d / d2u
+              shortTitle: sp37_p2p_bridge_u2d / d2u
+              moduleRole: spug-pcie
+              contextLane: spug-fpga
+              layers:
+                - control
+              kind: function
+              evidence: RTL_PROVEN
+              source: nereus_fpga/spug_fpga
+              contract: *a13
+            - id: spug-secure-tlp-s4
+              title: spug_flow_cypher_ctrl
+              shortTitle: spug_flow_cypher_ctrl
+              moduleRole: spug-crypto
+              contextLane: spug-fpga
+              layers:
+                - control
+              kind: function
+              evidence: RTL_PROVEN
+              source: nereus_fpga/spug_fpga
+              contract: *a14
+            - id: spug-secure-tlp-s5
+              title: 物理 GPU Endpoint
+              shortTitle: 物理 GPU Endpoint
+              moduleRole: physical-gpu
+              contextLane: gpu-external
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: spug-secure-tlp-s1
+              target: spug-secure-tlp-s2
+              label: STATE
+              relation: STATE
+              layer: control
+            - source: spug-secure-tlp-s2
+              target: spug-secure-tlp-s3
+              label: STATE
+              relation: STATE
+              layer: control
+            - source: spug-secure-tlp-s3
+              target: spug-secure-tlp-s4
+              label: STATE
+              relation: STATE
+              layer: control
+            - source: spug-secure-tlp-s4
+              target: spug-secure-tlp-s5
+              label: STATE
+              relation: STATE
+              layer: control
+        unload-reset-hotplug:
+          id: unload-reset-hotplug
+          title: 卸载、reset、热拔出与资源回收
+          shortTitle: 卸载、reset、热拔出与资源回收
+          summary: 先停业务和厂商驱动，再销毁虚拟设备、停止 SUEP/SDEP，最后释放基础 SP37。
+          caveat: 局部 remove 函数有代码证据，但完整跨 Host/SPU 的严格逆序、reset 和热拔出仍是待验证目标顺序。
+          steps:
+            - id: unload-reset-hotplug-s1
+              title: TSSD / NMS / Server / LibOS
+              shortTitle: TSSD / NMS / Server / LibOS
+              moduleRole: spu-platform
+              contextLane: spu-userspace
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: unload-reset-hotplug-s2
+              title: 原生 GPU 厂商驱动
+              shortTitle: 原生 GPU 厂商驱动
+              moduleRole: vendor-gpu-driver
+              contextLane: gpu-external
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: unload-reset-hotplug-s3
+              title: suep_virtual_device_exit
+              shortTitle: suep_virtual_device_exit
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/spu_driver/suep_virtual_device.c
+              contract: *a15
+            - id: unload-reset-hotplug-s4
+              title: spu_vgpu.ko / SUEP
+              shortTitle: spu_vgpu.ko / SUEP
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: unload-reset-hotplug-s5
+              title: sdep_remove
+              shortTitle: sdep_remove
+              moduleRole: host-sdep
+              contextLane: host-kernel
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/sdep_driver/sdep_driver.c
+              contract: *a16
+            - id: unload-reset-hotplug-s6
+              title: sp37.ko（Host）
+              shortTitle: sp37.ko（Host）
+              moduleRole: host-sp37
+              contextLane: host-kernel
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: unload-reset-hotplug-s1
+              target: unload-reset-hotplug-s2
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s2
+              target: unload-reset-hotplug-s3
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s3
+              target: unload-reset-hotplug-s4
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s4
+              target: unload-reset-hotplug-s5
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s5
+              target: unload-reset-hotplug-s6
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+      topologyNodes:
+        - id: host-pcs
+          label: Host PCS / pcie_server
+          fill: "#22a7cf"
+          data:
+            title: Host PCS / pcie_server
+            plane: host-userspace
+            layer: 区域 01 · 服务入口
+            kind: service
+            description: 将本地 client 请求封装为 SP37 帧，并通过 Host 字符设备收发。
+            evidence: code
+            core: true
+            tags: *a17
+            interfaces: *a18
+            codeRefs:
+              - nereus/nereus_pcie
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: host-platform
+          label: Host 管理服务
+          fill: "#2997bd"
+          data:
+            title: Host 管理服务
+            plane: host-userspace
+            layer: 区域 01 · 服务入口
+            kind: service
+            description: host_ams、host_nms、host_tun 与本地管理 API；只在底层链路稳定后启动。
+            evidence: code
+            core: true
+            tags: *a19
+            interfaces: *a20
+            codeRefs:
+              - nereus/build
+            views:
+              - runtime-placement
+              - repository-map
+        - id: host-spug-tools
+          label: SPUG 控制与诊断工具
+          fill: "#37b4d2"
+          data:
+            title: SPUG 控制与诊断工具
+            plane: host-userspace
+            layer: 区域 01 · 服务入口
+            kind: application
+            description: 通过 SDEP sysfs、BAR 工具和工作模式接口检查或切换 SPUG 状态。
+            evidence: code
+            core: true
+            tags: *a21
+            interfaces: *a22
+            codeRefs:
+              - nereus/spu-g/sdep_config
+            views:
+              - runtime-placement
+              - repository-map
+              - spug-secure-tlp
+        - id: host-sp37
+          label: sp37.ko（Host）
+          fill: "#7657c8"
+          data:
+            title: sp37.ko（Host）
+            plane: host-kernel
+            layer: 区域 02 · Host 驱动边界
+            kind: driver
+            description: 绑定 5709:1000，管理 BAR、MSI-X、DMA ring 和 H2C/C2H 字符设备。
+            evidence: code
+            core: true
+            tags: *a23
+            interfaces: *a24
+            codeRefs:
+              - nereus/kernelspace/spu_pcied
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sp37-startup-pcs
+              - unload-reset-hotplug
+        - id: host-sdep
+          label: sdep.ko（Host SDEP）
+          fill: "#6549af"
+          data:
+            title: sdep.ko（Host SDEP）
+            plane: host-kernel
+            layer: 区域 02 · Host 驱动边界
+            kind: driver
+            description: 绑定 5709:1001，扫描 Host 设备拓扑并交换 NTB 管理信息。
+            evidence: code
+            core: true
+            tags: *a25
+            interfaces: *a26
+            codeRefs:
+              - nereus/spu-g/sdep_driver/sdep_driver.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+              - unload-reset-hotplug
+        - id: host-spug-subdriver
+          label: SDEP 内嵌 SPUG bridge 管理
+          fill: "#855fc7"
+          data:
+            title: SDEP 内嵌 SPUG bridge 管理
+            plane: host-kernel
+            layer: 区域 02 · Host 驱动边界
+            kind: driver
+            description: spug_driver.c 编译进 sdep.ko；管理 5709:2000 BAR/sysfs，并非独立现行 spug.ko。
+            evidence: code
+            core: true
+            tags: *a27
+            interfaces: *a28
+            codeRefs:
+              - nereus/spu-g/sdep_driver/Makefile
+              - nereus/spu-g/sdep_driver/spug_driver.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - sdep-suep-virtualization
+        - id: host-block
+          label: hblkd_end.ko（可选）
+          fill: "#9b79d0"
+          data:
+            title: hblkd_end.ko（可选）
+            plane: host-kernel
+            layer: 区域 02 · Host 驱动边界
+            kind: driver
+            description: 安全存储 Host 端；通过 Host-SPU 通道与 sblkd_end 配对。
+            evidence: code
+            core: false
+            tags: *a29
+            interfaces: *a30
+            codeRefs:
+              - nereus/spu_blk_bridge
+            views:
+              - runtime-placement
+              - repository-map
+        - id: spu-f0
+          label: SPU FPGA Function 0 / SP37
+          fill: "#168f7b"
+          data:
+            title: SPU FPGA Function 0 / SP37
+            plane: spu-fpga
+            layer: 区域 03 · 双 PCIe 与 NTB
+            kind: hardware
+            description: 向 Host 和 SPU CPU 两侧提供 5709:1000、BAR、MSI-X、DMA 与协议通道。
+            evidence: rtl
+            core: true
+            tags: *a31
+            interfaces: *a32
+            codeRefs:
+              - qiongyu/fpga_spu
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: spu-ntb
+          label: SPU FPGA Function 1 / NTB
+          fill: "#1e9c86"
+          data:
+            title: SPU FPGA Function 1 / NTB
+            plane: spu-fpga
+            layer: 区域 03 · 双 PCIe 与 NTB
+            kind: hardware
+            description: 桥接 Host 与 SPU CPU 地址域，交换拓扑、BAR、MSI-X、P2P 和工作模式。
+            evidence: rtl
+            core: true
+            tags: *a33
+            interfaces: *a34
+            codeRefs:
+              - qiongyu/fpga_spu
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+        - id: spu-security-rtl
+          label: SPU 协议与安全 RTL
+          fill: "#36aa91"
+          data:
+            title: SPU 协议与安全 RTL
+            plane: spu-fpga
+            layer: 区域 03 · 双 PCIe 与 NTB
+            kind: hardware
+            description: 包含协议、SM2、GCM、EEPROM、Recovery 和可选 SStorage 路径。
+            evidence: rtl
+            core: true
+            tags: *a35
+            interfaces: *a36
+            codeRefs:
+              - qiongyu/fpga_spu
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+        - id: spu-sp37
+          label: sp37.ko is_spu=1
+          fill: "#2f83e7"
+          data:
+            title: sp37.ko is_spu=1
+            plane: spu-kernel
+            layer: 区域 04 · SPU 内核边界
+            kind: driver
+            description: SPU CPU 侧加载的同源 SP37 模块，提供 SPU 侧字符设备和 DMA/MSI-X。
+            evidence: code
+            core: true
+            tags: *a37
+            interfaces: *a38
+            codeRefs:
+              - nereus/kernelspace/spu_pcied
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: spu-connect
+          label: spu_connect.ko
+          fill: "#4d94e8"
+          data:
+            title: spu_connect.ko
+            plane: spu-kernel
+            layer: 区域 04 · SPU 内核边界
+            kind: driver
+            description: 在 SP37 ready 后处理 SPU 连接、重连和链路状态。
+            evidence: code
+            core: true
+            tags: *a39
+            interfaces: *a40
+            codeRefs:
+              - nereus/kernelspace/spu_connect
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+        - id: spu-vgpu
+          label: spu_vgpu.ko / SUEP
+          fill: "#2676ca"
+          data:
+            title: spu_vgpu.ko / SUEP
+            plane: spu-kernel
+            layer: 区域 04 · SPU 内核边界
+            kind: driver
+            description: 绑定 SPU 侧 5709:1001，接收 Host 拓扑，创建虚拟 PCI 设备并重定向 DMA。
+            evidence: code
+            core: true
+            tags: *a41
+            interfaces: *a42
+            codeRefs:
+              - nereus/spu-g/spu_driver/Makefile
+              - nereus/spu-g/spu_driver/spu_upstream_driver.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+              - gpu-bind-dma
+              - unload-reset-hotplug
+        - id: spu-kernel-hooks
+          label: spu_kernel DMA / RDMA Hooks
+          fill: "#579ee4"
+          data:
+            title: spu_kernel DMA / RDMA Hooks
+            plane: spu-kernel
+            layer: 区域 04 · SPU 内核边界
+            kind: protocol
+            description: 定制内核接口；hook_dma 支撑 vGPU DMA 重定向，hook_rdma 属于独立实验版本线。
+            evidence: code
+            core: true
+            tags: *a43
+            interfaces: *a44
+            codeRefs:
+              - nereus/spu_kernel
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - gpu-bind-dma
+        - id: spu-security-adapters
+          label: TSSD / TES / keyring / integrity
+          fill: "#5ba8d9"
+          data:
+            title: TSSD / TES / keyring / integrity
+            plane: spu-kernel
+            layer: 区域 04 · SPU 内核边界
+            kind: driver
+            description: 可信安全服务及内核适配集合；现有汇总证据尚不足以列出全部最终 .ko 名称。
+            evidence: inferred
+            core: true
+            tags: *a45
+            interfaces: *a46
+            codeRefs:
+              - nereus/spu_tssd
+            views:
+              - runtime-placement
+              - repository-map
+        - id: spu-block
+          label: sblkd_end.ko（可选）
+          fill: "#6eb5ee"
+          data:
+            title: sblkd_end.ko（可选）
+            plane: spu-kernel
+            layer: 区域 04 · SPU 内核边界
+            kind: driver
+            description: 安全存储 SPU 端，生成 /dev/spu_mem_blk 并与 Host 块端配对。
+            evidence: code
+            core: false
+            tags: *a47
+            interfaces: *a48
+            codeRefs:
+              - nereus/spu_blk_bridge
+            views:
+              - runtime-placement
+              - repository-map
+        - id: spu-pcs
+          label: SPU PCS / pcie_server
+          fill: "#c05e2b"
+          data:
+            title: SPU PCS / pcie_server
+            plane: spu-userspace
+            layer: 区域 05 · 可信服务
+            kind: service
+            description: 读取 SPU 侧 SP37 字符设备，解析帧并分发给本地服务。
+            evidence: code
+            core: true
+            tags: *a49
+            interfaces: *a50
+            codeRefs:
+              - nereus/nereus_pcie
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: spu-gpu-loader
+          label: GPU 驱动装配脚本
+          fill: "#ce7438"
+          data:
+            title: GPU 驱动装配脚本
+            plane: spu-userspace
+            layer: 区域 05 · 可信服务
+            kind: service
+            description: 等待 vGPU 初始化，备份并按设备类型加载 NVIDIA、寒武纪或天数智芯模块。
+            evidence: code
+            core: true
+            tags: *a51
+            interfaces: *a52
+            codeRefs:
+              - nereus/spu-g/config/start_spug.sh
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - gpu-bind-dma
+        - id: spu-platform
+          label: TSSD / NMS / Server / LibOS
+          fill: "#d1844c"
+          data:
+            title: TSSD / NMS / Server / LibOS
+            plane: spu-userspace
+            layer: 区域 05 · 可信服务
+            kind: service
+            description: 驱动和 PCS 稳定后的可信服务、隔离运行时与业务平台。
+            evidence: code
+            core: true
+            tags: *a53
+            interfaces: *a54
+            codeRefs:
+              - nereus/build
+              - nereus/spu_server/trunk
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - sp37-startup-pcs
+              - unload-reset-hotplug
+        - id: spug-pcie
+          label: SPUG PCIe 安全桥
+          fill: "#d64d72"
+          data:
+            title: SPUG PCIe 安全桥
+            plane: spug-fpga
+            layer: 区域 06 · GPU 安全桥
+            kind: hardware
+            description: 上游 EP 面向 Host、下游 RP 面向 GPU，转发 RQ/RC/CQ/CC 四类 TLP。
+            evidence: rtl
+            core: true
+            tags: *a55
+            interfaces: *a56
+            codeRefs:
+              - nereus_fpga/spug_fpga
+              - wuhaocheng/dwc_pcie
+              - nereus_fpga/pcie_base_ip
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - gpu-bind-dma
+              - spug-secure-tlp
+        - id: spug-control
+          label: SPUG 状态、认证与电源控制
+          fill: "#e16683"
+          data:
+            title: SPUG 状态、认证与电源控制
+            plane: spug-fpga
+            layer: 区域 06 · GPU 安全桥
+            kind: state
+            description: 维护 Idle/Init/Available/Nonsecure/Auth/Secure/Error，并控制认证、错误恢复和下游供电。
+            evidence: rtl
+            core: true
+            tags: *a57
+            interfaces: *a58
+            codeRefs:
+              - nereus_fpga/spug_fpga
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - spug-secure-tlp
+        - id: spug-crypto
+          label: SPUG 密钥与加解密数据面
+          fill: "#ef7691"
+          data:
+            title: SPUG 密钥与加解密数据面
+            plane: spug-fpga
+            layer: 区域 06 · GPU 安全桥
+            kind: hardware
+            description: 密钥管理、随机数、持久存储以及 GCM/SM4 流量处理。
+            evidence: rtl
+            core: true
+            tags: *a59
+            interfaces: *a60
+            codeRefs:
+              - nereus_fpga/spug_fpga
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - spug-secure-tlp
+        - id: virtual-gpu
+          label: SPU 虚拟 PCI GPU
+          fill: "#7fae3f"
+          data:
+            title: SPU 虚拟 PCI GPU
+            plane: gpu-external
+            layer: 区域 07 · 外部端点
+            kind: device
+            description: SUEP 在 SPU OS 中创建的 vBEP/虚拟设备，供原生厂商驱动绑定。
+            evidence: code
+            core: true
+            tags: *a61
+            interfaces: *a62
+            codeRefs:
+              - nereus/spu-g/spu_driver/suep_virtual_device.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+        - id: vendor-gpu-driver
+          label: 原生 GPU 厂商驱动
+          fill: "#8bb34c"
+          data:
+            title: 原生 GPU 厂商驱动
+            plane: gpu-external
+            layer: 区域 07 · 外部端点
+            kind: driver
+            description: NVIDIA、寒武纪或天数智芯驱动；虚拟化模式下由 SPU 脚本加载。Host 直连模式位置仍需实机区分。
+            evidence: inferred
+            core: true
+            tags: *a63
+            interfaces: *a64
+            codeRefs:
+              - nereus/spu-g/config/start_spug.sh
+              - nereus/spu-g/sdep_config/remove_gpu_driver.sh
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - gpu-bind-dma
+              - unload-reset-hotplug
+        - id: physical-gpu
+          label: 物理 GPU Endpoint
+          fill: "#96bd5d"
+          data:
+            title: 物理 GPU Endpoint
+            plane: gpu-external
+            layer: 区域 07 · 外部端点
+            kind: device
+            description: 位于 SPUG 下游的真实 GPU；具体型号、BDF、VBIOS 和运行驱动组合尚未采集。
+            evidence: inferred
+            core: true
+            tags: *a65
+            interfaces: *a66
+            codeRefs:
+              - 06-软件驱动与启动架构.md
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - gpu-bind-dma
+              - spug-secure-tlp
+        - id: secure-block-device
+          label: 安全块设备 / bcache（可选）
+          fill: "#a8c96d"
+          data:
+            title: 安全块设备 / bcache（可选）
+            plane: gpu-external
+            layer: 区域 07 · 外部端点
+            kind: device
+            description: hblkd_end 与 sblkd_end 的可选产品链；不得与 NVMe/SM4 透明桥实验混为一谈。
+            evidence: code
+            core: false
+            tags: *a67
+            interfaces: *a68
+            codeRefs:
+              - nereus/spu_blk_bridge
+            views:
+              - runtime-placement
+              - repository-map
+      topologyEdges:
+        - id: host-client-pcs
+          source: host-platform
+          target: host-pcs
+          label: 本地请求
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 管理服务经 PCS client/Unix Socket 发起 Host-SPU 消息。
+            evidence: code
+            protocol: Unix Socket
+        - id: host-pcs-sp37
+          source: host-pcs
+          target: host-sp37
+          label: 字符设备写入
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: PCS 向 /dev/sp37_h2c_X 写帧，并从 c2h 节点收包。
+            evidence: code
+            protocol: SP37 character ABI
+        - id: host-sp37-f0
+          source: host-sp37
+          target: spu-f0
+          label: Host PCIe Function 0
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: Host sp37.ko 通过 BAR、DMA ring 和 MSI-X 与 SPU FPGA Function 0 交互。
+            evidence: code
+            protocol: PCIe 5709:1000
+        - id: f0-spu-sp37
+          source: spu-f0
+          target: spu-sp37
+          label: CPU 侧 SP37
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: SPU FPGA CPU 侧 Function 0 与 SPU sp37.ko 建立字符通道。
+            evidence: code
+            protocol: PCIe 5709:1000
+        - id: spu-sp37-pcs
+          source: spu-sp37
+          target: spu-pcs
+          label: SPU 字符设备
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: SPU PCS 从 sp37 字符设备读取并解析消息。
+            evidence: code
+            protocol: SP37 character ABI
+        - id: spu-pcs-platform
+          source: spu-pcs
+          target: spu-platform
+          label: 平台消息
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: PCS 把帧分发给 TSSD、NMS、Server 等本地服务。
+            evidence: code
+            protocol: PCS IPC
+        - id: spu-sp37-connect
+          source: spu-sp37
+          target: spu-connect
+          label: ready 后连接
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: spu_connect 在 SP37 ready 后加载并维护连接状态。
+            evidence: code
+            protocol: module dependency
+        - id: tools-sdep
+          source: host-spug-tools
+          target: host-sdep
+          label: sysfs / 工作模式
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Host 工具通过 SDEP 管理接口读取状态或切换模式。
+            evidence: code
+            protocol: sysfs
+        - id: sdep-ntb
+          source: host-sdep
+          target: spu-ntb
+          label: Host Function 1
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: SDEP 绑定 5709:1001 并通过 BAR/MSI-X/NTB 交换拓扑与管理消息。
+            evidence: code
+            protocol: PCIe 5709:1001
+        - id: ntb-suep
+          source: spu-ntb
+          target: spu-vgpu
+          label: SPU Function 1
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: SUEP 绑定 SPU 侧 5709:1001 并消费 NTB 消息。
+            evidence: code
+            protocol: PCIe 5709:1001
+        - id: sdep-subdriver
+          source: host-sdep
+          target: host-spug-subdriver
+          label: 扫描并初始化 SPUG
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: SDEP 设备管理代码发现 SPUG 后调用内嵌 spug_driver_init。
+            evidence: code
+            protocol: in-module call
+        - id: subdriver-spug
+          source: host-spug-subdriver
+          target: spug-pcie
+          label: SPUG BAR / sysfs
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 内嵌 bridge 管理映射 SPUG BAR 并创建 sysfs。
+            evidence: code
+            protocol: PCIe 5709:2000
+        - id: suep-virtual-gpu
+          source: spu-vgpu
+          target: virtual-gpu
+          label: 创建虚拟 PCI 设备
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: SUEP 根据 Host 拓扑创建 vBEP 和虚拟 PCI GPU。
+            evidence: code
+            protocol: virtual PCI
+        - id: hooks-vgpu
+          source: spu-kernel-hooks
+          target: spu-vgpu
+          label: DMA Hook 回调
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 定制 hook_dma 把厂商驱动 DMA 映射交给 SUEP 重定向。
+            evidence: code
+            protocol: suep_hook_dma
+        - id: loader-vendor
+          source: spu-gpu-loader
+          target: vendor-gpu-driver
+          label: 加载厂商模块
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: start_spug.sh 按发现的设备类型加载厂商驱动模块。
+            evidence: code
+            protocol: insmod
+        - id: vendor-virtual
+          source: vendor-gpu-driver
+          target: virtual-gpu
+          label: 驱动绑定
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 虚拟化模式下原生驱动绑定 SUEP 创建的虚拟 PCI 设备。
+            evidence: code
+            protocol: Linux PCI driver model
+        - id: virtual-dma-spug
+          source: virtual-gpu
+          target: spug-pcie
+          label: 重定向 DMA / TLP
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: 虚拟设备访问经 SUEP/NTB 地址合同映射到 SPUG/GPU 数据路径；完整运行组合待实机确认。
+            evidence: inferred
+            protocol: PCIe DMA
+        - id: spug-control-pcie
+          source: spug-control
+          target: spug-pcie
+          label: 状态门控
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 状态机决定旁路、非安全、认证、安全或错误处理路径。
+            evidence: rtl
+            protocol: RTL state
+        - id: spug-crypto-pcie
+          source: spug-crypto
+          target: spug-pcie
+          label: GCM / SM4 流处理
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: 安全模式下密码数据面处理选中的 PCIe payload。
+            evidence: rtl
+            protocol: AXI-Stream
+        - id: spug-physical-gpu
+          source: spug-pcie
+          target: physical-gpu
+          label: 下游 PCIe x16
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: SPUG 下游 Root Port 与物理 GPU Endpoint 交换四类 TLP。
+            evidence: rtl
+            protocol: PCIe x16
+        - id: platform-security
+          source: spu-platform
+          target: spu-security-adapters
+          label: 可信服务调用
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 平台服务在底层设备就绪后使用 TSSD/TES/keyring/integrity 能力。
+            evidence: code
+            protocol: service/kernel ABI
+        - id: security-rtl
+          source: spu-security-adapters
+          target: spu-security-rtl
+          label: 协议 / 密码请求
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 安全服务经 PCS/协议路径访问 FPGA 能力；精确直接 MMIO 边界尚未逐仓闭合。
+            evidence: inferred
+            protocol: SP37 protocol
+        - id: host-block-sp37
+          source: host-block
+          target: host-sp37
+          label: 安全块请求
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: 可选 Host 块端复用 Host-SPU 通信链。
+            evidence: code
+            protocol: block bridge
+        - id: spu-sp37-block
+          source: spu-sp37
+          target: spu-block
+          label: SPU 块端接收
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: SPU 块端接收对端请求并提供块设备。
+            evidence: code
+            protocol: block bridge
+        - id: spu-block-device
+          source: spu-block
+          target: secure-block-device
+          label: /dev/spu_mem_blk
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: sblkd_end 创建可供文件系统/bcache 使用的块设备。
+            evidence: code
+            protocol: Linux block device
+        - id: shutdown-platform-pcs
+          source: spu-platform
+          target: spu-pcs
+          label: 停止上层请求
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: 卸载前先停止平台新请求并排空 PCS。
+            evidence: inferred
+            protocol: target shutdown order
+        - id: shutdown-vendor-loader
+          source: vendor-gpu-driver
+          target: spu-gpu-loader
+          label: 卸载厂商模块
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: stop_spug.sh 终止设备用户并逆序卸载 GPU 模块。
+            evidence: code
+            protocol: rmmod
+        - id: shutdown-virtual-suep
+          source: virtual-gpu
+          target: spu-vgpu
+          label: 销毁虚拟设备
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: 先销毁 vBEP/虚拟 PCI 资源，再卸载 spu_vgpu。
+            evidence: code
+            protocol: vgpu_init / remove
+        - id: shutdown-suep-sdep
+          source: spu-vgpu
+          target: host-sdep
+          label: 停止 NTB 管理
+          fill: "#9b6bc4"
+          data:
+            kind: SYNC
+            lane: SYNC
+            description: 两侧停止中断和管理协议；跨机精确顺序需实机故障注入验证。
+            evidence: inferred
+            protocol: shutdown handshake
+        - id: shutdown-sdep-sp37
+          source: host-sdep
+          target: host-sp37
+          label: 最终卸载基础驱动
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: SDEP/SUEP 资源清理后才卸载两侧 SP37 基础链路。
+            evidence: inferred
+            protocol: target rollback order
+      viewOptions:
+        - id: runtime-placement
+          label: 运行位置
+          hint: 按 Host、SPU、SPU FPGA、SPUG FPGA 与外部端点区分实际加载边界。
+        - id: repository-map
+          label: Git 仓库与产物
+          hint: 查看每个仓库产出的 .ko、服务、工具及聚合关系。
+        - id: fpga-interaction
+          label: FPGA 交互
+          hint: 聚焦 PCI ID、BAR、MSI-X、NTB、虚拟 PCI 与 TLP 数据路径。
+        - id: startup-lifecycle
+          label: 启动与卸载生命周期
+          hint: 按依赖展示 probe、服务启动、GPU 绑定和逆序回收。
+      systemTree:
+        - label: Host 用户态与服务
+          plane: host-userspace
+          nodes: *a69
+        - label: Host 内核驱动
+          plane: host-kernel
+          nodes: *a70
+        - label: SPU FPGA
+          plane: spu-fpga
+          nodes: *a71
+        - label: SPU 内核驱动
+          plane: spu-kernel
+          nodes: *a72
+        - label: SPU 用户态与平台
+          plane: spu-userspace
+          nodes: *a73
+        - label: SPUG FPGA
+          plane: spug-fpga
+          nodes: *a74
+        - label: GPU、外部驱动与可选存储
+          plane: gpu-external
+          nodes: *a75
+      storageTrees:
+        - id: driver-repositories
+          label: 驱动与 FPGA Git 仓库
+          plane: host-userspace
+          roots:
+            - path: nereus/kernelspace/spu_pcied
+              role: 生成 Host/SPU 两侧 sp37.ko
+              nodeId: host-sp37
+            - path: nereus/kernelspace/spu_connect
+              role: 生成 SPU 侧 spu_connect.ko
+              nodeId: spu-connect
+            - path: nereus/spu-g/sdep_driver
+              role: 生成 sdep.ko，并内嵌 SPUG bridge 管理
+              nodeId: host-sdep
+            - path: nereus/spu-g/spu_driver
+              role: 生成 spu_vgpu.ko / SUEP
+              nodeId: spu-vgpu
+            - path: nereus/spu_kernel
+              role: 定制 DMA/RDMA Hook 内核版本线
+              nodeId: spu-kernel-hooks
+            - path: nereus/spu_blk_bridge
+              role: 生成 hblkd_end.ko 与 sblkd_end.ko
+              nodeId: host-block
+            - path: nereus/spu_tssd
+              role: TSSD/TES/keyring/integrity；精确模块清单待补
+              nodeId: spu-security-adapters
+            - path: qiongyu/fpga_spu
+              role: SPU Function 0/1、NTB 与安全 RTL
+              nodeId: spu-f0
+            - path: nereus_fpga/spug_fpga
+              role: SPUG 主 RTL
+              nodeId: spug-pcie
+            - path: wuhaocheng/dwc_pcie + nereus_fpga/pcie_base_ip
+              role: SPUG DWC 与 PCIe 基础 IP
+              nodeId: spug-pcie
+            - path: nereus/build@20260702_3
+              role: 候选软件 gitlink 组合，不等于生产真值
+              nodeId: host-platform
+      runtimeFacts:
+        - label: V2 基线
+          value: develop/v2@b18b755
+          tone: ok
+        - label: 代码/RTL 证据
+          value: 已分级
+          tone: ok
+        - label: 实机观测
+          value: 尚未采集
+          tone: warn
+        - label: GPU 驱动位置
+          value: 按模式待冻结
+          tone: warn
+      cameraHudViews:
+        runtime-placement:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: 运行位置
+          detail: 按 Host、SPU、SPU FPGA、SPUG FPGA 与外部端点区分实际加载边界。
+        repository-map:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: Git 仓库与产物
+          detail: 查看每个仓库产出的 .ko、服务、工具及聚合关系。
+        fpga-interaction:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: FPGA 交互
+          detail: 聚焦 PCI ID、BAR、MSI-X、NTB、虚拟 PCI 与 TLP 数据路径。
+        startup-lifecycle:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: 启动与卸载生命周期
+          detail: 按依赖展示 probe、服务启动、GPU 绑定和逆序回收。
+        sp37-startup-pcs:
+          eyebrow: 因果旅程
+          title: SP37 双侧启动与 PCS 通信
+          detail: 从 Host/SPU Function 0 驱动 probe 到 PCS 双向消息闭环。
+        sdep-suep-virtualization:
+          eyebrow: 因果旅程
+          title: SDEP/SUEP 初始化及虚拟设备创建
+          detail: Host SDEP 经 NTB 把设备拓扑交给 SPU SUEP，并创建虚拟 PCI GPU。
+        gpu-bind-dma:
+          eyebrow: 因果旅程
+          title: 原生 GPU 驱动绑定和 DMA 重定向
+          detail: SPU 脚本加载厂商模块，模块绑定虚拟 GPU，DMA 经定制 Hook 进入 SUEP/SPUG 地址路径。
+        spug-secure-tlp:
+          eyebrow: 因果旅程
+          title: SPUG GPU TLP 与安全状态链
+          detail: SPUG 状态机门控上下游 TLP，安全模式下调用密钥与 GCM/SM4 数据面。
+        unload-reset-hotplug:
+          eyebrow: 因果旅程
+          title: 卸载、reset、热拔出与资源回收
+          detail: 先停业务和厂商驱动，再销毁虚拟设备、停止 SUEP/SDEP，最后释放基础 SP37。
+    enUS:
+      planeMeta:
+        host-userspace:
+          label: Host Userspace and Services
+          short: Host Userspace and Services
+          color: "#22a7cf"
+        host-kernel:
+          label: Host Kernel Drivers
+          short: Host Kernel Drivers
+          color: "#7657c8"
+        spu-fpga:
+          label: SPU FPGA
+          short: SPU FPGA
+          color: "#168f7b"
+        spu-kernel:
+          label: SPU Kernel Drivers
+          short: SPU Kernel Drivers
+          color: "#2f83e7"
+        spu-userspace:
+          label: SPU Userspace and Platform
+          short: SPU Userspace and Platform
+          color: "#c05e2b"
+        spug-fpga:
+          label: SPUG FPGA
+          short: SPUG FPGA
+          color: "#d64d72"
+        gpu-external:
+          label: GPU, External Drivers, and Optional Storage
+          short: GPU, External Drivers, and Optional Storage
+          color: "#7fae3f"
+      edgeMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: CONTROL
+        DATA:
+          color: "#4d8edb"
+          label: DATA
+        SYNC:
+          color: "#9b6bc4"
+          label: SYNC
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: LIFECYCLE
+        PHYSICAL:
+          color: "#607d8b"
+          label: PHYSICAL/PCIE
+      laneMeta:
+        CONTROL:
+          color: "#d59a2b"
+          label: CONTROL
+          summary: CONTROL
+        DATA:
+          color: "#4d8edb"
+          label: DATA
+          summary: DATA
+        SYNC:
+          color: "#9b6bc4"
+          label: SYNC
+          summary: SYNC
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: LIFECYCLE
+          summary: LIFECYCLE
+        PHYSICAL:
+          color: "#607d8b"
+          label: PHYSICAL/PCIE
+          summary: PHYSICAL/PCIE
+      functionInteractions:
+        host-pcs: []
+        host-platform: []
+        host-spug-tools: []
+        host-sp37: []
+        host-sdep: []
+        host-spug-subdriver: []
+        host-block: []
+        spu-f0: []
+        spu-ntb: []
+        spu-security-rtl: []
+        spu-sp37: []
+        spu-connect: []
+        spu-vgpu: []
+        spu-kernel-hooks: []
+        spu-security-adapters: []
+        spu-block: []
+        spu-pcs: []
+        spu-gpu-loader: []
+        spu-platform: []
+        spug-pcie: []
+        spug-control: []
+        spug-crypto: []
+        virtual-gpu: []
+        vendor-gpu-driver: []
+        physical-gpu: []
+        secure-block-device: []
+      driverCausalLayerMeta:
+        payload:
+          label: Payload and ownership
+          short: DATA
+          color: "#4d8edb"
+          description: Data production, transfer, and consumption
+        control:
+          label: Control execution
+          short: CTRL
+          color: "#d59a2b"
+          description: Probe, calls, and state control
+        sync:
+          label: Synchronization and completion
+          short: SYNC
+          color: "#9b6bc4"
+          description: IRQ, waits, and handshakes
+        lifecycle:
+          label: Lifecycle and rollback
+          short: LIFE
+          color: "#d35f5f"
+          description: Allocation, load, unload, and reverse release
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#d59a2b"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#2a9d8f"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#e76f51"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a261"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#9b6bc4"
+          label: IRQ
+          dashed: true
+        WAIT:
+          color: "#8d99ae"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#d62828"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#d35f5f"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        sp37-startup-pcs:
+          id: sp37-startup-pcs
+          title: SP37 dual-side startup and PCS communication
+          shortTitle: SP37 dual-side startup and PCS communication
+          summary: From Host/SPU Function 0 probes to the bidirectional PCS message loop.
+          caveat: No runtime module hashes, BDFs, or bidirectional traces are available, so this is not runtime-observed.
+          steps:
+            - id: sp37-startup-pcs-s1
+              title: sp37_probe (Host)
+              shortTitle: sp37_probe (Host)
+              moduleRole: host-sp37
+              contextLane: host-kernel
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/kernelspace/spu_pcied
+              contract: *a1
+            - id: sp37-startup-pcs-s2
+              title: pcie_server send path
+              shortTitle: pcie_server send path
+              moduleRole: host-pcs
+              contextLane: host-userspace
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/nereus_pcie
+              contract: *a2
+            - id: sp37-startup-pcs-s3
+              title: SPU FPGA Function 0 / SP37
+              shortTitle: SPU FPGA Function 0 / SP37
+              moduleRole: spu-f0
+              contextLane: spu-fpga
+              layers:
+                - payload
+              kind: hardware
+              evidence: RTL_PROVEN
+            - id: sp37-startup-pcs-s4
+              title: sp37_probe (is_spu=1)
+              shortTitle: sp37_probe (is_spu=1)
+              moduleRole: spu-sp37
+              contextLane: spu-kernel
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/kernelspace/spu_pcied
+              contract: *a3
+            - id: sp37-startup-pcs-s5
+              title: pcie_server receive path
+              shortTitle: pcie_server receive path
+              moduleRole: spu-pcs
+              contextLane: spu-userspace
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/nereus_pcie
+              contract: *a4
+            - id: sp37-startup-pcs-s6
+              title: TSSD / NMS / Server / LibOS
+              shortTitle: TSSD / NMS / Server / LibOS
+              moduleRole: spu-platform
+              contextLane: spu-userspace
+              layers:
+                - payload
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: sp37-startup-pcs-s1
+              target: sp37-startup-pcs-s2
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s2
+              target: sp37-startup-pcs-s3
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s3
+              target: sp37-startup-pcs-s4
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s4
+              target: sp37-startup-pcs-s5
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: sp37-startup-pcs-s5
+              target: sp37-startup-pcs-s6
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+        sdep-suep-virtualization:
+          id: sdep-suep-virtualization
+          title: SDEP/SUEP initialization and virtual-device creation
+          shortTitle: SDEP/SUEP initialization and virtual-device creation
+          summary: Host SDEP passes device topology through NTB to SPU SUEP, which creates a virtual PCI GPU.
+          caveat: Actual SPUG/GPU BDFs, IOMMU groups, device counts, and hotplug behavior require runtime capture.
+          steps:
+            - id: sdep-suep-virtualization-s1
+              title: sdep_probe
+              shortTitle: sdep_probe
+              moduleRole: host-sdep
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/sdep_driver/sdep_driver.c
+              contract: *a5
+            - id: sdep-suep-virtualization-s2
+              title: SPU FPGA Function 1 / NTB
+              shortTitle: SPU FPGA Function 1 / NTB
+              moduleRole: spu-ntb
+              contextLane: spu-fpga
+              layers:
+                - control
+              kind: hardware
+              evidence: RTL_PROVEN
+            - id: sdep-suep-virtualization-s3
+              title: upstream_probe_one
+              shortTitle: upstream_probe_one
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/spu_driver/spu_upstream_driver.c
+              contract: *a6
+            - id: sdep-suep-virtualization-s4
+              title: spug_driver_init
+              shortTitle: spug_driver_init
+              moduleRole: host-spug-subdriver
+              contextLane: host-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/sdep_driver/spug_driver.c
+              contract: *a7
+            - id: sdep-suep-virtualization-s5
+              title: suep_virtual_device_init
+              shortTitle: suep_virtual_device_init
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/spu_driver/suep_virtual_device.c
+              contract: *a8
+            - id: sdep-suep-virtualization-s6
+              title: SPU Virtual PCI GPU
+              shortTitle: SPU Virtual PCI GPU
+              moduleRole: virtual-gpu
+              contextLane: gpu-external
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: sdep-suep-virtualization-s1
+              target: sdep-suep-virtualization-s2
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s2
+              target: sdep-suep-virtualization-s3
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s3
+              target: sdep-suep-virtualization-s4
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s4
+              target: sdep-suep-virtualization-s5
+              label: CALL
+              relation: CALL
+              layer: control
+            - source: sdep-suep-virtualization-s5
+              target: sdep-suep-virtualization-s6
+              label: CALL
+              relation: CALL
+              layer: control
+        gpu-bind-dma:
+          id: gpu-bind-dma
+          title: Native GPU driver binding and DMA redirection
+          shortTitle: Native GPU driver binding and DMA redirection
+          summary: SPU scripts load vendor modules, which bind the virtual GPU; DMA enters the SUEP/SPUG address path through custom hooks.
+          caveat: The production choice between Host direct mode and SPU virtualization is not frozen; the virtualization path is code-proven but the deployed combination remains inferred.
+          steps:
+            - id: gpu-bind-dma-s1
+              title: start_spug.sh
+              shortTitle: start_spug.sh
+              moduleRole: spu-gpu-loader
+              contextLane: spu-userspace
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/config/start_spug.sh
+              contract: *a9
+            - id: gpu-bind-dma-s2
+              title: native PCI probe
+              shortTitle: native PCI probe
+              moduleRole: vendor-gpu-driver
+              contextLane: gpu-external
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: Linux PCI model + nereus/spu-g virtual PCI
+              contract: *a10
+            - id: gpu-bind-dma-s3
+              title: suep_hook_dma callback
+              shortTitle: suep_hook_dma callback
+              moduleRole: spu-kernel-hooks
+              contextLane: spu-kernel
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu_kernel + nereus/spu-g
+              contract: *a11
+            - id: gpu-bind-dma-s4
+              title: spu_vgpu.ko / SUEP
+              shortTitle: spu_vgpu.ko / SUEP
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - payload
+              kind: data
+              evidence: CODE_PROVEN
+            - id: gpu-bind-dma-s5
+              title: SPUG PCIe Security Bridge
+              shortTitle: SPUG PCIe Security Bridge
+              moduleRole: spug-pcie
+              contextLane: spug-fpga
+              layers:
+                - payload
+              kind: hardware
+              evidence: RTL_PROVEN
+            - id: gpu-bind-dma-s6
+              title: Physical GPU Endpoint
+              shortTitle: Physical GPU Endpoint
+              moduleRole: physical-gpu
+              contextLane: gpu-external
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: gpu-bind-dma-s1
+              target: gpu-bind-dma-s2
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s2
+              target: gpu-bind-dma-s3
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s3
+              target: gpu-bind-dma-s4
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s4
+              target: gpu-bind-dma-s5
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+            - source: gpu-bind-dma-s5
+              target: gpu-bind-dma-s6
+              label: PAYLOAD
+              relation: PAYLOAD
+              layer: payload
+        spug-secure-tlp:
+          id: spug-secure-tlp
+          title: SPUG GPU TLP and secure-state path
+          shortTitle: SPUG GPU TLP and secure-state path
+          summary: The SPUG state machine gates upstream/downstream TLPs and invokes key/GCM/SM4 processing in secure mode.
+          caveat: RTL proves modules and contracts, not the currently programmed bitstream, key generation, or board timing acceptance.
+          steps:
+            - id: spug-secure-tlp-s1
+              title: SPUG Control and Diagnostics
+              shortTitle: SPUG Control and Diagnostics
+              moduleRole: host-spug-tools
+              contextLane: host-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: spug-secure-tlp-s2
+              title: spug_state_control
+              shortTitle: spug_state_control
+              moduleRole: spug-control
+              contextLane: spug-fpga
+              layers:
+                - control
+              kind: function
+              evidence: RTL_PROVEN
+              source: nereus_fpga/spug_fpga
+              contract: *a12
+            - id: spug-secure-tlp-s3
+              title: sp37_p2p_bridge_u2d / d2u
+              shortTitle: sp37_p2p_bridge_u2d / d2u
+              moduleRole: spug-pcie
+              contextLane: spug-fpga
+              layers:
+                - control
+              kind: function
+              evidence: RTL_PROVEN
+              source: nereus_fpga/spug_fpga
+              contract: *a13
+            - id: spug-secure-tlp-s4
+              title: spug_flow_cypher_ctrl
+              shortTitle: spug_flow_cypher_ctrl
+              moduleRole: spug-crypto
+              contextLane: spug-fpga
+              layers:
+                - control
+              kind: function
+              evidence: RTL_PROVEN
+              source: nereus_fpga/spug_fpga
+              contract: *a14
+            - id: spug-secure-tlp-s5
+              title: Physical GPU Endpoint
+              shortTitle: Physical GPU Endpoint
+              moduleRole: physical-gpu
+              contextLane: gpu-external
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: spug-secure-tlp-s1
+              target: spug-secure-tlp-s2
+              label: STATE
+              relation: STATE
+              layer: control
+            - source: spug-secure-tlp-s2
+              target: spug-secure-tlp-s3
+              label: STATE
+              relation: STATE
+              layer: control
+            - source: spug-secure-tlp-s3
+              target: spug-secure-tlp-s4
+              label: STATE
+              relation: STATE
+              layer: control
+            - source: spug-secure-tlp-s4
+              target: spug-secure-tlp-s5
+              label: STATE
+              relation: STATE
+              layer: control
+        unload-reset-hotplug:
+          id: unload-reset-hotplug
+          title: Unload, reset, hot-unplug, and resource reclamation
+          shortTitle: Unload, reset, hot-unplug, and resource reclamation
+          summary: Stop workloads and vendor drivers first, destroy virtual devices, stop SUEP/SDEP, then release the base SP37 path.
+          caveat: Local remove functions are code-proven, but strict cross-Host/SPU reverse ordering, reset, and hot-unplug remain a target requiring validation.
+          steps:
+            - id: unload-reset-hotplug-s1
+              title: TSSD / NMS / Server / LibOS
+              shortTitle: TSSD / NMS / Server / LibOS
+              moduleRole: spu-platform
+              contextLane: spu-userspace
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: unload-reset-hotplug-s2
+              title: Native GPU Vendor Driver
+              shortTitle: Native GPU Vendor Driver
+              moduleRole: vendor-gpu-driver
+              contextLane: gpu-external
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: unload-reset-hotplug-s3
+              title: suep_virtual_device_exit
+              shortTitle: suep_virtual_device_exit
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/spu_driver/suep_virtual_device.c
+              contract: *a15
+            - id: unload-reset-hotplug-s4
+              title: spu_vgpu.ko / SUEP
+              shortTitle: spu_vgpu.ko / SUEP
+              moduleRole: spu-vgpu
+              contextLane: spu-kernel
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: unload-reset-hotplug-s5
+              title: sdep_remove
+              shortTitle: sdep_remove
+              moduleRole: host-sdep
+              contextLane: host-kernel
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: nereus/spu-g/sdep_driver/sdep_driver.c
+              contract: *a16
+            - id: unload-reset-hotplug-s6
+              title: sp37.ko (Host)
+              shortTitle: sp37.ko (Host)
+              moduleRole: host-sp37
+              contextLane: host-kernel
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: unload-reset-hotplug-s1
+              target: unload-reset-hotplug-s2
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s2
+              target: unload-reset-hotplug-s3
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s3
+              target: unload-reset-hotplug-s4
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s4
+              target: unload-reset-hotplug-s5
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+            - source: unload-reset-hotplug-s5
+              target: unload-reset-hotplug-s6
+              label: LIFECYCLE
+              relation: LIFECYCLE
+              layer: lifecycle
+      topologyNodes:
+        - id: host-pcs
+          label: Host PCS / pcie_server
+          fill: "#22a7cf"
+          data:
+            title: Host PCS / pcie_server
+            plane: host-userspace
+            layer: ZONE 01 · SERVICE ENTRY
+            kind: service
+            description: Encapsulates local client requests into SP37 frames and exchanges them through Host character devices.
+            evidence: code
+            core: true
+            tags: *a17
+            interfaces: *a18
+            codeRefs:
+              - nereus/nereus_pcie
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: host-platform
+          label: Host Management Services
+          fill: "#2997bd"
+          data:
+            title: Host Management Services
+            plane: host-userspace
+            layer: ZONE 01 · SERVICE ENTRY
+            kind: service
+            description: host_ams, host_nms, host_tun, and local management APIs; started only after the lower link is stable.
+            evidence: code
+            core: true
+            tags: *a19
+            interfaces: *a20
+            codeRefs:
+              - nereus/build
+            views:
+              - runtime-placement
+              - repository-map
+        - id: host-spug-tools
+          label: SPUG Control and Diagnostics
+          fill: "#37b4d2"
+          data:
+            title: SPUG Control and Diagnostics
+            plane: host-userspace
+            layer: ZONE 01 · SERVICE ENTRY
+            kind: application
+            description: Uses SDEP sysfs, BAR utilities, and work-mode interfaces to inspect or switch SPUG state.
+            evidence: code
+            core: true
+            tags: *a21
+            interfaces: *a22
+            codeRefs:
+              - nereus/spu-g/sdep_config
+            views:
+              - runtime-placement
+              - repository-map
+              - spug-secure-tlp
+        - id: host-sp37
+          label: sp37.ko (Host)
+          fill: "#7657c8"
+          data:
+            title: sp37.ko (Host)
+            plane: host-kernel
+            layer: ZONE 02 · HOST DRIVER BOUNDARY
+            kind: driver
+            description: Binds 5709:1000 and owns BARs, MSI-X, DMA rings, and H2C/C2H character devices.
+            evidence: code
+            core: true
+            tags: *a23
+            interfaces: *a24
+            codeRefs:
+              - nereus/kernelspace/spu_pcied
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sp37-startup-pcs
+              - unload-reset-hotplug
+        - id: host-sdep
+          label: sdep.ko (Host SDEP)
+          fill: "#6549af"
+          data:
+            title: sdep.ko (Host SDEP)
+            plane: host-kernel
+            layer: ZONE 02 · HOST DRIVER BOUNDARY
+            kind: driver
+            description: Binds 5709:1001, scans Host device topology, and exchanges NTB management information.
+            evidence: code
+            core: true
+            tags: *a25
+            interfaces: *a26
+            codeRefs:
+              - nereus/spu-g/sdep_driver/sdep_driver.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+              - unload-reset-hotplug
+        - id: host-spug-subdriver
+          label: SPUG Bridge Management Embedded in SDEP
+          fill: "#855fc7"
+          data:
+            title: SPUG Bridge Management Embedded in SDEP
+            plane: host-kernel
+            layer: ZONE 02 · HOST DRIVER BOUNDARY
+            kind: driver
+            description: spug_driver.c is linked into sdep.ko to manage 5709:2000 BAR/sysfs; it is not a separate current spug.ko.
+            evidence: code
+            core: true
+            tags: *a27
+            interfaces: *a28
+            codeRefs:
+              - nereus/spu-g/sdep_driver/Makefile
+              - nereus/spu-g/sdep_driver/spug_driver.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - sdep-suep-virtualization
+        - id: host-block
+          label: hblkd_end.ko (Optional)
+          fill: "#9b79d0"
+          data:
+            title: hblkd_end.ko (Optional)
+            plane: host-kernel
+            layer: ZONE 02 · HOST DRIVER BOUNDARY
+            kind: driver
+            description: Optional Host endpoint for secure storage, paired with sblkd_end over the Host-SPU channel.
+            evidence: code
+            core: false
+            tags: *a29
+            interfaces: *a30
+            codeRefs:
+              - nereus/spu_blk_bridge
+            views:
+              - runtime-placement
+              - repository-map
+        - id: spu-f0
+          label: SPU FPGA Function 0 / SP37
+          fill: "#168f7b"
+          data:
+            title: SPU FPGA Function 0 / SP37
+            plane: spu-fpga
+            layer: ZONE 03 · DUAL PCIE AND NTB
+            kind: hardware
+            description: Exposes 5709:1000, BARs, MSI-X, DMA, and protocol channels to Host and SPU CPU sides.
+            evidence: rtl
+            core: true
+            tags: *a31
+            interfaces: *a32
+            codeRefs:
+              - qiongyu/fpga_spu
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: spu-ntb
+          label: SPU FPGA Function 1 / NTB
+          fill: "#1e9c86"
+          data:
+            title: SPU FPGA Function 1 / NTB
+            plane: spu-fpga
+            layer: ZONE 03 · DUAL PCIE AND NTB
+            kind: hardware
+            description: Bridges Host and SPU CPU address domains and exchanges topology, BAR, MSI-X, P2P, and work-mode state.
+            evidence: rtl
+            core: true
+            tags: *a33
+            interfaces: *a34
+            codeRefs:
+              - qiongyu/fpga_spu
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+        - id: spu-security-rtl
+          label: SPU Protocol and Security RTL
+          fill: "#36aa91"
+          data:
+            title: SPU Protocol and Security RTL
+            plane: spu-fpga
+            layer: ZONE 03 · DUAL PCIE AND NTB
+            kind: hardware
+            description: Contains protocol, SM2, GCM, EEPROM, Recovery, and optional SStorage paths.
+            evidence: rtl
+            core: true
+            tags: *a35
+            interfaces: *a36
+            codeRefs:
+              - qiongyu/fpga_spu
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+        - id: spu-sp37
+          label: sp37.ko is_spu=1
+          fill: "#2f83e7"
+          data:
+            title: sp37.ko is_spu=1
+            plane: spu-kernel
+            layer: ZONE 04 · SPU KERNEL BOUNDARY
+            kind: driver
+            description: The same-source SP37 module loaded on the SPU CPU side, providing SPU character devices and DMA/MSI-X.
+            evidence: code
+            core: true
+            tags: *a37
+            interfaces: *a38
+            codeRefs:
+              - nereus/kernelspace/spu_pcied
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: spu-connect
+          label: spu_connect.ko
+          fill: "#4d94e8"
+          data:
+            title: spu_connect.ko
+            plane: spu-kernel
+            layer: ZONE 04 · SPU KERNEL BOUNDARY
+            kind: driver
+            description: Handles SPU connection, reconnection, and link state after SP37 becomes ready.
+            evidence: code
+            core: true
+            tags: *a39
+            interfaces: *a40
+            codeRefs:
+              - nereus/kernelspace/spu_connect
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+        - id: spu-vgpu
+          label: spu_vgpu.ko / SUEP
+          fill: "#2676ca"
+          data:
+            title: spu_vgpu.ko / SUEP
+            plane: spu-kernel
+            layer: ZONE 04 · SPU KERNEL BOUNDARY
+            kind: driver
+            description: Binds SPU-side 5709:1001, receives Host topology, creates virtual PCI devices, and redirects DMA.
+            evidence: code
+            core: true
+            tags: *a41
+            interfaces: *a42
+            codeRefs:
+              - nereus/spu-g/spu_driver/Makefile
+              - nereus/spu-g/spu_driver/spu_upstream_driver.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+              - gpu-bind-dma
+              - unload-reset-hotplug
+        - id: spu-kernel-hooks
+          label: spu_kernel DMA / RDMA Hooks
+          fill: "#579ee4"
+          data:
+            title: spu_kernel DMA / RDMA Hooks
+            plane: spu-kernel
+            layer: ZONE 04 · SPU KERNEL BOUNDARY
+            kind: protocol
+            description: "Custom kernel interfaces: hook_dma supports vGPU DMA redirection, while hook_rdma belongs to a separate experimental version line."
+            evidence: code
+            core: true
+            tags: *a43
+            interfaces: *a44
+            codeRefs:
+              - nereus/spu_kernel
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - gpu-bind-dma
+        - id: spu-security-adapters
+          label: TSSD / TES / keyring / integrity
+          fill: "#5ba8d9"
+          data:
+            title: TSSD / TES / keyring / integrity
+            plane: spu-kernel
+            layer: ZONE 04 · SPU KERNEL BOUNDARY
+            kind: driver
+            description: Trusted security services and kernel adapters; current aggregate evidence is insufficient to name every final .ko artifact.
+            evidence: inferred
+            core: true
+            tags: *a45
+            interfaces: *a46
+            codeRefs:
+              - nereus/spu_tssd
+            views:
+              - runtime-placement
+              - repository-map
+        - id: spu-block
+          label: sblkd_end.ko (Optional)
+          fill: "#6eb5ee"
+          data:
+            title: sblkd_end.ko (Optional)
+            plane: spu-kernel
+            layer: ZONE 04 · SPU KERNEL BOUNDARY
+            kind: driver
+            description: Optional SPU endpoint for secure storage; creates /dev/spu_mem_blk and pairs with the Host endpoint.
+            evidence: code
+            core: false
+            tags: *a47
+            interfaces: *a48
+            codeRefs:
+              - nereus/spu_blk_bridge
+            views:
+              - runtime-placement
+              - repository-map
+        - id: spu-pcs
+          label: SPU PCS / pcie_server
+          fill: "#c05e2b"
+          data:
+            title: SPU PCS / pcie_server
+            plane: spu-userspace
+            layer: ZONE 05 · TRUSTED SERVICES
+            kind: service
+            description: Reads SPU-side SP37 character devices, parses frames, and dispatches them to local services.
+            evidence: code
+            core: true
+            tags: *a49
+            interfaces: *a50
+            codeRefs:
+              - nereus/nereus_pcie
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - sp37-startup-pcs
+        - id: spu-gpu-loader
+          label: GPU Driver Assembly Scripts
+          fill: "#ce7438"
+          data:
+            title: GPU Driver Assembly Scripts
+            plane: spu-userspace
+            layer: ZONE 05 · TRUSTED SERVICES
+            kind: service
+            description: Waits for vGPU initialization, backs up modules, and loads NVIDIA, Cambricon, or Iluvatar drivers by device type.
+            evidence: code
+            core: true
+            tags: *a51
+            interfaces: *a52
+            codeRefs:
+              - nereus/spu-g/config/start_spug.sh
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - gpu-bind-dma
+        - id: spu-platform
+          label: TSSD / NMS / Server / LibOS
+          fill: "#d1844c"
+          data:
+            title: TSSD / NMS / Server / LibOS
+            plane: spu-userspace
+            layer: ZONE 05 · TRUSTED SERVICES
+            kind: service
+            description: Trusted services, isolated runtime, and business platform started after drivers and PCS stabilize.
+            evidence: code
+            core: true
+            tags: *a53
+            interfaces: *a54
+            codeRefs:
+              - nereus/build
+              - nereus/spu_server/trunk
+            views:
+              - runtime-placement
+              - repository-map
+              - startup-lifecycle
+              - sp37-startup-pcs
+              - unload-reset-hotplug
+        - id: spug-pcie
+          label: SPUG PCIe Security Bridge
+          fill: "#d64d72"
+          data:
+            title: SPUG PCIe Security Bridge
+            plane: spug-fpga
+            layer: ZONE 06 · GPU SECURITY BRIDGE
+            kind: hardware
+            description: Upstream EP faces the Host and downstream RP faces the GPU, forwarding RQ/RC/CQ/CC TLPs.
+            evidence: rtl
+            core: true
+            tags: *a55
+            interfaces: *a56
+            codeRefs:
+              - nereus_fpga/spug_fpga
+              - wuhaocheng/dwc_pcie
+              - nereus_fpga/pcie_base_ip
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - gpu-bind-dma
+              - spug-secure-tlp
+        - id: spug-control
+          label: SPUG State, Authentication, and Power Control
+          fill: "#e16683"
+          data:
+            title: SPUG State, Authentication, and Power Control
+            plane: spug-fpga
+            layer: ZONE 06 · GPU SECURITY BRIDGE
+            kind: state
+            description: Maintains Idle/Init/Available/Nonsecure/Auth/Secure/Error and controls authentication, recovery, and downstream power.
+            evidence: rtl
+            core: true
+            tags: *a57
+            interfaces: *a58
+            codeRefs:
+              - nereus_fpga/spug_fpga
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - spug-secure-tlp
+        - id: spug-crypto
+          label: SPUG Key and Crypto Data Plane
+          fill: "#ef7691"
+          data:
+            title: SPUG Key and Crypto Data Plane
+            plane: spug-fpga
+            layer: ZONE 06 · GPU SECURITY BRIDGE
+            kind: hardware
+            description: Key management, random sources, persistent storage, and GCM/SM4 traffic processing.
+            evidence: rtl
+            core: true
+            tags: *a59
+            interfaces: *a60
+            codeRefs:
+              - nereus_fpga/spug_fpga
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - spug-secure-tlp
+        - id: virtual-gpu
+          label: SPU Virtual PCI GPU
+          fill: "#7fae3f"
+          data:
+            title: SPU Virtual PCI GPU
+            plane: gpu-external
+            layer: ZONE 07 · EXTERNAL ENDPOINTS
+            kind: device
+            description: vBEP/virtual device created by SUEP in the SPU OS for binding by the native vendor driver.
+            evidence: code
+            core: true
+            tags: *a61
+            interfaces: *a62
+            codeRefs:
+              - nereus/spu-g/spu_driver/suep_virtual_device.c
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - sdep-suep-virtualization
+        - id: vendor-gpu-driver
+          label: Native GPU Vendor Driver
+          fill: "#8bb34c"
+          data:
+            title: Native GPU Vendor Driver
+            plane: gpu-external
+            layer: ZONE 07 · EXTERNAL ENDPOINTS
+            kind: driver
+            description: NVIDIA, Cambricon, or Iluvatar drivers; loaded by SPU scripts in virtualized mode. Host direct-mode placement still requires runtime distinction.
+            evidence: inferred
+            core: true
+            tags: *a63
+            interfaces: *a64
+            codeRefs:
+              - nereus/spu-g/config/start_spug.sh
+              - nereus/spu-g/sdep_config/remove_gpu_driver.sh
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - startup-lifecycle
+              - gpu-bind-dma
+              - unload-reset-hotplug
+        - id: physical-gpu
+          label: Physical GPU Endpoint
+          fill: "#96bd5d"
+          data:
+            title: Physical GPU Endpoint
+            plane: gpu-external
+            layer: ZONE 07 · EXTERNAL ENDPOINTS
+            kind: device
+            description: Physical GPU behind SPUG; exact model, BDF, VBIOS, and runtime driver combination have not been captured.
+            evidence: inferred
+            core: true
+            tags: *a65
+            interfaces: *a66
+            codeRefs:
+              - 06-软件驱动与启动架构.md
+            views:
+              - runtime-placement
+              - repository-map
+              - fpga-interaction
+              - gpu-bind-dma
+              - spug-secure-tlp
+        - id: secure-block-device
+          label: Secure Block Device / bcache (Optional)
+          fill: "#a8c96d"
+          data:
+            title: Secure Block Device / bcache (Optional)
+            plane: gpu-external
+            layer: ZONE 07 · EXTERNAL ENDPOINTS
+            kind: device
+            description: Optional product path formed by hblkd_end and sblkd_end; distinct from the NVMe/SM4 transparent-bridge experiment.
+            evidence: code
+            core: false
+            tags: *a67
+            interfaces: *a68
+            codeRefs:
+              - nereus/spu_blk_bridge
+            views:
+              - runtime-placement
+              - repository-map
+      topologyEdges:
+        - id: host-client-pcs
+          source: host-platform
+          target: host-pcs
+          label: Local request
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Management services issue Host-SPU messages through the PCS client and Unix Socket.
+            evidence: code
+            protocol: Unix Socket
+        - id: host-pcs-sp37
+          source: host-pcs
+          target: host-sp37
+          label: Character-device write
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: PCS writes frames to /dev/sp37_h2c_X and receives from the c2h node.
+            evidence: code
+            protocol: SP37 character ABI
+        - id: host-sp37-f0
+          source: host-sp37
+          target: spu-f0
+          label: Host PCIe Function 0
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: Host sp37.ko interacts with SPU FPGA Function 0 through BARs, DMA rings, and MSI-X.
+            evidence: code
+            protocol: PCIe 5709:1000
+        - id: f0-spu-sp37
+          source: spu-f0
+          target: spu-sp37
+          label: CPU-side SP37
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: The SPU FPGA CPU-side Function 0 establishes the character channel with SPU sp37.ko.
+            evidence: code
+            protocol: PCIe 5709:1000
+        - id: spu-sp37-pcs
+          source: spu-sp37
+          target: spu-pcs
+          label: SPU character devices
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: SPU PCS reads and parses messages from SP37 character devices.
+            evidence: code
+            protocol: SP37 character ABI
+        - id: spu-pcs-platform
+          source: spu-pcs
+          target: spu-platform
+          label: Platform messages
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: PCS dispatches frames to local TSSD, NMS, Server, and related services.
+            evidence: code
+            protocol: PCS IPC
+        - id: spu-sp37-connect
+          source: spu-sp37
+          target: spu-connect
+          label: Connect after ready
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: spu_connect loads after SP37 is ready and maintains connection state.
+            evidence: code
+            protocol: module dependency
+        - id: tools-sdep
+          source: host-spug-tools
+          target: host-sdep
+          label: sysfs / work mode
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Host tools read state or switch mode through SDEP management interfaces.
+            evidence: code
+            protocol: sysfs
+        - id: sdep-ntb
+          source: host-sdep
+          target: spu-ntb
+          label: Host Function 1
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: SDEP binds 5709:1001 and exchanges topology and management messages through BAR/MSI-X/NTB.
+            evidence: code
+            protocol: PCIe 5709:1001
+        - id: ntb-suep
+          source: spu-ntb
+          target: spu-vgpu
+          label: SPU Function 1
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: SUEP binds SPU-side 5709:1001 and consumes NTB messages.
+            evidence: code
+            protocol: PCIe 5709:1001
+        - id: sdep-subdriver
+          source: host-sdep
+          target: host-spug-subdriver
+          label: Scan and initialize SPUG
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: SDEP device management invokes embedded spug_driver_init after discovering SPUG.
+            evidence: code
+            protocol: in-module call
+        - id: subdriver-spug
+          source: host-spug-subdriver
+          target: spug-pcie
+          label: SPUG BAR / sysfs
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Embedded bridge management maps SPUG BARs and creates sysfs entries.
+            evidence: code
+            protocol: PCIe 5709:2000
+        - id: suep-virtual-gpu
+          source: spu-vgpu
+          target: virtual-gpu
+          label: Create virtual PCI device
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: SUEP creates vBEP and virtual PCI GPU objects from Host topology.
+            evidence: code
+            protocol: virtual PCI
+        - id: hooks-vgpu
+          source: spu-kernel-hooks
+          target: spu-vgpu
+          label: DMA Hook callback
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: The custom hook_dma routes vendor-driver DMA mappings through SUEP redirection.
+            evidence: code
+            protocol: suep_hook_dma
+        - id: loader-vendor
+          source: spu-gpu-loader
+          target: vendor-gpu-driver
+          label: Load vendor modules
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: start_spug.sh loads vendor driver modules according to the discovered device type.
+            evidence: code
+            protocol: insmod
+        - id: vendor-virtual
+          source: vendor-gpu-driver
+          target: virtual-gpu
+          label: Driver binding
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: In virtualized mode, the native driver binds the virtual PCI device created by SUEP.
+            evidence: code
+            protocol: Linux PCI driver model
+        - id: virtual-dma-spug
+          source: virtual-gpu
+          target: spug-pcie
+          label: Redirected DMA / TLP
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: Virtual-device access is mapped through the SUEP/NTB address contract into the SPUG/GPU path; the complete runtime combination remains unverified.
+            evidence: inferred
+            protocol: PCIe DMA
+        - id: spug-control-pcie
+          source: spug-control
+          target: spug-pcie
+          label: State gating
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: The state machine selects bypass, nonsecure, authentication, secure, or error handling paths.
+            evidence: rtl
+            protocol: RTL state
+        - id: spug-crypto-pcie
+          source: spug-crypto
+          target: spug-pcie
+          label: GCM / SM4 flow processing
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: In secure mode, the crypto plane processes selected PCIe payloads.
+            evidence: rtl
+            protocol: AXI-Stream
+        - id: spug-physical-gpu
+          source: spug-pcie
+          target: physical-gpu
+          label: Downstream PCIe x16
+          fill: "#607d8b"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: The SPUG downstream Root Port exchanges all four TLP classes with the physical GPU endpoint.
+            evidence: rtl
+            protocol: PCIe x16
+        - id: platform-security
+          source: spu-platform
+          target: spu-security-adapters
+          label: Trusted-service calls
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Platform services use TSSD/TES/keyring/integrity after lower devices are ready.
+            evidence: code
+            protocol: service/kernel ABI
+        - id: security-rtl
+          source: spu-security-adapters
+          target: spu-security-rtl
+          label: Protocol / crypto request
+          fill: "#d59a2b"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Security services reach FPGA capabilities through PCS/protocol paths; the exact direct-MMIO boundary is not yet closed repository by repository.
+            evidence: inferred
+            protocol: SP37 protocol
+        - id: host-block-sp37
+          source: host-block
+          target: host-sp37
+          label: Secure block request
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: The optional Host block endpoint reuses the Host-SPU communication path.
+            evidence: code
+            protocol: block bridge
+        - id: spu-sp37-block
+          source: spu-sp37
+          target: spu-block
+          label: SPU block receive
+          fill: "#4d8edb"
+          data:
+            kind: DATA
+            lane: DATA
+            description: The SPU block endpoint receives peer requests and exposes the block device.
+            evidence: code
+            protocol: block bridge
+        - id: spu-block-device
+          source: spu-block
+          target: secure-block-device
+          label: /dev/spu_mem_blk
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: sblkd_end creates the block device used by filesystems or bcache.
+            evidence: code
+            protocol: Linux block device
+        - id: shutdown-platform-pcs
+          source: spu-platform
+          target: spu-pcs
+          label: Stop upper requests
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: Before unload, stop new platform requests and drain PCS.
+            evidence: inferred
+            protocol: target shutdown order
+        - id: shutdown-vendor-loader
+          source: vendor-gpu-driver
+          target: spu-gpu-loader
+          label: Unload vendor modules
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: stop_spug.sh terminates device users and unloads GPU modules in reverse order.
+            evidence: code
+            protocol: rmmod
+        - id: shutdown-virtual-suep
+          source: virtual-gpu
+          target: spu-vgpu
+          label: Destroy virtual devices
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: Destroy vBEP/virtual PCI resources before unloading spu_vgpu.
+            evidence: code
+            protocol: vgpu_init / remove
+        - id: shutdown-suep-sdep
+          source: spu-vgpu
+          target: host-sdep
+          label: Stop NTB management
+          fill: "#9b6bc4"
+          data:
+            kind: SYNC
+            lane: SYNC
+            description: Both sides stop interrupts and the management protocol; exact cross-system ordering requires runtime fault injection.
+            evidence: inferred
+            protocol: shutdown handshake
+        - id: shutdown-sdep-sp37
+          source: host-sdep
+          target: host-sp37
+          label: Unload base driver last
+          fill: "#d35f5f"
+          data:
+            kind: LIFECYCLE
+            lane: LIFECYCLE
+            description: Unload the two SP37 endpoints only after SDEP/SUEP resource cleanup.
+            evidence: inferred
+            protocol: target rollback order
+      viewOptions:
+        - id: runtime-placement
+          label: Runtime placement
+          hint: Separates actual loading boundaries across Host, SPU, SPU FPGA, SPUG FPGA, and external endpoints.
+        - id: repository-map
+          label: Git repositories and artifacts
+          hint: Shows the .ko modules, services, tools, and aggregate ownership produced by each repository.
+        - id: fpga-interaction
+          label: FPGA interactions
+          hint: Focuses on PCI IDs, BARs, MSI-X, NTB, virtual PCI, and the TLP data path.
+        - id: startup-lifecycle
+          label: Startup and teardown lifecycle
+          hint: Shows probe, service startup, GPU binding, and reverse-order cleanup by dependency.
+      systemTree:
+        - label: Host Userspace and Services
+          plane: host-userspace
+          nodes: *a69
+        - label: Host Kernel Drivers
+          plane: host-kernel
+          nodes: *a70
+        - label: SPU FPGA
+          plane: spu-fpga
+          nodes: *a71
+        - label: SPU Kernel Drivers
+          plane: spu-kernel
+          nodes: *a72
+        - label: SPU Userspace and Platform
+          plane: spu-userspace
+          nodes: *a73
+        - label: SPUG FPGA
+          plane: spug-fpga
+          nodes: *a74
+        - label: GPU, External Drivers, and Optional Storage
+          plane: gpu-external
+          nodes: *a75
+      storageTrees:
+        - id: driver-repositories
+          label: Driver and FPGA Git repositories
+          plane: host-userspace
+          roots:
+            - path: nereus/kernelspace/spu_pcied
+              role: Produces sp37.ko for Host and SPU
+              nodeId: host-sp37
+            - path: nereus/kernelspace/spu_connect
+              role: Produces SPU-side spu_connect.ko
+              nodeId: spu-connect
+            - path: nereus/spu-g/sdep_driver
+              role: Produces sdep.ko with embedded SPUG bridge management
+              nodeId: host-sdep
+            - path: nereus/spu-g/spu_driver
+              role: Produces spu_vgpu.ko / SUEP
+              nodeId: spu-vgpu
+            - path: nereus/spu_kernel
+              role: Custom DMA/RDMA hook kernel lines
+              nodeId: spu-kernel-hooks
+            - path: nereus/spu_blk_bridge
+              role: Produces hblkd_end.ko and sblkd_end.ko
+              nodeId: host-block
+            - path: nereus/spu_tssd
+              role: TSSD/TES/keyring/integrity; exact module list pending
+              nodeId: spu-security-adapters
+            - path: qiongyu/fpga_spu
+              role: SPU Function 0/1, NTB, and security RTL
+              nodeId: spu-f0
+            - path: nereus_fpga/spug_fpga
+              role: SPUG main RTL
+              nodeId: spug-pcie
+            - path: wuhaocheng/dwc_pcie + nereus_fpga/pcie_base_ip
+              role: SPUG DWC and PCIe base IP
+              nodeId: spug-pcie
+            - path: nereus/build@20260702_3
+              role: Candidate software gitlink combination, not production truth
+              nodeId: host-platform
+      runtimeFacts:
+        - label: V2 baseline
+          value: develop/v2@b18b755
+          tone: ok
+        - label: Code/RTL evidence
+          value: classified
+          tone: ok
+        - label: Runtime observation
+          value: not captured
+          tone: warn
+        - label: GPU driver placement
+          value: mode-dependent, pending
+          tone: warn
+      cameraHudViews:
+        runtime-placement:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: Runtime placement
+          detail: Separates actual loading boundaries across Host, SPU, SPU FPGA, SPUG FPGA, and external endpoints.
+        repository-map:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: Git repositories and artifacts
+          detail: Shows the .ko modules, services, tools, and aggregate ownership produced by each repository.
+        fpga-interaction:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: FPGA interactions
+          detail: Focuses on PCI IDs, BARs, MSI-X, NTB, virtual PCI, and the TLP data path.
+        startup-lifecycle:
+          eyebrow: SPU-SPUG-DRIVERS
+          title: Startup and teardown lifecycle
+          detail: Shows probe, service startup, GPU binding, and reverse-order cleanup by dependency.
+        sp37-startup-pcs:
+          eyebrow: CAUSAL JOURNEY
+          title: SP37 dual-side startup and PCS communication
+          detail: From Host/SPU Function 0 probes to the bidirectional PCS message loop.
+        sdep-suep-virtualization:
+          eyebrow: CAUSAL JOURNEY
+          title: SDEP/SUEP initialization and virtual-device creation
+          detail: Host SDEP passes device topology through NTB to SPU SUEP, which creates a virtual PCI GPU.
+        gpu-bind-dma:
+          eyebrow: CAUSAL JOURNEY
+          title: Native GPU driver binding and DMA redirection
+          detail: SPU scripts load vendor modules, which bind the virtual GPU; DMA enters the SUEP/SPUG address path through custom hooks.
+        spug-secure-tlp:
+          eyebrow: CAUSAL JOURNEY
+          title: SPUG GPU TLP and secure-state path
+          detail: The SPUG state machine gates upstream/downstream TLPs and invokes key/GCM/SM4 processing in secure mode.
+        unload-reset-hotplug:
+          eyebrow: CAUSAL JOURNEY
+          title: Unload, reset, hot-unplug, and resource reclamation
+          detail: Stop workloads and vendor drivers first, destroy virtual devices, stop SUEP/SDEP, then release the base SP37 path.
+  common:
+    focusModuleGroups:
+      host-pcs:
+        - host-pcs
+      host-platform:
+        - host-platform
+      host-spug-tools:
+        - host-spug-tools
+      host-sp37:
+        - host-sp37
+      host-sdep:
+        - host-sdep
+      host-spug-subdriver:
+        - host-spug-subdriver
+      host-block:
+        - host-block
+      spu-f0:
+        - spu-f0
+      spu-ntb:
+        - spu-ntb
+      spu-security-rtl:
+        - spu-security-rtl
+      spu-sp37:
+        - spu-sp37
+      spu-connect:
+        - spu-connect
+      spu-vgpu:
+        - spu-vgpu
+      spu-kernel-hooks:
+        - spu-kernel-hooks
+      spu-security-adapters:
+        - spu-security-adapters
+      spu-block:
+        - spu-block
+      spu-pcs:
+        - spu-pcs
+      spu-gpu-loader:
+        - spu-gpu-loader
+      spu-platform:
+        - spu-platform
+      spug-pcie:
+        - spug-pcie
+      spug-control:
+        - spug-control
+      spug-crypto:
+        - spug-crypto
+      virtual-gpu:
+        - virtual-gpu
+      vendor-gpu-driver:
+        - vendor-gpu-driver
+      physical-gpu:
+        - physical-gpu
+      secure-block-device:
+        - secure-block-device
+    driverJourneyModuleRoleByNodeId:
+      host-pcs: host-pcs
+      host-platform: host-platform
+      host-spug-tools: host-spug-tools
+      host-sp37: host-sp37
+      host-sdep: host-sdep
+      host-spug-subdriver: host-spug-subdriver
+      host-block: host-block
+      spu-f0: spu-f0
+      spu-ntb: spu-ntb
+      spu-security-rtl: spu-security-rtl
+      spu-sp37: spu-sp37
+      spu-connect: spu-connect
+      spu-vgpu: spu-vgpu
+      spu-kernel-hooks: spu-kernel-hooks
+      spu-security-adapters: spu-security-adapters
+      spu-block: spu-block
+      spu-pcs: spu-pcs
+      spu-gpu-loader: spu-gpu-loader
+      spu-platform: spu-platform
+      spug-pcie: spug-pcie
+      spug-control: spug-control
+      spug-crypto: spug-crypto
+      virtual-gpu: virtual-gpu
+      vendor-gpu-driver: vendor-gpu-driver
+      physical-gpu: physical-gpu
+      secure-block-device: secure-block-device
+    driverJourneyOrder:
+      - sp37-startup-pcs
+      - sdep-suep-virtualization
+      - gpu-bind-dma
+      - spug-secure-tlp
+      - unload-reset-hotplug
+    nodePositions:
+      host-pcs: *a76
+      host-platform: *a77
+      host-spug-tools: *a78
+      host-sp37: *a79
+      host-sdep: *a80
+      host-spug-subdriver: *a81
+      host-block: *a82
+      spu-f0: *a83
+      spu-ntb: *a84
+      spu-security-rtl: *a85
+      spu-sp37: *a86
+      spu-connect: *a87
+      spu-vgpu: *a88
+      spu-kernel-hooks: *a89
+      spu-security-adapters: *a90
+      spu-block: *a91
+      spu-pcs: *a92
+      spu-gpu-loader: *a93
+      spu-platform: *a94
+      spug-pcie: *a95
+      spug-control: *a96
+      spug-crypto: *a97
+      virtual-gpu: *a98
+      vendor-gpu-driver: *a99
+      physical-gpu: *a100
+      secure-block-device: *a101
+    macroZones:
+      host-userspace:
+        center: *a102
+        halfSize:
+          - 6
+          - 7
+          - 1
+        nodeIds: *a69
+      host-kernel:
+        center: *a103
+        halfSize:
+          - 6.5
+          - 8
+          - 1
+        nodeIds: *a70
+      spu-fpga:
+        center: *a104
+        halfSize:
+          - 6.5
+          - 8
+          - 1
+        nodeIds: *a71
+      spu-kernel:
+        center: *a105
+        halfSize:
+          - 7
+          - 9
+          - 1
+        nodeIds: *a72
+      spu-userspace:
+        center: *a106
+        halfSize:
+          - 7
+          - 8
+          - 1
+        nodeIds: *a73
+      spug-fpga:
+        center: *a107
+        halfSize:
+          - 8.5
+          - 7
+          - 1
+        nodeIds: *a74
+      gpu-external:
+        center: *a108
+        halfSize:
+          - 10
+          - 7
+          - 1
+        nodeIds: *a75
+    globalModuleLabels:
+      - id: host-pcs
+        color: "#22a7cf"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: host-platform
+        color: "#2997bd"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: host-spug-tools
+        color: "#37b4d2"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: host-sp37
+        color: "#7657c8"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: host-sdep
+        color: "#6549af"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: host-spug-subdriver
+        color: "#855fc7"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: host-block
+        color: "#9b79d0"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-f0
+        color: "#168f7b"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-ntb
+        color: "#1e9c86"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-security-rtl
+        color: "#36aa91"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-sp37
+        color: "#2f83e7"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-connect
+        color: "#4d94e8"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-vgpu
+        color: "#2676ca"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-kernel-hooks
+        color: "#579ee4"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-security-adapters
+        color: "#5ba8d9"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-block
+        color: "#6eb5ee"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-pcs
+        color: "#c05e2b"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spu-gpu-loader
+        color: "#ce7438"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spu-platform
+        color: "#d1844c"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spug-pcie
+        color: "#d64d72"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: spug-control
+        color: "#e16683"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: spug-crypto
+        color: "#ef7691"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: virtual-gpu
+        color: "#7fae3f"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: vendor-gpu-driver
+        color: "#8bb34c"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+      - id: physical-gpu
+        color: "#96bd5d"
+        halfWidth: 2.3
+        moduleSide: left
+        cameraSide: left
+      - id: secure-block-device
+        color: "#a8c96d"
+        halfWidth: 2.3
+        moduleSide: right
+        cameraSide: right
+    routeNodeIds:
+      sp37-startup-pcs:
+        - host-sp37
+        - host-pcs
+        - spu-f0
+        - spu-sp37
+        - spu-pcs
+        - spu-platform
+      sdep-suep-virtualization:
+        - host-sdep
+        - spu-ntb
+        - spu-vgpu
+        - host-spug-subdriver
+        - spu-vgpu
+        - virtual-gpu
+      gpu-bind-dma:
+        - spu-gpu-loader
+        - vendor-gpu-driver
+        - spu-kernel-hooks
+        - spu-vgpu
+        - spug-pcie
+        - physical-gpu
+      spug-secure-tlp:
+        - host-spug-tools
+        - spug-control
+        - spug-pcie
+        - spug-crypto
+        - physical-gpu
+      unload-reset-hotplug:
+        - spu-platform
+        - vendor-gpu-driver
+        - spu-vgpu
+        - spu-vgpu
+        - host-sdep
+        - host-sp37
+    directionCards: []
+    visuals:
+      zones:
+        - id: host-userspace
+          anchorNodeId: host-pcs
+          eyebrow:
+            zhCN: 区域 01 · 服务入口
+            enUS: ZONE 01 · SERVICE ENTRY
+          title:
+            zhCN: Host 用户态与服务
+            enUS: Host Userspace and Services
+          summary:
+            zhCN: PCS、管理服务与 SPUG 控制工具
+            enUS: PCS, management services, and SPUG control tools
+          position: *a102
+          size: *a109
+          color: "#22a7cf"
+          detailGroup: host-userspace
+          backdrop: server
+        - id: host-kernel
+          anchorNodeId: host-sp37
+          eyebrow:
+            zhCN: 区域 02 · Host 驱动边界
+            enUS: ZONE 02 · HOST DRIVER BOUNDARY
+          title:
+            zhCN: Host 内核驱动
+            enUS: Host Kernel Drivers
+          summary:
+            zhCN: SP37、SDEP 与可选块设备端
+            enUS: SP37, SDEP, and optional block endpoint
+          position: *a103
+          size: *a110
+          color: "#7657c8"
+          detailGroup: host-kernel
+          backdrop: server
+        - id: spu-fpga
+          anchorNodeId: spu-f0
+          eyebrow:
+            zhCN: 区域 03 · 双 PCIe 与 NTB
+            enUS: ZONE 03 · DUAL PCIE AND NTB
+          title:
+            zhCN: SPU FPGA
+            enUS: SPU FPGA
+          summary:
+            zhCN: Function 0、Function 1、协议与安全逻辑
+            enUS: Function 0, Function 1, protocol, and security logic
+          position: *a104
+          size: *a111
+          color: "#168f7b"
+          detailGroup: spu-fpga
+          backdrop: board
+        - id: spu-kernel
+          anchorNodeId: spu-sp37
+          eyebrow:
+            zhCN: 区域 04 · SPU 内核边界
+            enUS: ZONE 04 · SPU KERNEL BOUNDARY
+          title:
+            zhCN: SPU 内核驱动
+            enUS: SPU Kernel Drivers
+          summary:
+            zhCN: SP37、SUEP、虚拟 PCI 与定制 Hook
+            enUS: SP37, SUEP, virtual PCI, and custom hooks
+          position: *a105
+          size: *a112
+          color: "#2f83e7"
+          detailGroup: spu-kernel
+          backdrop: server
+        - id: spu-userspace
+          anchorNodeId: spu-pcs
+          eyebrow:
+            zhCN: 区域 05 · 可信服务
+            enUS: ZONE 05 · TRUSTED SERVICES
+          title:
+            zhCN: SPU 用户态与平台
+            enUS: SPU Userspace and Platform
+          summary:
+            zhCN: PCS、GPU 驱动装配、TSSD 与平台服务
+            enUS: PCS, GPU driver assembly, TSSD, and platform services
+          position: *a106
+          size: *a113
+          color: "#c05e2b"
+          detailGroup: spu-userspace
+          backdrop: server
+        - id: spug-fpga
+          anchorNodeId: spug-pcie
+          eyebrow:
+            zhCN: 区域 06 · GPU 安全桥
+            enUS: ZONE 06 · GPU SECURITY BRIDGE
+          title:
+            zhCN: SPUG FPGA
+            enUS: SPUG FPGA
+          summary:
+            zhCN: 上下游 PCIe、状态机与密码数据面
+            enUS: Upstream/downstream PCIe, state machine, and crypto plane
+          position: *a107
+          size: *a114
+          color: "#d64d72"
+          detailGroup: spug-fpga
+          backdrop: fabric
+        - id: gpu-external
+          anchorNodeId: virtual-gpu
+          eyebrow:
+            zhCN: 区域 07 · 外部端点
+            enUS: ZONE 07 · EXTERNAL ENDPOINTS
+          title:
+            zhCN: GPU、外部驱动与可选存储
+            enUS: GPU, External Drivers, and Optional Storage
+          summary:
+            zhCN: 虚拟 GPU、厂商驱动、物理 GPU 与安全块设备
+            enUS: Virtual GPU, vendor drivers, physical GPU, and secure block device
+          position: *a108
+          size: *a115
+          color: "#7fae3f"
+          detailGroup: gpu-external
+          backdrop: device
+      modules:
+        - nodeId: host-pcs
+          title: *a116
+          eyebrow: *a117
+          position: *a76
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#22a7cf"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: host-userspace
+        - nodeId: host-platform
+          title: *a118
+          eyebrow: *a117
+          position: *a77
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#2997bd"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: host-userspace
+        - nodeId: host-spug-tools
+          title: *a119
+          eyebrow: *a117
+          position: *a78
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#37b4d2"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: host-userspace
+        - nodeId: host-sp37
+          title: *a120
+          eyebrow: *a121
+          position: *a79
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#7657c8"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: host-kernel
+        - nodeId: host-sdep
+          title: *a122
+          eyebrow: *a121
+          position: *a80
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#6549af"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: host-kernel
+        - nodeId: host-spug-subdriver
+          title: *a123
+          eyebrow: *a121
+          position: *a81
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#855fc7"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: host-kernel
+        - nodeId: host-block
+          title: *a124
+          eyebrow: *a121
+          position: *a82
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#9b79d0"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: host-kernel
+        - nodeId: spu-f0
+          title: *a125
+          eyebrow: *a126
+          position: *a83
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#168f7b"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-fpga
+        - nodeId: spu-ntb
+          title: *a127
+          eyebrow: *a126
+          position: *a84
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#1e9c86"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-fpga
+        - nodeId: spu-security-rtl
+          title: *a128
+          eyebrow: *a126
+          position: *a85
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#36aa91"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-fpga
+        - nodeId: spu-sp37
+          title: *a129
+          eyebrow: *a130
+          position: *a86
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#2f83e7"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-kernel
+        - nodeId: spu-connect
+          title: *a131
+          eyebrow: *a130
+          position: *a87
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#4d94e8"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-kernel
+        - nodeId: spu-vgpu
+          title: *a132
+          eyebrow: *a130
+          position: *a88
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#2676ca"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-kernel
+        - nodeId: spu-kernel-hooks
+          title: *a133
+          eyebrow: *a130
+          position: *a89
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#579ee4"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-kernel
+        - nodeId: spu-security-adapters
+          title: *a134
+          eyebrow: *a130
+          position: *a90
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#5ba8d9"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-kernel
+        - nodeId: spu-block
+          title: *a135
+          eyebrow: *a130
+          position: *a91
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#6eb5ee"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-kernel
+        - nodeId: spu-pcs
+          title: *a136
+          eyebrow: *a137
+          position: *a92
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#c05e2b"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-userspace
+        - nodeId: spu-gpu-loader
+          title: *a138
+          eyebrow: *a137
+          position: *a93
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#ce7438"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-userspace
+        - nodeId: spu-platform
+          title: *a139
+          eyebrow: *a137
+          position: *a94
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#d1844c"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: spu-userspace
+        - nodeId: spug-pcie
+          title: *a140
+          eyebrow: *a141
+          position: *a95
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#d64d72"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spug-fpga
+        - nodeId: spug-control
+          title: *a142
+          eyebrow: *a141
+          position: *a96
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#e16683"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: spug-fpga
+        - nodeId: spug-crypto
+          title: *a143
+          eyebrow: *a141
+          position: *a97
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#ef7691"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: spug-fpga
+        - nodeId: virtual-gpu
+          title: *a144
+          eyebrow: *a145
+          position: *a98
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#7fae3f"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: gpu-external
+        - nodeId: vendor-gpu-driver
+          title: *a146
+          eyebrow: *a145
+          position: *a99
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#8bb34c"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: gpu-external
+        - nodeId: physical-gpu
+          title: *a147
+          eyebrow: *a145
+          position: *a100
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#96bd5d"
+          labelOffset:
+            - -3.2
+            - 0.2
+            - 1.8
+          detailGroup: gpu-external
+        - nodeId: secure-block-device
+          title: *a148
+          eyebrow: *a145
+          position: *a101
+          size:
+            - 4.6
+            - 2.4
+            - 1.1
+          color: "#a8c96d"
+          labelOffset:
+            - 3.2
+            - 0.2
+            - 1.8
+          detailGroup: gpu-external
+      layers: []
+      depths: []
+  displayDefaults:
+    pipeThickness: 3
+    hudDistance: 1.15
+    moduleLabelDistance: 1.15
+    labelLayoutMode: module
+    labelLineThickness: 1.4
+    moduleLabelScale: 0.92
+    focusAnnotationScale: 1.6
+    focusHudTextScale: 1.8
+    subLabelDistance: 34
+    subLabelFadeRange: 9
+    farFadeStart: 100
+    farBlockOpacity: 0.22
+    farFlowOpacity: 0.18

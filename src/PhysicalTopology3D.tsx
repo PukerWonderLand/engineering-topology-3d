@@ -187,6 +187,18 @@ function labelVisibilityForDistance(distance: number, hideDistance: number, fade
   return 1 - smoothstep(Math.max(0, hideDistance - fadeRange), hideDistance, distance);
 }
 
+function projectedPointIsInViewport(projected: THREE.Vector3) {
+  return Number.isFinite(projected.x)
+    && Number.isFinite(projected.y)
+    && Number.isFinite(projected.z)
+    && projected.x >= -1
+    && projected.x <= 1
+    && projected.y >= -1
+    && projected.y <= 1
+    && projected.z >= -1
+    && projected.z <= 1;
+}
+
 function farVisibilityFactor(distance: number, farFadeStart: number) {
   return smoothstep(farFadeStart, 120, distance);
 }
@@ -243,7 +255,14 @@ function GlobalLabelProjectionTracker({
   onLayouts: (layouts: GlobalModuleLabelLayout[]) => void;
 }) {
   const scene = useEnhancedScene();
-  const { globalModuleLabels: globalModuleLabelDefinitions, macroZones: macroZoneDefinitions, nodeById: nodeMap, nodePositions } = scene;
+  const {
+    globalModuleLabels: globalModuleLabelDefinitions,
+    macroZones: macroZoneDefinitions,
+    nodeById: nodeMap,
+    nodePositions,
+    routeNodeIds,
+    viewMembership,
+  } = scene;
   const macroZoneByNodeId = useMemo(() => new Map<string, MacroZoneId>(
     Object.entries(macroZoneDefinitions).flatMap(([zoneId, definition]) => definition.nodeIds.map((nodeId) => [nodeId, zoneId])),
   ), [macroZoneDefinitions]);
@@ -257,24 +276,38 @@ function GlobalLabelProjectionTracker({
 
   useFrame(() => {
     if (!enabled || size.width <= 0 || size.height <= 0) return;
-    const showEveryPlane = view === "overview" || view === "c2s" || view === "s2c";
+    const semanticViewNodeIds = viewMembership.get(view);
+    const journeyViewNodeIds = new Set(routeNodeIds[view] ?? []);
+    const hasSemanticView = Boolean(semanticViewNodeIds?.size);
+    const hasJourneyView = journeyViewNodeIds.size > 0;
+    const showEveryNode = view === "overview" || view === "c2s" || view === "s2c";
     const projectedLabels: ProjectedGlobalModuleLabel[] = [];
 
     globalModuleLabelDefinitions.forEach((definition) => {
       const node = nodeMap.get(definition.id);
       const position = nodePositions[definition.id];
-      if (!node || !position || (!showEveryPlane && node.data.plane !== view)) return;
+      if (!node || !position) return;
+      const visibleInCurrentView = showEveryNode
+        || (hasSemanticView && semanticViewNodeIds?.has(definition.id))
+        || (hasJourneyView && journeyViewNodeIds.has(definition.id))
+        || (!hasSemanticView && !hasJourneyView && node.data.plane === view);
+      if (!visibleInCurrentView) return;
 
       const worldPosition = new THREE.Vector3(...position);
       const zoneId = macroZoneByNodeId.get(definition.id);
       if (!zoneId) return;
+      // Distance and camera framing are independent gates. Checking the node
+      // center in NDC keeps off-screen annotations out of collision layout,
+      // instead of clamping their leaders back onto a viewport edge.
+      const projectedCenter = worldPosition.clone().project(camera);
+      if (!projectedPointIsInViewport(projectedCenter)) return;
       const zoneDistance = macroZoneSurfaceDistance(camera.position, zoneId, macroZoneDefinitions);
+      // View membership decides eligibility; distance controls fading. Selection
+      // can bypass distance, but never the viewport gate above.
       const visibility = definition.id === selectedId
         ? 1
         : labelVisibilityForDistance(zoneDistance, subLabelDistance, subLabelFadeRange);
       if (visibility <= 0.035) return;
-      const cameraSpace = worldPosition.clone().applyMatrix4(camera.matrixWorldInverse);
-      if (cameraSpace.z >= 0) return;
       const side = labelLayoutMode === "camera" ? definition.cameraSide : definition.moduleSide;
       const firstEdge = worldPosition.clone().add(new THREE.Vector3(definition.halfWidth, 0, 0));
       const secondEdge = worldPosition.clone().add(new THREE.Vector3(-definition.halfWidth, 0, 0));
@@ -296,6 +329,7 @@ function GlobalLabelProjectionTracker({
         cameraDistance: camera.position.distanceTo(worldPosition),
         visibility,
         muted: definition.id !== selectedId && activeIds.size > 0 && !activeIds.has(definition.id),
+        selected: definition.id === selectedId,
       });
     });
 
@@ -487,13 +521,16 @@ function CameraRig({
   useEffect(() => {
     const routeViews = new Set(Object.keys(scene.routeNodeIds));
     const requestedNodeIds = new Set(scene.routeNodeIds[view] ?? []);
+    const semanticViewNodeIds = scene.viewMembership.get(view);
+    const hasSemanticView = Boolean(semanticViewNodeIds?.size);
     const visibleModules = scene.visuals.modules.filter((module) => (
       view === "overview"
-      || routeViews.has(view)
-      || module.detailGroup === view
       || requestedNodeIds.has(module.nodeId)
+      || (!routeViews.has(view) && hasSemanticView && semanticViewNodeIds?.has(module.nodeId))
+      || (!routeViews.has(view) && !hasSemanticView && module.detailGroup === view)
     ));
     const candidates = visibleModules.length > 0 ? visibleModules : scene.visuals.modules;
+    const visibleNodeIds = new Set(candidates.map((module) => module.nodeId));
     const bounds = new THREE.Box3();
     candidates.forEach((module) => {
       const center = new THREE.Vector3(...module.position);
@@ -502,7 +539,11 @@ function CameraRig({
       bounds.expandByPoint(center.clone().add(half));
     });
     scene.visuals.zones
-      .filter((zone) => view === "overview" || routeViews.has(view) || zone.detailGroup === view)
+      .filter((zone) => (
+        view === "overview"
+        || scene.macroZones[zone.id]?.nodeIds.some((nodeId) => visibleNodeIds.has(nodeId))
+        || (!routeViews.has(view) && !hasSemanticView && zone.detailGroup === view)
+      ))
       .forEach((zone) => {
         const center = new THREE.Vector3(...zone.position);
         const half = new THREE.Vector3(...zone.size).multiplyScalar(0.5);
@@ -856,10 +897,9 @@ function ModuleBlock({
     }
     const distance = macroZoneSurfaceDistance(camera.position, zoneId, macroZones);
     const farFactor = farVisibilityFactor(distance, farFadeStart);
-    const effectiveOpacity = Math.max(
-      farBlockOpacity,
-      THREE.MathUtils.lerp(blockOpacity, farBlockOpacity, farFactor),
-    );
+    // Distance fading must never make an already-muted object brighter.
+    const farTargetOpacity = Math.min(blockOpacity, farBlockOpacity);
+    const effectiveOpacity = THREE.MathUtils.lerp(blockOpacity, farTargetOpacity, farFactor);
     materialRef.current.opacity = effectiveOpacity;
     materialRef.current.depthWrite = effectiveOpacity > 0.46;
   });
@@ -1043,9 +1083,10 @@ function MacroZoneShell({ nodeId, zoneId, eyebrow, title, summary, position, siz
         : 2;
     if (nextLod !== lod) setLod(nextLod);
     if (materialRef.current) {
-      const nearOpacity = Math.max(0.26 * opacity, farBlockOpacity);
+      const nearOpacity = 0.26 * opacity;
       const farFactor = farVisibilityFactor(distance, farFadeStart);
-      materialRef.current.opacity = THREE.MathUtils.lerp(nearOpacity, farBlockOpacity, farFactor);
+      const farTargetOpacity = Math.min(nearOpacity, farBlockOpacity);
+      materialRef.current.opacity = THREE.MathUtils.lerp(nearOpacity, farTargetOpacity, farFactor);
       materialRef.current.depthWrite = materialRef.current.opacity >= 0.36;
     }
   });
@@ -1092,12 +1133,24 @@ function DeclarativeTopology({
 }) {
   const scene = useEnhancedScene();
   const routeViews = useMemo(() => new Set(Object.keys(scene.routeNodeIds)), [scene.routeNodeIds]);
-  const opacityFor = (detailGroup: string) => zoneOpacity(view, detailGroup, routeViews);
-  const detailsFor = (detailGroup: string) => view === "overview" || routeViews.has(view) || view === detailGroup;
+  const semanticViewNodeIds = scene.viewMembership.get(view);
+  const hasSemanticView = Boolean(semanticViewNodeIds?.size) && !routeViews.has(view);
+  const zoneHasSemanticMember = (zoneId: string) => (
+    scene.macroZones[zoneId]?.nodeIds.some((nodeId) => semanticViewNodeIds?.has(nodeId)) ?? false
+  );
+  const zoneOpacityFor = (zoneId: string, detailGroup: string) => hasSemanticView
+    ? zoneHasSemanticMember(zoneId) ? 1 : 0.1
+    : zoneOpacity(view, detailGroup, routeViews);
+  const moduleOpacityFor = (nodeId: string, detailGroup: string) => hasSemanticView
+    ? semanticViewNodeIds?.has(nodeId) ? 1 : 0.1
+    : zoneOpacity(view, detailGroup, routeViews);
+  const detailsFor = (nodeId: string, detailGroup: string) => hasSemanticView
+    ? Boolean(semanticViewNodeIds?.has(nodeId))
+    : view === "overview" || routeViews.has(view) || view === detailGroup;
   return (
     <group>
       {scene.visuals.zones.map((zone) => {
-        const opacity = opacityFor(zone.detailGroup);
+        const opacity = zoneOpacityFor(zone.id, zone.detailGroup);
         return (
           <group key={zone.id}>
             <RoundedBox args={zone.size} radius={0.14} smoothness={1} position={zone.position}>
@@ -1124,10 +1177,10 @@ function DeclarativeTopology({
         );
       })}
       {scene.visuals.layers.map((layer) => (
-        <LayerFrame key={layer.id} title={layer.title} position={layer.position} size={layer.size} color={layer.color} showLabel={detailsFor(layer.detailGroup)} />
+        <LayerFrame key={layer.id} title={layer.title} position={layer.position} size={layer.size} color={layer.color} showLabel={!hasSemanticView && detailsFor("", layer.detailGroup)} />
       ))}
       {scene.visuals.depths.map((depth) => (
-        <DepthGuide key={depth.id} label={depth.label} position={depth.position} size={depth.size} color={depth.color} showLabel={detailsFor(depth.detailGroup)} />
+        <DepthGuide key={depth.id} label={depth.label} position={depth.position} size={depth.size} color={depth.color} showLabel={!hasSemanticView && detailsFor("", depth.detailGroup)} />
       ))}
       {scene.visuals.modules.map((module) => (
         <ModuleBlock
@@ -1144,8 +1197,8 @@ function DeclarativeTopology({
           onNodeClick={onNodeClick}
           onModuleFocus={onModuleFocus}
           canActivateObject={canActivateObject}
-          showDetails={detailsFor(module.detailGroup)}
-          opacity={opacityFor(module.detailGroup)}
+          showDetails={detailsFor(module.nodeId, module.detailGroup)}
+          opacity={moduleOpacityFor(module.nodeId, module.detailGroup)}
           farFadeStart={farFadeStart}
           farBlockOpacity={farBlockOpacity}
         />
@@ -1177,7 +1230,7 @@ function FlowPulse({ curve, color, speed, phaseOffset, selected, lineThickness, 
       const farFactor = farVisibilityFactor(distance, farFadeStart);
       materialRef.current.opacity = selected
         ? 1
-        : THREE.MathUtils.lerp(baseOpacity, farFlowOpacity, farFactor);
+        : THREE.MathUtils.lerp(baseOpacity, Math.min(baseOpacity, farFlowOpacity), farFactor);
     }
   });
   return (
@@ -1214,7 +1267,7 @@ function Pipe3D({ edgeId, points, selectedId, activeIds, enabledEdgeKinds, flowE
     if (!edge) return;
     const distance = Math.max(0, camera.position.distanceTo(curveMidpoint) - 4);
     const farFactor = farVisibilityFactor(distance, farFadeStart);
-    const farTarget = selected ? 1 : farFlowOpacity;
+    const farTarget = selected ? 1 : Math.min(baseOpacity, farFlowOpacity);
     const effectiveOpacity = THREE.MathUtils.lerp(baseOpacity, farTarget, farFactor);
     if (tubeMaterialRef.current) tubeMaterialRef.current.opacity = effectiveOpacity;
     if (arrowMaterialRef.current) arrowMaterialRef.current.opacity = effectiveOpacity;
@@ -1758,6 +1811,12 @@ function PhysicalScene({
   const routeViewIds = useMemo(() => new Set(Object.keys(routeNodeIds)), [routeNodeIds]);
   const routeNodes = routeNodeIds[view] ?? [];
   const routeNodeSet = useMemo(() => new Set(routeNodes), [routeNodes]);
+  const semanticViewNodeIds = scene.viewMembership.get(view);
+  const visibleTopologyNodeIds = routeNodeSet.size > 0
+    ? routeNodeSet
+    : semanticViewNodeIds?.size
+      ? semanticViewNodeIds
+      : null;
   const activeIds = useMemo(() => {
     const ids = new Set(activeIdList);
     routeNodes.forEach((id) => ids.add(id));
@@ -1854,7 +1913,10 @@ function PhysicalScene({
             <DirectionCard key={card.lane} lane={card.lane} position={card.position} origin={card.origin} selected={view === card.view} onClick={() => onEdgeClick(card.edgeId)} />
           ))}
 
-          {topologyEdges.filter((edge) => !routeViewIds.has(view) || (routeNodeSet.has(edge.source) && routeNodeSet.has(edge.target))).map((edge) => (
+          {topologyEdges.filter((edge) => (
+            !visibleTopologyNodeIds
+            || (visibleTopologyNodeIds.has(edge.source) && visibleTopologyNodeIds.has(edge.target))
+          )).map((edge) => (
             <Pipe3D
               key={edge.id}
               edgeId={edge.id}

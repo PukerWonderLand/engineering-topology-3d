@@ -43,6 +43,32 @@ test("interaction source keeps LOD, collision, focus, fullscreen, and language c
   assert.ok(labels.includes("resolveGlobalLabelCollisions"));
 });
 
+test("semantic views keep member annotations eligible and reveal them by distance", async () => {
+  const raw = await readFile(new URL("../examples/spu-spug-driver-overview/topology.yaml", import.meta.url), "utf8");
+  const renderer = await readFile(new URL("../src/PhysicalTopology3D.tsx", import.meta.url), "utf8");
+  const scene = YAML.parse(raw);
+  const nodes = scene.enhanced.content.zhCN.topologyNodes;
+  const labelIds = new Set(scene.enhanced.common.globalModuleLabels.map(({ id }) => id));
+
+  for (const view of scene.enhanced.content.zhCN.viewOptions) {
+    const members = nodes.filter((node) => (node.data.views ?? []).includes(view.id));
+    assert.ok(members.length > 0, `semantic view ${view.id} has no members`);
+    for (const node of members) assert.ok(labelIds.has(node.id), `${view.id} is missing annotation ${node.id}`);
+  }
+  assert.ok(renderer.includes("viewMembership.get(view)"), "renderer must resolve semantic views through membership");
+  assert.ok(renderer.includes("semanticViewNodeIds?.has(definition.id)"), "renderer must project every semantic-view member label");
+  assert.ok(renderer.includes(": labelVisibilityForDistance(zoneDistance, subLabelDistance, subLabelFadeRange)"), "eligible annotations must still obey distance fading");
+  assert.ok(!renderer.includes("definition.id === selectedId || showEveryNode || hasSemanticView || hasJourneyView"), "semantic membership must not force annotations fully visible");
+  assert.ok(renderer.includes("projectedPointIsInViewport(projectedCenter)"), "annotations must be gated by the active camera viewport");
+  assert.ok(renderer.indexOf("projectedPointIsInViewport(projectedCenter)") < renderer.indexOf("definition.id === selectedId\n"), "selection must not bypass the viewport gate");
+  assert.ok(renderer.includes("zoneHasSemanticMember"), "semantic views must keep member zones visible");
+  assert.ok(renderer.includes("moduleOpacityFor"), "semantic views must keep member modules opaque");
+  assert.ok(renderer.includes("visibleTopologyNodeIds"), "semantic views must filter unrelated topology edges");
+  assert.ok(renderer.includes("visibleNodeIds.has(nodeId)"), "semantic views must frame only their member nodes");
+  assert.ok(renderer.includes("Math.min(blockOpacity, farBlockOpacity)"), "far fading must not brighten muted modules");
+  assert.ok(renderer.includes("Math.min(baseOpacity, farFlowOpacity)"), "far fading must not brighten muted flows");
+});
+
 test("schema v2 drives the enhanced renderer through one entry", async () => {
   const schema = JSON.parse(await readFile(new URL("../spec/scene-definition.schema.json", import.meta.url), "utf8"));
   const loader = await readFile(new URL("../src/scene-loader.ts", import.meta.url), "utf8");

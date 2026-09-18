@@ -29,8 +29,9 @@ const DEFAULT_MODULE_LABEL_DISTANCE = 1.2;
 const DEFAULT_LABEL_LAYOUT_MODE: GlobalLabelLayoutMode = "module";
 const DEFAULT_LABEL_LINE_THICKNESS = 1.5;
 const DEFAULT_MODULE_LABEL_SCALE = 1;
-const DEFAULT_FOCUS_ANNOTATION_SCALE = 1;
-const DEFAULT_FOCUS_HUD_TEXT_SCALE = 1;
+const DEFAULT_FOCUS_ANNOTATION_SCALE = 1.6;
+const DEFAULT_FOCUS_HUD_TEXT_SCALE = 1.8;
+const DISPLAY_DEFAULTS_VERSION = "2";
 const DEFAULT_SUB_LABEL_DISTANCE = 30;
 const DEFAULT_SUB_LABEL_FADE_RANGE = 8;
 const DEFAULT_FAR_FADE_START = 48;
@@ -298,6 +299,7 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
   const MODULE_LABEL_SCALE_STORAGE_KEY = storageKey("module-label-scale");
   const FOCUS_ANNOTATION_SCALE_STORAGE_KEY = storageKey("focus-annotation-scale");
   const FOCUS_HUD_TEXT_SCALE_STORAGE_KEY = storageKey("focus-hud-text-scale");
+  const DISPLAY_DEFAULTS_VERSION_STORAGE_KEY = storageKey("display-defaults-version");
   const SUB_LABEL_DISTANCE_STORAGE_KEY = storageKey("sub-label-distance");
   const SUB_LABEL_FADE_RANGE_STORAGE_KEY = storageKey("sub-label-fade-range");
   const FAR_FADE_START_STORAGE_KEY = storageKey("far-fade-start");
@@ -407,13 +409,29 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
       if (Number.isFinite(storedFarFlowOpacity) && storedFarFlowOpacity >= 0 && storedFarFlowOpacity <= 1) {
         setFarFlowOpacity(clampFarFlowOpacity(storedFarFlowOpacity));
       }
-      const storedFocusAnnotationScale = Number(window.localStorage.getItem(FOCUS_ANNOTATION_SCALE_STORAGE_KEY));
-      if (Number.isFinite(storedFocusAnnotationScale) && storedFocusAnnotationScale >= 0.6 && storedFocusAnnotationScale <= 1.6) {
+      const defaultsVersion = window.localStorage.getItem(DISPLAY_DEFAULTS_VERSION_STORAGE_KEY);
+      const storedFocusAnnotationValue = window.localStorage.getItem(FOCUS_ANNOTATION_SCALE_STORAGE_KEY);
+      const storedFocusAnnotationScale = Number(storedFocusAnnotationValue);
+      const shouldMigrateFocusAnnotation = defaultsVersion !== DISPLAY_DEFAULTS_VERSION
+        && (storedFocusAnnotationValue === null || storedFocusAnnotationScale === 1);
+      if (shouldMigrateFocusAnnotation) {
+        setFocusAnnotationScale(defaults.focusAnnotationScale);
+        window.localStorage.setItem(FOCUS_ANNOTATION_SCALE_STORAGE_KEY, String(defaults.focusAnnotationScale));
+      } else if (Number.isFinite(storedFocusAnnotationScale) && storedFocusAnnotationScale >= 0.6 && storedFocusAnnotationScale <= 1.6) {
         setFocusAnnotationScale(clampFocusAnnotationScale(storedFocusAnnotationScale));
       }
-      const storedFocusHudTextScale = Number(window.localStorage.getItem(FOCUS_HUD_TEXT_SCALE_STORAGE_KEY));
-      if (Number.isFinite(storedFocusHudTextScale) && storedFocusHudTextScale >= 0.8 && storedFocusHudTextScale <= 1.8) {
+      const storedFocusHudTextValue = window.localStorage.getItem(FOCUS_HUD_TEXT_SCALE_STORAGE_KEY);
+      const storedFocusHudTextScale = Number(storedFocusHudTextValue);
+      const shouldMigrateFocusHudText = defaultsVersion !== DISPLAY_DEFAULTS_VERSION
+        && (storedFocusHudTextValue === null || storedFocusHudTextScale === 1);
+      if (shouldMigrateFocusHudText) {
+        setFocusHudTextScale(defaults.focusHudTextScale);
+        window.localStorage.setItem(FOCUS_HUD_TEXT_SCALE_STORAGE_KEY, String(defaults.focusHudTextScale));
+      } else if (Number.isFinite(storedFocusHudTextScale) && storedFocusHudTextScale >= 0.8 && storedFocusHudTextScale <= 1.8) {
         setFocusHudTextScale(clampFocusHudTextScale(storedFocusHudTextScale));
+      }
+      if (defaultsVersion !== DISPLAY_DEFAULTS_VERSION) {
+        window.localStorage.setItem(DISPLAY_DEFAULTS_VERSION_STORAGE_KEY, DISPLAY_DEFAULTS_VERSION);
       }
     });
     return () => window.cancelAnimationFrame(frame);
@@ -1445,7 +1463,9 @@ function TopologyExplorerContent({ scene }: { scene: NormalizedSceneDefinition }
                   updateFocusHudTextScale(defaults.focusHudTextScale);
                   updateHudDistance(defaults.hudDistance);
                 }}
-              >{tr("恢复默认：子标签 30 / 渐隐 8 / 远景 48 / 板块 22% / 数据流 55%")}</button>
+              >{locale === "en-US"
+                ? `Restore scene defaults: annotations ${defaults.focusAnnotationScale.toFixed(1)}× / detail text ${defaults.focusHudTextScale.toFixed(1)}×`
+                : `恢复场景默认：聚焦批注 ${defaults.focusAnnotationScale.toFixed(1)}× / 详情文字 ${defaults.focusHudTextScale.toFixed(1)}×`}</button>
             </aside>
           )}
 

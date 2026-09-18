@@ -1,0 +1,4714 @@
+schemaVersion: "2.0"
+id: spu-spug-rdma-driver
+title:
+  zhCN: SPU / SPUG RDMA 驱动、内核与虚拟化架构
+  enUS: SPU / SPUG RDMA Driver, Kernel, and Virtualization
+description:
+  zhCN: 展示 RDMA MR、定制内核 Hook、SUEP 虚拟设备、SPUG Bitmap 与 RNIC 数据面的关系及完整生命周期。
+  enUS: Maps RDMA MR lifecycle, custom kernel hooks, SUEP virtual devices, SPUG Bitmap, and the RNIC data plane.
+evidence: CODE_PROVEN
+locales:
+  default: zh-CN
+  supported:
+    - zh-CN
+    - en-US
+zones:
+  - id: rdma-userspace
+    title: &a50
+      zhCN: RDMA 用户态
+      enUS: RDMA Userspace
+    eyebrow: &a49
+      zhCN: 区域 01 · 请求入口
+      enUS: ZONE 01 · REQUEST ENTRY
+    summary: &a51
+      zhCN: 应用、libibverbs 与 MR 操作
+      enUS: Application, libibverbs, and MR operations
+    color: "#22a7cf"
+    nodeIds: &a19
+      - rdma-app
+  - id: linux-rdma-core
+    title: &a54
+      zhCN: SPU Linux RDMA 内核
+      enUS: SPU Linux RDMA Kernel
+    eyebrow: &a53
+      zhCN: 区域 02 · DMA 地址事实源
+      enUS: ZONE 02 · DMA ADDRESS AUTHORITY
+    summary: &a55
+      zhCN: RDMA core、ib_umem、irdma 与最终 DMA SG
+      enUS: RDMA core, ib_umem, irdma, and final DMA SG
+    color: "#7657c8"
+    nodeIds: &a20
+      - rdma-core
+      - ib-umem
+      - irdma
+  - id: kernel-hook-driver
+    title: &a58
+      zhCN: 定制内核 Hook 与伴随驱动
+      enUS: Custom Kernel Hook and Companion Driver
+    eyebrow: &a57
+      zhCN: 区域 03 · MR 生命周期桥
+      enUS: ZONE 03 · MR LIFECYCLE BRIDGE
+    summary: &a59
+      zhCN: get/release 回调、设备归属与历史映射
+      enUS: Get/release callbacks, device ownership, and legacy mapping
+    color: "#e14b72"
+    nodeIds: &a21
+      - hook-rdma
+      - suep-rdma
+      - umem-route-map
+  - id: suep-virtualization
+    title: &a62
+      zhCN: SUEP 虚拟化层
+      enUS: SUEP Virtualization Layer
+    eyebrow: &a61
+      zhCN: 区域 04 · 设备归属事实源
+      enUS: ZONE 04 · DEVICE OWNERSHIP AUTHORITY
+    summary: &a63
+      zhCN: SUEP、虚拟 PCI 总线、vSPUG 与 RNIC vBEP
+      enUS: SUEP, virtual PCI bus, vSPUG, and RNIC vBEP
+    color: "#2f83e7"
+    nodeIds: &a22
+      - suep-core
+      - virtual-pci
+      - vspug
+      - vbep-rnic
+  - id: spug-security
+    title: &a66
+      zhCN: SPUG 资源与密码数据面
+      enUS: SPUG Resource and Crypto Data Plane
+    eyebrow: &a65
+      zhCN: 区域 05 · 硬件状态事实源
+      enUS: ZONE 05 · HARDWARE STATE AUTHORITY
+    summary: &a67
+      zhCN: MMIO、Bitmap、加密使能与统一资源管理方向
+      enUS: MMIO, Bitmap, crypto enable, and unified resource ownership
+    color: "#168f7b"
+    nodeIds: &a23
+      - hardware-regs
+      - region-manager
+      - bitmap
+      - spug-fpga
+  - id: memory-and-device
+    title: &a70
+      zhCN: 内存与物理设备
+      enUS: Memory and Physical Devices
+    eyebrow: &a69
+      zhCN: 区域 06 · PCIe 数据端点
+      enUS: ZONE 06 · PCIE DATA ENDPOINTS
+    summary: &a71
+      zhCN: Host DRAM、GPU peer memory 与物理 RNIC
+      enUS: Host DRAM, GPU peer memory, and physical RNIC
+    color: "#7fae3f"
+    nodeIds: &a24
+      - host-memory
+      - gpu-memory
+      - physical-rnic
+nodes:
+  - id: rdma-app
+    zoneId: rdma-userspace
+    title: &a73
+      zhCN: RDMA 应用 / libibverbs
+      enUS: RDMA Application / libibverbs
+    description:
+      zhCN: 注册或释放 MR，并发起 RDMA Read、Write 或 Atomic。
+      enUS: Registers or releases MRs and issues RDMA Read, Write, or Atomic operations.
+    kind: application
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    interfaces: &a12
+      - ibv_reg_mr
+      - ibv_dereg_mr
+  - id: rdma-core
+    zoneId: linux-rdma-core
+    title: &a75
+      zhCN: RDMA Core
+      enUS: RDMA Core
+    description:
+      zhCN: 处理 MR 语义、页锁定以及 ib_umem 生命周期。
+      enUS: Owns MR semantics, page pinning, and the ib_umem lifecycle.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#7657c8"
+    sources:
+      - path: spu_kernel/drivers/infiniband/core/umem.c
+        note: RDMA umem lifecycle boundary
+  - id: ib-umem
+    zoneId: linux-rdma-core
+    title: &a77
+      zhCN: ib_umem + DMA SG
+      enUS: ib_umem + DMA SG
+    description:
+      zhCN: 在 ib_dma_map_sg 后保存设备最终可见的 dma_addr_t 与长度。
+      enUS: Carries device-visible dma_addr_t ranges after ib_dma_map_sg.
+    kind: buffer
+    evidence: CODE_PROVEN
+    color: "#8a61d1"
+    tags: &a13
+      - DMA_MAPPED
+      - address-authority
+  - id: irdma
+    zoneId: linux-rdma-core
+    title: &a79
+      zhCN: ice + irdma
+      enUS: ice + irdma
+    description:
+      zhCN: Intel E810 RoCE 驱动栈；当前定制逻辑不侵入其 WQE 数据面。
+      enUS: Intel E810 RoCE stack; custom logic does not modify its WQE data path.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#6750b5"
+  - id: hook-rdma
+    zoneId: kernel-hook-driver
+    title: &a81
+      zhCN: spu_kernel hook_rdma
+      enUS: spu_kernel hook_rdma
+    description:
+      zhCN: 在 ib_umem get 成功后和真正 release/unmap 前调用 SUEP 回调。
+      enUS: Invokes SUEP callbacks after successful get and before the actual release/unmap.
+    kind: protocol
+    evidence: CODE_PROVEN
+    color: "#e14b72"
+    sources:
+      - path: spu_kernel/include/linux/suep_hook_rdma.h
+        note: Hook API
+      - path: spu_kernel/kernel/dma/suep_hook_rdma.c
+        note: Hook registration and dispatch
+  - id: suep-rdma
+    zoneId: kernel-hook-driver
+    title: &a83
+      zhCN: suep_rdma_driver
+      enUS: suep_rdma_driver
+    description:
+      zhCN: 识别 RNIC vBEP 与所属 vSPUG，并把 Host DRAM DMA 页映射到 Bitmap。
+      enUS: Resolves the RNIC vBEP and owning vSPUG, then maps Host DRAM DMA pages into Bitmap.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#c13f5c"
+    sources:
+      - path: spu-g/spu_driver/suep_rdma_driver.c
+        note: RDMA callback and Bitmap lifecycle
+  - id: umem-route-map
+    zoneId: kernel-hook-driver
+    title: &a85
+      zhCN: ib_umem → vBEP 映射表
+      enUS: ib_umem → vBEP Map
+    description:
+      zhCN: release 时恢复设备归属；当前实现存在条目未删除、裸指针和并发风险。
+      enUS: Restores ownership during release; current code has stale-entry, raw-pointer, and concurrency risks.
+    kind: state
+    evidence: CODE_PROVEN
+    color: "#d75b69"
+    tags: &a14
+      - P0-risk
+      - lifecycle-gap
+  - id: suep-core
+    zoneId: suep-virtualization
+    title: &a87
+      zhCN: SUEP PCI 根驱动
+      enUS: SUEP PCI Root Driver
+    description:
+      zhCN: probe 时建立 BAR、NTB、IRQ、Host 管理、sysfs 和 RDMA 子模块。
+      enUS: Probe establishes BAR, NTB, IRQ, host management, sysfs, and the RDMA submodule.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#2878c7"
+    sources:
+      - path: spu-g/spu_driver/suep_driver.c
+        note: SUEP probe and remove root
+  - id: virtual-pci
+    zoneId: suep-virtualization
+    title: &a89
+      zhCN: SUEP 虚拟 PCI 总线
+      enUS: SUEP Virtual PCI Bus
+    description:
+      zhCN: 将 SPUG 后物理 PCIe 设备以标准 PCI 设备形态呈现给 SPU OS。
+      enUS: Presents physical PCIe devices behind SPUG as standard PCI devices to the SPU OS.
+    kind: protocol
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+  - id: vspug
+    zoneId: suep-virtualization
+    title: &a91
+      zhCN: vSPUG 管理对象
+      enUS: vSPUG Management Object
+    description:
+      zhCN: 保存工作模式、BAR 代理窗口、RDMA window 与 SPUG 生命周期。
+      enUS: Owns work mode, BAR proxy window, RDMA window, and SPUG lifetime.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#3479c9"
+    interfaces: &a15
+      - NORMAL
+      - RDMA
+      - NVME
+  - id: vbep-rnic
+    zoneId: suep-virtualization
+    title: &a93
+      zhCN: RNIC vBEP
+      enUS: RNIC vBEP
+    description:
+      zhCN: SPUG 后 RNIC 在虚拟 PCI 总线中的设备对象，是 RDMA 回调定位入口。
+      enUS: Virtual PCI representation of the RNIC behind SPUG and the ownership lookup entry.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#3d8bd9"
+  - id: hardware-regs
+    zoneId: spug-security
+    title: &a95
+      zhCN: SPUG 硬件寄存器层
+      enUS: SPUG Hardware Register Layer
+    description:
+      zhCN: 集中封装 Bitmap、window、密钥与加密使能的 MMIO ABI。
+      enUS: Centralizes the MMIO ABI for Bitmap, window, keys, and crypto enable.
+    kind: driver
+    evidence: CODE_PROVEN
+    color: "#168f7b"
+    sources:
+      - path: spu-g/spu_driver/suep_vspug_hardware_regs.c
+        note: SPUG MMIO abstraction
+  - id: region-manager
+    zoneId: spug-security
+    title: &a97
+      zhCN: 统一 DMA Region Manager（目标）
+      enUS: Unified DMA Region Manager (Target)
+    description:
+      zhCN: 建议成为 RDMA/NVMe 的唯一 Bitmap owner，负责引用计数、generation、批量 MMIO 与 fail-closed。
+      enUS: Proposed single Bitmap owner for RDMA/NVMe with refcounts, generations, batched MMIO, and fail-closed behavior.
+    kind: service
+    evidence: INFERRED
+    color: "#13a681"
+    tags: &a16
+      - target-architecture
+      - single-owner
+  - id: bitmap
+    zoneId: spug-security
+    title: &a99
+      zhCN: SPUG MR Bitmap
+      enUS: SPUG MR Bitmap
+    description:
+      zhCN: 以 4 KiB 粒度分类 Host 普通内存 DMA 页；其地址域必须与 FPGA 观察点一致。
+      enUS: Classifies ordinary Host-memory DMA pages at 4 KiB granularity; its address domain must match the FPGA observation point.
+    kind: state
+    evidence: CODE_PROVEN
+    color: "#1ba98b"
+    tags: &a17
+      - 4KiB
+      - MMIO
+      - refcount-required
+  - id: spug-fpga
+    zoneId: spug-security
+    title: &a101
+      zhCN: SPUG FPGA 密码数据面
+      enUS: SPUG FPGA Crypto Data Plane
+    description:
+      zhCN: 依据硬件表和策略识别 PCIe Payload 并执行加解密；端到端效果仍需板测证明。
+      enUS: Uses hardware tables and policy to classify and transform PCIe payload; end-to-end behavior still requires board validation.
+    kind: hardware
+    evidence: RTL_PROVEN
+    color: "#36b79c"
+  - id: host-memory
+    zoneId: memory-and-device
+    title: &a103
+      zhCN: Host / SPU DRAM
+      enUS: Host / SPU DRAM
+    description:
+      zhCN: 普通 ib_umem 的页来源；DMA SG 会进入 MR Bitmap。
+      enUS: Page source for ordinary ib_umem; mapped DMA SG enters the MR Bitmap.
+    kind: hardware
+    evidence: CODE_PROVEN
+    color: "#7fae3f"
+  - id: gpu-memory
+    zoneId: memory-and-device
+    title: &a105
+      zhCN: GPU Peer Memory / GDR
+      enUS: GPU Peer Memory / GDR
+    description:
+      zhCN: is_peer 路径会被跟踪但跳过 Host MR Bitmap；P2P 加密闭环尚未由当前代码证明。
+      enUS: The is_peer path is tracked but skips Host MR Bitmap; the P2P crypto loop is not yet proven by current code.
+    kind: hardware
+    evidence: INFERRED
+    color: "#9dbd5d"
+    tags: &a18
+      - GDR
+      - unresolved-boundary
+  - id: physical-rnic
+    zoneId: memory-and-device
+    title: &a107
+      zhCN: 物理 RNIC / Intel E810
+      enUS: Physical RNIC / Intel E810
+    description:
+      zhCN: 发起和接收 RoCE PCIe 数据事务的物理端点。
+      enUS: Physical endpoint issuing and receiving RoCE PCIe transactions.
+    kind: device
+    evidence: CODE_PROVEN
+    color: "#6f9f3d"
+edges:
+  - id: app-core
+    source: rdma-app
+    target: rdma-core
+    title:
+      zhCN: 注册/释放 MR
+      enUS: Register/release MR
+    description:
+      zhCN: 用户态 verbs 进入 RDMA core。
+      enUS: Userspace verbs enter RDMA core.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#22a7cf"
+    lane: CONTROL
+  - id: core-umem
+    source: rdma-core
+    target: ib-umem
+    title:
+      zhCN: pin + DMA map
+      enUS: pin + DMA map
+    description:
+      zhCN: 映射成功后形成最终 DMA SG。
+      enUS: Successful mapping creates final DMA SG.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#7657c8"
+    lane: LIFECYCLE
+  - id: irdma-core
+    source: irdma
+    target: rdma-core
+    title:
+      zhCN: ib_device / MR provider
+      enUS: ib_device / MR provider
+    description:
+      zhCN: 提供 RNIC 对应 ib_device 上下文。
+      enUS: Provides the RNIC ib_device context.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#6750b5"
+    lane: CONTROL
+  - id: umem-hook-get
+    source: ib-umem
+    target: hook-rdma
+    title:
+      zhCN: get Hook
+      enUS: get Hook
+    description:
+      zhCN: DMA map 完成后调用。
+      enUS: Called after DMA map completes.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#e14b72"
+    lane: LIFECYCLE
+  - id: hook-callback
+    source: hook-rdma
+    target: suep-rdma
+    title:
+      zhCN: 回调分派
+      enUS: Callback dispatch
+    description:
+      zhCN: 调用 SUEP 注册的 get/release 回调。
+      enUS: Invokes SUEP-registered get/release callbacks.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#d85068"
+    lane: CONTROL
+  - id: callback-map
+    source: suep-rdma
+    target: umem-route-map
+    title:
+      zhCN: 保存/查询归属
+      enUS: Store/lookup ownership
+    description:
+      zhCN: ib_umem 指针关联 vBEP 索引。
+      enUS: Associates ib_umem pointers with vBEP indices.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#d75b69"
+    lane: LIFECYCLE
+  - id: callback-vbep
+    source: suep-rdma
+    target: vbep-rnic
+    title:
+      zhCN: 定位 RNIC
+      enUS: Resolve RNIC
+    description:
+      zhCN: pci_dev → vBEP。
+      enUS: pci_dev → vBEP.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    lane: OWNERSHIP
+  - id: vbep-vspug
+    source: vbep-rnic
+    target: vspug
+    title:
+      zhCN: 所属 SPUG
+      enUS: Owning SPUG
+    description:
+      zhCN: vBEP → vSPUG 稳定归属关系。
+      enUS: Stable vBEP → vSPUG ownership relation.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#2f83e7"
+    lane: OWNERSHIP
+  - id: suep-vpci
+    source: suep-core
+    target: virtual-pci
+    title:
+      zhCN: 初始化总线
+      enUS: Initialize bus
+    description:
+      zhCN: SUEP 建立虚拟 PCI 总线。
+      enUS: SUEP establishes the virtual PCI bus.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#2878c7"
+    lane: VIRTUALIZATION
+  - id: vpci-vspug
+    source: virtual-pci
+    target: vspug
+    title:
+      zhCN: 创建 vSPUG
+      enUS: Create vSPUG
+    description:
+      zhCN: 映射管理窗口并读取工作模式。
+      enUS: Maps management window and reads work mode.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#3479c9"
+    lane: VIRTUALIZATION
+  - id: vpci-vbep
+    source: virtual-pci
+    target: vbep-rnic
+    title:
+      zhCN: 创建/激活 vBEP
+      enUS: Create/activate vBEP
+    description:
+      zhCN: 扫描设备、映射 BAR 并加入 PCI core。
+      enUS: Scans the device, maps BARs, and adds it to PCI core.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#3d8bd9"
+    lane: VIRTUALIZATION
+  - id: vspug-register
+    source: vspug
+    target: suep-rdma
+    title:
+      zhCN: RDMA 模式装配
+      enUS: RDMA-mode attach
+    description:
+      zhCN: mode=RDMA 时注册 vBEP 扩展。
+      enUS: Registers the vBEP extension when mode=RDMA.
+    kind: lifecycle
+    evidence: CODE_PROVEN
+    color: "#c13f5c"
+    lane: VIRTUALIZATION
+  - id: callback-regs
+    source: suep-rdma
+    target: hardware-regs
+    title:
+      zhCN: Bitmap/加密操作
+      enUS: Bitmap/crypto operations
+    description:
+      zhCN: 业务层通过寄存器抽象访问 SPUG。
+      enUS: Business logic accesses SPUG through the register abstraction.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#168f7b"
+    lane: MMIO
+  - id: manager-regs
+    source: region-manager
+    target: hardware-regs
+    title:
+      zhCN: 唯一硬件 owner
+      enUS: Single hardware owner
+    description:
+      zhCN: 目标架构中统一执行引用和批量 MMIO。
+      enUS: Target design centralizes references and batched MMIO.
+    kind: control
+    evidence: INFERRED
+    color: "#13a681"
+    lane: TARGET
+    dashed: true
+  - id: regs-bitmap
+    source: hardware-regs
+    target: bitmap
+    title:
+      zhCN: MMIO 置位/清位
+      enUS: MMIO set/clear
+    description:
+      zhCN: 按 DMA 页更新硬件 Bitmap。
+      enUS: Updates hardware Bitmap by DMA page.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#1ba98b"
+    lane: MMIO
+  - id: bitmap-fpga
+    source: bitmap
+    target: spug-fpga
+    title:
+      zhCN: 页面分类策略
+      enUS: Page classification policy
+    description:
+      zhCN: Bitmap 状态参与 Payload 分类。
+      enUS: Bitmap state participates in payload classification.
+    kind: control
+    evidence: RTL_PROVEN
+    color: "#36b79c"
+    lane: HARDWARE
+  - id: host-umem
+    source: host-memory
+    target: ib-umem
+    title:
+      zhCN: 普通页
+      enUS: Ordinary pages
+    description:
+      zhCN: pin 后形成 Host DRAM DMA SG。
+      enUS: Pinned pages become Host DRAM DMA SG.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#7fae3f"
+    lane: PAYLOAD
+  - id: gpu-umem
+    source: gpu-memory
+    target: ib-umem
+    title:
+      zhCN: peer umem
+      enUS: peer umem
+    description:
+      zhCN: GDR peer memory 进入 ib_umem_get_peer。
+      enUS: GDR peer memory enters ib_umem_get_peer.
+    kind: payload
+    evidence: CODE_PROVEN
+    color: "#9dbd5d"
+    lane: PEER
+  - id: peer-skip
+    source: suep-rdma
+    target: gpu-memory
+    title:
+      zhCN: 跳过 Host Bitmap
+      enUS: Skip Host Bitmap
+    description:
+      zhCN: 当前 is_peer 分支不设置/清除 Host MR Bitmap。
+      enUS: Current is_peer path skips Host MR Bitmap set/clear.
+    kind: control
+    evidence: CODE_PROVEN
+    color: "#e5b534"
+    lane: PEER
+    dashed: true
+  - id: fpga-rnic
+    source: spug-fpga
+    target: physical-rnic
+    title:
+      zhCN: PCIe Payload 数据面
+      enUS: PCIe payload data plane
+    description:
+      zhCN: SPUG 与物理 RNIC 之间的数据事务。
+      enUS: Data transactions between SPUG and the physical RNIC.
+    kind: physical
+    evidence: RTL_PROVEN
+    color: "#36b79c"
+    lane: PAYLOAD
+  - id: rnic-irdma
+    source: physical-rnic
+    target: irdma
+    title:
+      zhCN: PCI 驱动绑定
+      enUS: PCI driver binding
+    description:
+      zhCN: 物理/虚拟 RNIC 由 ice 与 irdma 驱动。
+      enUS: The physical/virtual RNIC is driven by ice and irdma.
+    kind: physical
+    evidence: CODE_PROVEN
+    color: "#6f9f3d"
+    lane: PHYSICAL
+  - id: release-hook
+    source: hook-rdma
+    target: ib-umem
+    title:
+      zhCN: release 后再 unmap
+      enUS: release before unmap
+    description:
+      zhCN: 清理 Hook 发生在真正 DMA unmap 之前。
+      enUS: Cleanup hook runs before the real DMA unmap.
+    kind: sync
+    evidence: CODE_PROVEN
+    color: "#e5b534"
+    lane: RELEASE
+journeys:
+  - id: device-bringup
+    title:
+      zhCN: 设备虚拟化与 RDMA 装配
+      enUS: Device Virtualization and RDMA Attach
+    summary:
+      zhCN: 从 SUEP probe 到 vSPUG/vBEP 建立，再按 RDMA 模式注册 Hook 并启用硬件。
+      enUS: From SUEP probe through vSPUG/vBEP creation to RDMA hook registration and hardware enable.
+    steps:
+      - id: bringup-suep
+        nodeId: suep-core
+        functionId: suep-probe
+        title:
+          zhCN: SUEP probe
+          enUS: SUEP probe
+        evidence: CODE_PROVEN
+      - id: bringup-bus
+        nodeId: virtual-pci
+        title:
+          zhCN: 建立虚拟 PCI 总线
+          enUS: Establish virtual PCI bus
+        evidence: CODE_PROVEN
+      - id: bringup-vspug
+        nodeId: vspug
+        functionId: create-vspug
+        title:
+          zhCN: 创建 vSPUG
+          enUS: Create vSPUG
+        evidence: CODE_PROVEN
+      - id: bringup-vbep
+        nodeId: vbep-rnic
+        functionId: create-vbep
+        title:
+          zhCN: 创建 RNIC vBEP
+          enUS: Create RNIC vBEP
+        evidence: CODE_PROVEN
+      - id: bringup-rdma
+        nodeId: suep-rdma
+        functionId: register-vbep
+        title:
+          zhCN: 装配 RDMA 扩展
+          enUS: Attach RDMA extension
+        evidence: CODE_PROVEN
+      - id: bringup-regs
+        nodeId: hardware-regs
+        title:
+          zhCN: 启用 RDMA 加解密
+          enUS: Enable RDMA crypto
+        evidence: CODE_PROVEN
+    edgeIds:
+      - suep-vpci
+      - vpci-vspug
+      - vpci-vbep
+      - vspug-register
+      - callback-regs
+  - id: host-mr-register
+    title:
+      zhCN: Host DRAM MR 注册与 Bitmap 置位
+      enUS: Host DRAM MR Registration and Bitmap Set
+    summary:
+      zhCN: DMA map 完成后取得最终地址，通过 Hook 定位 vBEP/vSPUG，再按 4 KiB 粒度置位。
+      enUS: Final DMA addresses are captured after mapping, resolved to vBEP/vSPUG through the hook, and set at 4 KiB granularity.
+    steps:
+      - id: mr-app
+        nodeId: rdma-app
+        title:
+          zhCN: 注册 MR
+          enUS: Register MR
+        evidence: CODE_PROVEN
+      - id: mr-core
+        nodeId: rdma-core
+        functionId: umem-get
+        title:
+          zhCN: pin 页并 DMA map
+          enUS: Pin pages and DMA map
+        evidence: CODE_PROVEN
+      - id: mr-umem
+        nodeId: ib-umem
+        title:
+          zhCN: 最终 DMA SG 就绪
+          enUS: Final DMA SG ready
+        evidence: CODE_PROVEN
+      - id: mr-hook
+        nodeId: hook-rdma
+        functionId: hook-get
+        title:
+          zhCN: 调用 get Hook
+          enUS: Invoke get hook
+        evidence: CODE_PROVEN
+      - id: mr-route
+        nodeId: suep-rdma
+        functionId: rdma-get-cb
+        title:
+          zhCN: 定位 vBEP/vSPUG
+          enUS: Resolve vBEP/vSPUG
+        evidence: CODE_PROVEN
+      - id: mr-map
+        nodeId: umem-route-map
+        title:
+          zhCN: 保存 release 归属
+          enUS: Save release ownership
+        evidence: CODE_PROVEN
+      - id: mr-bitmap
+        nodeId: bitmap
+        functionId: bitmap-set
+        title:
+          zhCN: Bitmap 置位
+          enUS: Set Bitmap
+        evidence: CODE_PROVEN
+      - id: mr-rnic
+        nodeId: physical-rnic
+        title:
+          zhCN: 允许 RDMA 数据事务
+          enUS: Permit RDMA transaction
+        evidence: RUNTIME_OBSERVED
+    edgeIds:
+      - app-core
+      - core-umem
+      - umem-hook-get
+      - hook-callback
+      - callback-map
+      - callback-vbep
+      - regs-bitmap
+      - fpga-rnic
+  - id: mr-release
+    title:
+      zhCN: MR 释放与 Bitmap 清理
+      enUS: MR Release and Bitmap Cleanup
+    summary:
+      zhCN: 在 DMA unmap 之前通过历史映射找回 vSPUG，并清除普通内存页授权。
+      enUS: Resolves the vSPUG from the historical map and clears ordinary-memory authorization before DMA unmap.
+    caveat:
+      zhCN: 当前实现未删除哈希条目，也没有解决重叠 MR 页引用计数。
+      enUS: Current code does not remove hash entries and lacks page refcounting for overlapping MRs.
+    steps:
+      - id: release-app
+        nodeId: rdma-app
+        title:
+          zhCN: 释放 MR
+          enUS: Deregister MR
+        evidence: CODE_PROVEN
+      - id: release-core
+        nodeId: rdma-core
+        functionId: umem-release
+        title:
+          zhCN: 进入 ib_umem_release
+          enUS: Enter ib_umem_release
+        evidence: CODE_PROVEN
+      - id: release-hook-step
+        nodeId: hook-rdma
+        functionId: hook-release
+        title:
+          zhCN: unmap 前回调
+          enUS: Callback before unmap
+        evidence: CODE_PROVEN
+      - id: release-map-step
+        nodeId: umem-route-map
+        title:
+          zhCN: 查询 vBEP 索引
+          enUS: Lookup vBEP index
+        evidence: CODE_PROVEN
+      - id: release-bitmap
+        nodeId: bitmap
+        functionId: bitmap-clear
+        title:
+          zhCN: Bitmap 清位
+          enUS: Clear Bitmap
+        evidence: CODE_PROVEN
+      - id: release-unmap
+        nodeId: ib-umem
+        title:
+          zhCN: DMA unmap 与 unpin
+          enUS: DMA unmap and unpin
+        evidence: CODE_PROVEN
+    edgeIds:
+      - app-core
+      - core-umem
+      - umem-hook-get
+      - callback-map
+      - regs-bitmap
+      - release-hook
+  - id: gdr-peer-boundary
+    title:
+      zhCN: GDR / Peer Memory 证据边界
+      enUS: GDR / Peer Memory Evidence Boundary
+    summary:
+      zhCN: peer umem 进入同一 Hook 并保存归属，但当前跳过 Host MR Bitmap。
+      enUS: Peer umem enters the same hook and stores ownership, but currently skips Host MR Bitmap.
+    caveat:
+      zhCN: “支持 peer Hook”不等于 GPU P2P 加密端到端闭环已经证明。
+      enUS: Peer-hook support does not prove an end-to-end encrypted GPU P2P path.
+    steps:
+      - id: peer-gpu
+        nodeId: gpu-memory
+        title:
+          zhCN: GPU peer memory
+          enUS: GPU peer memory
+        evidence: CODE_PROVEN
+      - id: peer-umem
+        nodeId: ib-umem
+        title:
+          zhCN: ib_umem_get_peer
+          enUS: ib_umem_get_peer
+        evidence: CODE_PROVEN
+      - id: peer-hook-step
+        nodeId: hook-rdma
+        functionId: hook-get
+        title:
+          zhCN: 调用 get Hook
+          enUS: Invoke get hook
+        evidence: CODE_PROVEN
+      - id: peer-track
+        nodeId: suep-rdma
+        functionId: rdma-get-cb
+        title:
+          zhCN: 识别并保存归属
+          enUS: Resolve and store ownership
+        evidence: CODE_PROVEN
+      - id: peer-skip-step
+        nodeId: gpu-memory
+        title:
+          zhCN: 跳过 Host Bitmap
+          enUS: Skip Host Bitmap
+        evidence: CODE_PROVEN
+    edgeIds:
+      - gpu-umem
+      - umem-hook-get
+      - hook-callback
+      - callback-map
+      - peer-skip
+  - id: safe-teardown-target
+    title:
+      zhCN: 安全卸载目标路径
+      enUS: Safe Teardown Target Path
+    summary:
+      zhCN: 先阻止新回调并等待在途操作，再 drain MR、清硬件状态、删除虚拟设备，最后释放 SUEP。
+      enUS: Stop new callbacks, wait for in-flight work, drain MRs and hardware state, remove virtual devices, then release SUEP.
+    caveat:
+      zhCN: 这是根据审计风险形成的目标顺序，当前实现尚未全部满足。
+      enUS: This is the target ordering derived from the audit; current code does not yet satisfy it fully.
+    steps:
+      - id: stop-traffic
+        nodeId: rdma-app
+        title:
+          zhCN: 停止新 MR/QP 流量
+          enUS: Stop new MR/QP traffic
+        evidence: INFERRED
+      - id: unregister-hook
+        nodeId: hook-rdma
+        title:
+          zhCN: 注销 Hook 并同步在途回调
+          enUS: Unregister hook and synchronize callbacks
+        evidence: INFERRED
+      - id: drain-map
+        nodeId: umem-route-map
+        title:
+          zhCN: drain 全部 MR
+          enUS: Drain all MRs
+        evidence: INFERRED
+      - id: clear-state
+        nodeId: bitmap
+        title:
+          zhCN: 清理 Bitmap/加密状态
+          enUS: Clear Bitmap/crypto state
+        evidence: INFERRED
+      - id: remove-vbep
+        nodeId: vbep-rnic
+        title:
+          zhCN: 删除 vBEP
+          enUS: Remove vBEP
+        evidence: INFERRED
+      - id: remove-vspug
+        nodeId: vspug
+        title:
+          zhCN: 删除 vSPUG
+          enUS: Remove vSPUG
+        evidence: INFERRED
+      - id: remove-suep
+        nodeId: suep-core
+        title:
+          zhCN: 释放 BAR/IRQ/NTB/SUEP
+          enUS: Release BAR/IRQ/NTB/SUEP
+        evidence: INFERRED
+    edgeIds:
+      - app-core
+      - hook-callback
+      - callback-map
+      - regs-bitmap
+      - vbep-vspug
+      - suep-vpci
+functions:
+  - id: suep-probe
+    moduleId: suep-core
+    name: suep_probe
+    description: 初始化 SUEP PCI 根对象及其依赖。
+    evidence: CODE_PROVEN
+    contract: &a1
+      trigger: PCI probe
+      context: SPU kernel PCI core
+      consumes: pci_dev
+      produces: initialized suep_dev
+      stateResource: BAR/IRQ/NTB/host manager
+      completionError: reverse goto rollback
+    sources:
+      - path: spu-g/spu_driver/suep_driver.c
+        note: PCI probe entry
+  - id: create-vspug
+    moduleId: vspug
+    name: create_virtual_spug
+    description: 创建 vSPUG 并映射管理 BAR 代理窗口。
+    evidence: CODE_PROVEN
+    contract: &a2
+      trigger: Host SPUG topology event
+      context: virtual device manager
+      consumes: SPUG identity and BAR metadata
+      produces: suep_vspug
+      stateResource: management BAR and mode
+      completionError: unwind platform device and mapping
+    sources:
+      - path: spu-g/spu_driver/suep_virtual_device.c
+        note: vSPUG lifecycle
+  - id: create-vbep
+    moduleId: vbep-rnic
+    name: create_virtual_bep
+    description: 创建并映射 RNIC vBEP。
+    evidence: CODE_PROVEN
+    contract: &a3
+      trigger: Host BEP enters bridge mode
+      context: SUEP virtual PCI bus
+      consumes: BEP identity and resources
+      produces: virtual pci_dev and vBEP
+      stateResource: BAR/IRQ/ownership relation
+      completionError: remove partially created PCI device
+    sources:
+      - path: spu-g/spu_driver/suep_virtual_device.c
+        note: vBEP lifecycle
+  - id: register-vbep
+    moduleId: suep-rdma
+    name: suep_rdma_register_vbep
+    description: 按 RDMA 模式登记 vBEP/vSPUG 关系并注册 Hook。
+    evidence: CODE_PROVEN
+    contract: &a4
+      trigger: RDMA vBEP creation
+      context: suep RDMA companion
+      consumes: vBEP and vSPUG
+      produces: active RDMA device entry
+      stateResource: active list and hook registration
+      completionError: reject duplicate/full registration
+    sources:
+      - path: spu-g/spu_driver/suep_rdma_driver.c
+        note: RDMA vBEP registration
+  - id: umem-get
+    moduleId: rdma-core
+    name: ib_umem_get / ib_umem_get_peer
+    description: pin 内存、DMA map，并在成功边界调用定制 Hook。
+    evidence: CODE_PROVEN
+    contract: &a5
+      trigger: MR registration
+      context: RDMA core
+      consumes: VA/size/access or peer memory
+      produces: DMA-mapped ib_umem
+      stateResource: pinned pages and DMA SG
+      completionError: unmap/unpin on failure
+    sources:
+      - path: spu_kernel/drivers/infiniband/core/umem.c
+        note: get lifecycle
+  - id: hook-get
+    moduleId: hook-rdma
+    name: call_suep_hook_ib_umem_get
+    description: DMA map 成功后分派 SUEP get 回调。
+    evidence: CODE_PROVEN
+    contract: &a6
+      trigger: successful ib_umem get
+      context: custom kernel hook
+      consumes: ib_device and ib_umem
+      produces: callback side effects
+      stateResource: global callback pointer
+      completionError: current callback cannot propagate most hardware errors
+    sources:
+      - path: spu_kernel/kernel/dma/suep_hook_rdma.c
+        note: get hook dispatch
+  - id: rdma-get-cb
+    moduleId: suep-rdma
+    name: rdma_umem_get_cb
+    description: 解析 ib_device → pci_dev → vBEP → vSPUG 并设置 Bitmap。
+    evidence: CODE_PROVEN
+    contract: &a7
+      trigger: get hook callback
+      context: SPU companion driver
+      consumes: ib_device and DMA-mapped ib_umem
+      produces: ownership entry and Bitmap update
+      stateResource: active vBEP list and umem map
+      completionError: current void path is not fail-closed
+    sources:
+      - path: spu-g/spu_driver/suep_rdma_driver.c
+        note: get callback
+  - id: bitmap-set
+    moduleId: bitmap
+    name: set_vspug_bitmap(..., true)
+    description: 遍历 DMA SG，并按 4 KiB 页面设置 SPUG Bitmap。
+    evidence: CODE_PROVEN
+    contract: &a8
+      trigger: accepted Host DRAM MR
+      context: owning vSPUG
+      consumes: DMA address ranges
+      produces: set hardware bits
+      stateResource: SPUG MR Bitmap
+      completionError: bounds and MMIO errors are not fully propagated
+    sources:
+      - path: spu-g/spu_driver/suep_rdma_driver.c
+        note: Bitmap set path
+  - id: umem-release
+    moduleId: rdma-core
+    name: ib_umem_release
+    description: 在真实 DMA unmap/unpin 前调用 release Hook。
+    evidence: CODE_PROVEN
+    contract: &a9
+      trigger: MR deregistration
+      context: RDMA core
+      consumes: ib_umem
+      produces: released mapping and pages
+      stateResource: DMA SG lifetime
+      completionError: release variants unwind their resources
+    sources:
+      - path: spu_kernel/drivers/infiniband/core/umem.c
+        note: release lifecycle
+  - id: hook-release
+    moduleId: hook-rdma
+    name: call_suep_hook_ib_umem_release
+    description: 在 DMA SG 仍有效时分派清理回调。
+    evidence: CODE_PROVEN
+    contract: &a10
+      trigger: ib_umem_release entry
+      context: custom kernel hook
+      consumes: ib_umem
+      produces: callback cleanup side effects
+      stateResource: global callback pointer
+      completionError: unregister lacks in-flight synchronization
+    sources:
+      - path: spu_kernel/kernel/dma/suep_hook_rdma.c
+        note: release hook dispatch
+  - id: bitmap-clear
+    moduleId: bitmap
+    name: set_vspug_bitmap(..., false)
+    description: 在 DMA unmap 前清除普通内存页 Bitmap。
+    evidence: CODE_PROVEN
+    contract: &a11
+      trigger: release callback
+      context: owning vSPUG
+      consumes: saved ownership and DMA SG
+      produces: cleared hardware bits
+      stateResource: SPUG MR Bitmap
+      completionError: overlapping MR refcount is absent
+    sources:
+      - path: spu-g/spu_driver/suep_rdma_driver.c
+        note: Bitmap clear path
+layout:
+  camera:
+    position:
+      - 3
+      - 18
+      - 94
+    target:
+      - 3
+      - 0
+      - 0
+    fov: 42
+  labelDistance: 42
+  farBlockOpacity: 0.22
+  farFlowOpacity: 0.26
+  zones:
+    - zoneId: rdma-userspace
+      position: &a43
+        - -45
+        - 0
+        - 0
+      size: &a52
+        - 12
+        - 12
+        - 0.8
+      backdrop: server
+    - zoneId: linux-rdma-core
+      position: &a44
+        - -29
+        - 0
+        - 0
+      size: &a56
+        - 13
+        - 16
+        - 0.8
+      backdrop: server
+    - zoneId: kernel-hook-driver
+      position: &a45
+        - -11
+        - 0
+        - 0
+      size: &a60
+        - 14
+        - 16
+        - 0.8
+      backdrop: server
+    - zoneId: suep-virtualization
+      position: &a46
+        - 9
+        - 0
+        - 0
+      size: &a64
+        - 16
+        - 18
+        - 0.8
+      backdrop: fabric
+    - zoneId: spug-security
+      position: &a47
+        - 31
+        - 0
+        - 0
+      size: &a68
+        - 17
+        - 18
+        - 0.8
+      backdrop: board
+    - zoneId: memory-and-device
+      position: &a48
+        - 53
+        - 0
+        - 0
+      size: &a72
+        - 15
+        - 16
+        - 0.8
+      backdrop: device
+  nodes:
+    - nodeId: rdma-app
+      position: &a25
+        - -45
+        - 0
+        - 1
+      size: &a74
+        - 8
+        - 1.8
+        - 0.9
+      moduleSide: left
+      cameraSide: left
+    - nodeId: rdma-core
+      position: &a26
+        - -29
+        - 5
+        - 1
+      size: &a76
+        - 9
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: ib-umem
+      position: &a27
+        - -29
+        - 0
+        - 1
+      size: &a78
+        - 9
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: irdma
+      position: &a28
+        - -29
+        - -5
+        - 1
+      size: &a80
+        - 9
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: hook-rdma
+      position: &a29
+        - -11
+        - 5
+        - 1
+      size: &a82
+        - 10
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: suep-rdma
+      position: &a30
+        - -11
+        - 0
+        - 1
+      size: &a84
+        - 10
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: umem-route-map
+      position: &a31
+        - -11
+        - -5
+        - 1
+      size: &a86
+        - 10
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: suep-core
+      position: &a32
+        - 9
+        - 6
+        - 1
+      size: &a88
+        - 11
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: virtual-pci
+      position: &a33
+        - 9
+        - 2
+        - 1
+      size: &a90
+        - 11
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: vspug
+      position: &a34
+        - 9
+        - -2
+        - 1
+      size: &a92
+        - 11
+        - 1.5
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: vbep-rnic
+      position: &a35
+        - 9
+        - -6
+        - 1
+      size: &a94
+        - 11
+        - 1.5
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: hardware-regs
+      position: &a36
+        - 31
+        - 6
+        - 1
+      size: &a96
+        - 12
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: region-manager
+      position: &a37
+        - 31
+        - 2
+        - 1
+      size: &a98
+        - 12
+        - 1.5
+        - 0.8
+      moduleSide: left
+      cameraSide: left
+    - nodeId: bitmap
+      position: &a38
+        - 31
+        - -2
+        - 1
+      size: &a100
+        - 12
+        - 1.5
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: spug-fpga
+      position: &a39
+        - 31
+        - -6
+        - 1
+      size: &a102
+        - 12
+        - 1.5
+        - 0.8
+      moduleSide: right
+      cameraSide: right
+    - nodeId: host-memory
+      position: &a40
+        - 53
+        - 5
+        - 1
+      size: &a104
+        - 10
+        - 1.7
+        - 0.9
+      moduleSide: right
+      cameraSide: right
+    - nodeId: gpu-memory
+      position: &a41
+        - 53
+        - 0
+        - 1
+      size: &a106
+        - 10
+        - 1.7
+        - 0.9
+      moduleSide: right
+      cameraSide: right
+    - nodeId: physical-rnic
+      position: &a42
+        - 53
+        - -5
+        - 1
+      size: &a108
+        - 10
+        - 1.7
+        - 0.9
+      moduleSide: right
+      cameraSide: right
+enhanced:
+  defaultView: overview
+  content:
+    zhCN:
+      planeMeta:
+        rdma-userspace:
+          label: RDMA 用户态
+          short: RDMA 用户态
+          color: "#22a7cf"
+        linux-rdma-core:
+          label: SPU Linux RDMA 内核
+          short: SPU Linux RDMA 内核
+          color: "#7657c8"
+        kernel-hook-driver:
+          label: 定制内核 Hook 与伴随驱动
+          short: 定制内核 Hook 与伴随驱动
+          color: "#e14b72"
+        suep-virtualization:
+          label: SUEP 虚拟化层
+          short: SUEP 虚拟化层
+          color: "#2f83e7"
+        spug-security:
+          label: SPUG 资源与密码数据面
+          short: SPUG 资源与密码数据面
+          color: "#168f7b"
+        memory-and-device:
+          label: 内存与物理设备
+          short: 内存与物理设备
+          color: "#7fae3f"
+      edgeMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+        PHYSICAL:
+          color: "#7657c8"
+          label: PHYSICAL
+        DATA:
+          color: "#168f7b"
+          label: DATA
+      laneMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+          summary: CONTROL
+        LIFECYCLE:
+          color: "#7657c8"
+          label: LIFECYCLE
+          summary: LIFECYCLE
+        OWNERSHIP:
+          color: "#168f7b"
+          label: OWNERSHIP
+          summary: OWNERSHIP
+        VIRTUALIZATION:
+          color: "#2f83e7"
+          label: VIRTUALIZATION
+          summary: VIRTUALIZATION
+        MMIO:
+          color: "#7fae3f"
+          label: MMIO
+          summary: MMIO
+        TARGET:
+          color: "#e14b72"
+          label: TARGET
+          summary: TARGET
+        HARDWARE:
+          color: "#2878c7"
+          label: HARDWARE
+          summary: HARDWARE
+        PAYLOAD:
+          color: "#7657c8"
+          label: PAYLOAD
+          summary: PAYLOAD
+        PEER:
+          color: "#168f7b"
+          label: PEER
+          summary: PEER
+        PHYSICAL:
+          color: "#2f83e7"
+          label: PHYSICAL
+          summary: PHYSICAL
+        RELEASE:
+          color: "#7fae3f"
+          label: RELEASE
+          summary: RELEASE
+      functionInteractions:
+        rdma-app: []
+        rdma-core: []
+        ib-umem: []
+        irdma: []
+        hook-rdma: []
+        suep-rdma: []
+        umem-route-map: []
+        suep-core: []
+        virtual-pci: []
+        vspug: []
+        vbep-rnic: []
+        hardware-regs: []
+        region-manager: []
+        bitmap: []
+        spug-fpga: []
+        host-memory: []
+        gpu-memory: []
+        physical-rnic: []
+      driverCausalLayerMeta:
+        payload:
+          label: 数据与所有权
+          short: DATA
+          color: "#4d8edb"
+          description: payload
+        control:
+          label: 控制执行
+          short: CTRL
+          color: "#708090"
+          description: control
+        sync:
+          label: 同步与完成
+          short: SYNC
+          color: "#e5b534"
+          description: sync
+        lifecycle:
+          label: 生命周期与回滚
+          short: LIFE
+          color: "#e14b72"
+          description: lifecycle
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#708090"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#22b8cf"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#8a61d1"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a62a"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#e14b72"
+          label: IRQ
+          dashed: false
+        WAIT:
+          color: "#e5b534"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#c13f5c"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#e14b72"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        device-bringup:
+          id: device-bringup
+          title: 设备虚拟化与 RDMA 装配
+          shortTitle: 设备虚拟化与 RDMA 装配
+          summary: 从 SUEP probe 到 vSPUG/vBEP 建立，再按 RDMA 模式注册 Hook 并启用硬件。
+          caveat: ""
+          steps:
+            - id: bringup-suep
+              title: SUEP probe
+              shortTitle: suep_probe
+              moduleRole: suep-core
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_driver.c
+              contract: *a1
+            - id: bringup-bus
+              title: 建立虚拟 PCI 总线
+              shortTitle: 建立虚拟 PCI 总线
+              moduleRole: virtual-pci
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: bringup-vspug
+              title: 创建 vSPUG
+              shortTitle: create_virtual_spug
+              moduleRole: vspug
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_virtual_device.c
+              contract: *a2
+            - id: bringup-vbep
+              title: 创建 RNIC vBEP
+              shortTitle: create_virtual_bep
+              moduleRole: vbep-rnic
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_virtual_device.c
+              contract: *a3
+            - id: bringup-rdma
+              title: 装配 RDMA 扩展
+              shortTitle: suep_rdma_register_vbep
+              moduleRole: suep-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a4
+            - id: bringup-regs
+              title: 启用 RDMA 加解密
+              shortTitle: 启用 RDMA 加解密
+              moduleRole: hardware-regs
+              contextLane: spug-security
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: bringup-suep
+              target: bringup-bus
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-bus
+              target: bringup-vspug
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-vspug
+              target: bringup-vbep
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-vbep
+              target: bringup-rdma
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-rdma
+              target: bringup-regs
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        host-mr-register:
+          id: host-mr-register
+          title: Host DRAM MR 注册与 Bitmap 置位
+          shortTitle: Host DRAM MR 注册与 Bitmap 置位
+          summary: DMA map 完成后取得最终地址，通过 Hook 定位 vBEP/vSPUG，再按 4 KiB 粒度置位。
+          caveat: ""
+          steps:
+            - id: mr-app
+              title: 注册 MR
+              shortTitle: 注册 MR
+              moduleRole: rdma-app
+              contextLane: rdma-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: mr-core
+              title: pin 页并 DMA map
+              shortTitle: ib_umem_get / ib_umem_get_peer
+              moduleRole: rdma-core
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/drivers/infiniband/core/umem.c
+              contract: *a5
+            - id: mr-umem
+              title: 最终 DMA SG 就绪
+              shortTitle: 最终 DMA SG 就绪
+              moduleRole: ib-umem
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: mr-hook
+              title: 调用 get Hook
+              shortTitle: call_suep_hook_ib_umem_get
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/kernel/dma/suep_hook_rdma.c
+              contract: *a6
+            - id: mr-route
+              title: 定位 vBEP/vSPUG
+              shortTitle: rdma_umem_get_cb
+              moduleRole: suep-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a7
+            - id: mr-map
+              title: 保存 release 归属
+              shortTitle: 保存 release 归属
+              moduleRole: umem-route-map
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: mr-bitmap
+              title: Bitmap 置位
+              shortTitle: set_vspug_bitmap(..., true)
+              moduleRole: bitmap
+              contextLane: spug-security
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a8
+            - id: mr-rnic
+              title: 允许 RDMA 数据事务
+              shortTitle: 允许 RDMA 数据事务
+              moduleRole: physical-rnic
+              contextLane: memory-and-device
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+          edges:
+            - source: mr-app
+              target: mr-core
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-core
+              target: mr-umem
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-umem
+              target: mr-hook
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-hook
+              target: mr-route
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-route
+              target: mr-map
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-map
+              target: mr-bitmap
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-bitmap
+              target: mr-rnic
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        mr-release:
+          id: mr-release
+          title: MR 释放与 Bitmap 清理
+          shortTitle: MR 释放与 Bitmap 清理
+          summary: 在 DMA unmap 之前通过历史映射找回 vSPUG，并清除普通内存页授权。
+          caveat: 当前实现未删除哈希条目，也没有解决重叠 MR 页引用计数。
+          steps:
+            - id: release-app
+              title: 释放 MR
+              shortTitle: 释放 MR
+              moduleRole: rdma-app
+              contextLane: rdma-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: release-core
+              title: 进入 ib_umem_release
+              shortTitle: ib_umem_release
+              moduleRole: rdma-core
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/drivers/infiniband/core/umem.c
+              contract: *a9
+            - id: release-hook-step
+              title: unmap 前回调
+              shortTitle: call_suep_hook_ib_umem_release
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/kernel/dma/suep_hook_rdma.c
+              contract: *a10
+            - id: release-map-step
+              title: 查询 vBEP 索引
+              shortTitle: 查询 vBEP 索引
+              moduleRole: umem-route-map
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: release-bitmap
+              title: Bitmap 清位
+              shortTitle: set_vspug_bitmap(..., false)
+              moduleRole: bitmap
+              contextLane: spug-security
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a11
+            - id: release-unmap
+              title: DMA unmap 与 unpin
+              shortTitle: DMA unmap 与 unpin
+              moduleRole: ib-umem
+              contextLane: linux-rdma-core
+              layers:
+                - sync
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: release-app
+              target: release-core
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-core
+              target: release-hook-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-hook-step
+              target: release-map-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-map-step
+              target: release-bitmap
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-bitmap
+              target: release-unmap
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        gdr-peer-boundary:
+          id: gdr-peer-boundary
+          title: GDR / Peer Memory 证据边界
+          shortTitle: GDR / Peer Memory 证据边界
+          summary: peer umem 进入同一 Hook 并保存归属，但当前跳过 Host MR Bitmap。
+          caveat: “支持 peer Hook”不等于 GPU P2P 加密端到端闭环已经证明。
+          steps:
+            - id: peer-gpu
+              title: GPU peer memory
+              shortTitle: GPU peer memory
+              moduleRole: gpu-memory
+              contextLane: memory-and-device
+              layers:
+                - payload
+              kind: data
+              evidence: CODE_PROVEN
+            - id: peer-umem
+              title: ib_umem_get_peer
+              shortTitle: ib_umem_get_peer
+              moduleRole: ib-umem
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: peer-hook-step
+              title: 调用 get Hook
+              shortTitle: call_suep_hook_ib_umem_get
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/kernel/dma/suep_hook_rdma.c
+              contract: *a6
+            - id: peer-track
+              title: 识别并保存归属
+              shortTitle: rdma_umem_get_cb
+              moduleRole: suep-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a7
+            - id: peer-skip-step
+              title: 跳过 Host Bitmap
+              shortTitle: 跳过 Host Bitmap
+              moduleRole: gpu-memory
+              contextLane: memory-and-device
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: peer-gpu
+              target: peer-umem
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: peer-umem
+              target: peer-hook-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: peer-hook-step
+              target: peer-track
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: peer-track
+              target: peer-skip-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        safe-teardown-target:
+          id: safe-teardown-target
+          title: 安全卸载目标路径
+          shortTitle: 安全卸载目标路径
+          summary: 先阻止新回调并等待在途操作，再 drain MR、清硬件状态、删除虚拟设备，最后释放 SUEP。
+          caveat: 这是根据审计风险形成的目标顺序，当前实现尚未全部满足。
+          steps:
+            - id: stop-traffic
+              title: 停止新 MR/QP 流量
+              shortTitle: 停止新 MR/QP 流量
+              moduleRole: rdma-app
+              contextLane: rdma-userspace
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+            - id: unregister-hook
+              title: 注销 Hook 并同步在途回调
+              shortTitle: 注销 Hook 并同步在途回调
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+            - id: drain-map
+              title: drain 全部 MR
+              shortTitle: drain 全部 MR
+              moduleRole: umem-route-map
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: clear-state
+              title: 清理 Bitmap/加密状态
+              shortTitle: 清理 Bitmap/加密状态
+              moduleRole: bitmap
+              contextLane: spug-security
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: remove-vbep
+              title: 删除 vBEP
+              shortTitle: 删除 vBEP
+              moduleRole: vbep-rnic
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: remove-vspug
+              title: 删除 vSPUG
+              shortTitle: 删除 vSPUG
+              moduleRole: vspug
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: remove-suep
+              title: 释放 BAR/IRQ/NTB/SUEP
+              shortTitle: 释放 BAR/IRQ/NTB/SUEP
+              moduleRole: suep-core
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: stop-traffic
+              target: unregister-hook
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: unregister-hook
+              target: drain-map
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: drain-map
+              target: clear-state
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: clear-state
+              target: remove-vbep
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: remove-vbep
+              target: remove-vspug
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: remove-vspug
+              target: remove-suep
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+      topologyNodes:
+        - id: rdma-app
+          label: RDMA 应用 / libibverbs
+          fill: "#22a7cf"
+          data:
+            title: RDMA 应用 / libibverbs
+            plane: rdma-userspace
+            layer: 区域 01 · 请求入口
+            kind: client
+            description: 注册或释放 MR，并发起 RDMA Read、Write 或 Atomic。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a12
+            codeRefs: []
+            views:
+              - overview
+              - rdma-userspace
+              - host-mr-register
+              - mr-release
+              - safe-teardown-target
+        - id: rdma-core
+          label: RDMA Core
+          fill: "#7657c8"
+          data:
+            title: RDMA Core
+            plane: linux-rdma-core
+            layer: 区域 02 · DMA 地址事实源
+            kind: service
+            description: 处理 MR 语义、页锁定以及 ib_umem 生命周期。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: RDMA Core
+                path: spu_kernel/drivers/infiniband/core/umem.c
+                note: RDMA umem lifecycle boundary
+              - name: ib_umem_get / ib_umem_get_peer
+                path: spu_kernel/drivers/infiniband/core/umem.c
+                note: get lifecycle
+              - name: ib_umem_release
+                path: spu_kernel/drivers/infiniband/core/umem.c
+                note: release lifecycle
+            views:
+              - overview
+              - linux-rdma-core
+              - host-mr-register
+              - mr-release
+        - id: ib-umem
+          label: ib_umem + DMA SG
+          fill: "#8a61d1"
+          data:
+            title: ib_umem + DMA SG
+            plane: linux-rdma-core
+            layer: 区域 02 · DMA 地址事实源
+            kind: device
+            description: 在 ib_dma_map_sg 后保存设备最终可见的 dma_addr_t 与长度。
+            evidence: code
+            core: true
+            tags: *a13
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - linux-rdma-core
+              - host-mr-register
+              - mr-release
+              - gdr-peer-boundary
+        - id: irdma
+          label: ice + irdma
+          fill: "#6750b5"
+          data:
+            title: ice + irdma
+            plane: linux-rdma-core
+            layer: 区域 02 · DMA 地址事实源
+            kind: service
+            description: Intel E810 RoCE 驱动栈；当前定制逻辑不侵入其 WQE 数据面。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - linux-rdma-core
+        - id: hook-rdma
+          label: spu_kernel hook_rdma
+          fill: "#e14b72"
+          data:
+            title: spu_kernel hook_rdma
+            plane: kernel-hook-driver
+            layer: 区域 03 · MR 生命周期桥
+            kind: network
+            description: 在 ib_umem get 成功后和真正 release/unmap 前调用 SUEP 回调。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: spu_kernel hook_rdma
+                path: spu_kernel/include/linux/suep_hook_rdma.h
+                note: Hook API
+              - name: spu_kernel hook_rdma
+                path: spu_kernel/kernel/dma/suep_hook_rdma.c
+                note: Hook registration and dispatch
+              - name: call_suep_hook_ib_umem_get
+                path: spu_kernel/kernel/dma/suep_hook_rdma.c
+                note: get hook dispatch
+              - name: call_suep_hook_ib_umem_release
+                path: spu_kernel/kernel/dma/suep_hook_rdma.c
+                note: release hook dispatch
+            views:
+              - overview
+              - kernel-hook-driver
+              - host-mr-register
+              - mr-release
+              - gdr-peer-boundary
+              - safe-teardown-target
+        - id: suep-rdma
+          label: suep_rdma_driver
+          fill: "#c13f5c"
+          data:
+            title: suep_rdma_driver
+            plane: kernel-hook-driver
+            layer: 区域 03 · MR 生命周期桥
+            kind: service
+            description: 识别 RNIC vBEP 与所属 vSPUG，并把 Host DRAM DMA 页映射到 Bitmap。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: suep_rdma_driver
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: RDMA callback and Bitmap lifecycle
+              - name: suep_rdma_register_vbep
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: RDMA vBEP registration
+              - name: rdma_umem_get_cb
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: get callback
+            views:
+              - overview
+              - kernel-hook-driver
+              - device-bringup
+              - host-mr-register
+              - gdr-peer-boundary
+        - id: umem-route-map
+          label: ib_umem → vBEP 映射表
+          fill: "#d75b69"
+          data:
+            title: ib_umem → vBEP 映射表
+            plane: kernel-hook-driver
+            layer: 区域 03 · MR 生命周期桥
+            kind: service
+            description: release 时恢复设备归属；当前实现存在条目未删除、裸指针和并发风险。
+            evidence: code
+            core: true
+            tags: *a14
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - kernel-hook-driver
+              - host-mr-register
+              - mr-release
+              - safe-teardown-target
+        - id: suep-core
+          label: SUEP PCI 根驱动
+          fill: "#2878c7"
+          data:
+            title: SUEP PCI 根驱动
+            plane: suep-virtualization
+            layer: 区域 04 · 设备归属事实源
+            kind: service
+            description: probe 时建立 BAR、NTB、IRQ、Host 管理、sysfs 和 RDMA 子模块。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: SUEP PCI 根驱动
+                path: spu-g/spu_driver/suep_driver.c
+                note: SUEP probe and remove root
+              - name: suep_probe
+                path: spu-g/spu_driver/suep_driver.c
+                note: PCI probe entry
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+              - safe-teardown-target
+        - id: virtual-pci
+          label: SUEP 虚拟 PCI 总线
+          fill: "#2f83e7"
+          data:
+            title: SUEP 虚拟 PCI 总线
+            plane: suep-virtualization
+            layer: 区域 04 · 设备归属事实源
+            kind: network
+            description: 将 SPUG 后物理 PCIe 设备以标准 PCI 设备形态呈现给 SPU OS。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+        - id: vspug
+          label: vSPUG 管理对象
+          fill: "#3479c9"
+          data:
+            title: vSPUG 管理对象
+            plane: suep-virtualization
+            layer: 区域 04 · 设备归属事实源
+            kind: device
+            description: 保存工作模式、BAR 代理窗口、RDMA window 与 SPUG 生命周期。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a15
+            codeRefs:
+              - name: create_virtual_spug
+                path: spu-g/spu_driver/suep_virtual_device.c
+                note: vSPUG lifecycle
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+              - safe-teardown-target
+        - id: vbep-rnic
+          label: RNIC vBEP
+          fill: "#3d8bd9"
+          data:
+            title: RNIC vBEP
+            plane: suep-virtualization
+            layer: 区域 04 · 设备归属事实源
+            kind: device
+            description: SPUG 后 RNIC 在虚拟 PCI 总线中的设备对象，是 RDMA 回调定位入口。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: create_virtual_bep
+                path: spu-g/spu_driver/suep_virtual_device.c
+                note: vBEP lifecycle
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+              - safe-teardown-target
+        - id: hardware-regs
+          label: SPUG 硬件寄存器层
+          fill: "#168f7b"
+          data:
+            title: SPUG 硬件寄存器层
+            plane: spug-security
+            layer: 区域 05 · 硬件状态事实源
+            kind: service
+            description: 集中封装 Bitmap、window、密钥与加密使能的 MMIO ABI。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: SPUG 硬件寄存器层
+                path: spu-g/spu_driver/suep_vspug_hardware_regs.c
+                note: SPUG MMIO abstraction
+            views:
+              - overview
+              - spug-security
+              - device-bringup
+        - id: region-manager
+          label: 统一 DMA Region Manager（目标）
+          fill: "#13a681"
+          data:
+            title: 统一 DMA Region Manager（目标）
+            plane: spug-security
+            layer: 区域 05 · 硬件状态事实源
+            kind: service
+            description: 建议成为 RDMA/NVMe 的唯一 Bitmap owner，负责引用计数、generation、批量 MMIO 与 fail-closed。
+            evidence: inference
+            core: true
+            tags: *a16
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spug-security
+        - id: bitmap
+          label: SPUG MR Bitmap
+          fill: "#1ba98b"
+          data:
+            title: SPUG MR Bitmap
+            plane: spug-security
+            layer: 区域 05 · 硬件状态事实源
+            kind: service
+            description: 以 4 KiB 粒度分类 Host 普通内存 DMA 页；其地址域必须与 FPGA 观察点一致。
+            evidence: code
+            core: true
+            tags: *a17
+            interfaces: []
+            codeRefs:
+              - name: set_vspug_bitmap(..., true)
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: Bitmap set path
+              - name: set_vspug_bitmap(..., false)
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: Bitmap clear path
+            views:
+              - overview
+              - spug-security
+              - host-mr-register
+              - mr-release
+              - safe-teardown-target
+        - id: spug-fpga
+          label: SPUG FPGA 密码数据面
+          fill: "#36b79c"
+          data:
+            title: SPUG FPGA 密码数据面
+            plane: spug-security
+            layer: 区域 05 · 硬件状态事实源
+            kind: target
+            description: 依据硬件表和策略识别 PCIe Payload 并执行加解密；端到端效果仍需板测证明。
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spug-security
+        - id: host-memory
+          label: Host / SPU DRAM
+          fill: "#7fae3f"
+          data:
+            title: Host / SPU DRAM
+            plane: memory-and-device
+            layer: 区域 06 · PCIe 数据端点
+            kind: target
+            description: 普通 ib_umem 的页来源；DMA SG 会进入 MR Bitmap。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - memory-and-device
+        - id: gpu-memory
+          label: GPU Peer Memory / GDR
+          fill: "#9dbd5d"
+          data:
+            title: GPU Peer Memory / GDR
+            plane: memory-and-device
+            layer: 区域 06 · PCIe 数据端点
+            kind: target
+            description: is_peer 路径会被跟踪但跳过 Host MR Bitmap；P2P 加密闭环尚未由当前代码证明。
+            evidence: inference
+            core: true
+            tags: *a18
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - memory-and-device
+              - gdr-peer-boundary
+        - id: physical-rnic
+          label: 物理 RNIC / Intel E810
+          fill: "#6f9f3d"
+          data:
+            title: 物理 RNIC / Intel E810
+            plane: memory-and-device
+            layer: 区域 06 · PCIe 数据端点
+            kind: device
+            description: 发起和接收 RoCE PCIe 数据事务的物理端点。
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - memory-and-device
+              - host-mr-register
+      topologyEdges:
+        - id: app-core
+          source: rdma-app
+          target: rdma-core
+          label: 注册/释放 MR
+          fill: "#22a7cf"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 用户态 verbs 进入 RDMA core。
+            evidence: code
+        - id: core-umem
+          source: rdma-core
+          target: ib-umem
+          label: pin + DMA map
+          fill: "#7657c8"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: 映射成功后形成最终 DMA SG。
+            evidence: code
+        - id: irdma-core
+          source: irdma
+          target: rdma-core
+          label: ib_device / MR provider
+          fill: "#6750b5"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 提供 RNIC 对应 ib_device 上下文。
+            evidence: code
+        - id: umem-hook-get
+          source: ib-umem
+          target: hook-rdma
+          label: get Hook
+          fill: "#e14b72"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: DMA map 完成后调用。
+            evidence: code
+        - id: hook-callback
+          source: hook-rdma
+          target: suep-rdma
+          label: 回调分派
+          fill: "#d85068"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: 调用 SUEP 注册的 get/release 回调。
+            evidence: code
+        - id: callback-map
+          source: suep-rdma
+          target: umem-route-map
+          label: 保存/查询归属
+          fill: "#d75b69"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: ib_umem 指针关联 vBEP 索引。
+            evidence: code
+        - id: callback-vbep
+          source: suep-rdma
+          target: vbep-rnic
+          label: 定位 RNIC
+          fill: "#2f83e7"
+          data:
+            kind: CONTROL
+            lane: OWNERSHIP
+            description: pci_dev → vBEP。
+            evidence: code
+        - id: vbep-vspug
+          source: vbep-rnic
+          target: vspug
+          label: 所属 SPUG
+          fill: "#2f83e7"
+          data:
+            kind: CONTROL
+            lane: OWNERSHIP
+            description: vBEP → vSPUG 稳定归属关系。
+            evidence: code
+        - id: suep-vpci
+          source: suep-core
+          target: virtual-pci
+          label: 初始化总线
+          fill: "#2878c7"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: SUEP 建立虚拟 PCI 总线。
+            evidence: code
+        - id: vpci-vspug
+          source: virtual-pci
+          target: vspug
+          label: 创建 vSPUG
+          fill: "#3479c9"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: 映射管理窗口并读取工作模式。
+            evidence: code
+        - id: vpci-vbep
+          source: virtual-pci
+          target: vbep-rnic
+          label: 创建/激活 vBEP
+          fill: "#3d8bd9"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: 扫描设备、映射 BAR 并加入 PCI core。
+            evidence: code
+        - id: vspug-register
+          source: vspug
+          target: suep-rdma
+          label: RDMA 模式装配
+          fill: "#c13f5c"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: mode=RDMA 时注册 vBEP 扩展。
+            evidence: code
+        - id: callback-regs
+          source: suep-rdma
+          target: hardware-regs
+          label: Bitmap/加密操作
+          fill: "#168f7b"
+          data:
+            kind: CONTROL
+            lane: MMIO
+            description: 业务层通过寄存器抽象访问 SPUG。
+            evidence: code
+        - id: manager-regs
+          source: region-manager
+          target: hardware-regs
+          label: 唯一硬件 owner
+          fill: "#13a681"
+          dashed: true
+          data:
+            kind: CONTROL
+            lane: TARGET
+            description: 目标架构中统一执行引用和批量 MMIO。
+            evidence: inference
+        - id: regs-bitmap
+          source: hardware-regs
+          target: bitmap
+          label: MMIO 置位/清位
+          fill: "#1ba98b"
+          data:
+            kind: PHYSICAL
+            lane: MMIO
+            description: 按 DMA 页更新硬件 Bitmap。
+            evidence: code
+        - id: bitmap-fpga
+          source: bitmap
+          target: spug-fpga
+          label: 页面分类策略
+          fill: "#36b79c"
+          data:
+            kind: CONTROL
+            lane: HARDWARE
+            description: Bitmap 状态参与 Payload 分类。
+            evidence: target
+        - id: host-umem
+          source: host-memory
+          target: ib-umem
+          label: 普通页
+          fill: "#7fae3f"
+          data:
+            kind: DATA
+            lane: PAYLOAD
+            description: pin 后形成 Host DRAM DMA SG。
+            evidence: code
+        - id: gpu-umem
+          source: gpu-memory
+          target: ib-umem
+          label: peer umem
+          fill: "#9dbd5d"
+          data:
+            kind: DATA
+            lane: PEER
+            description: GDR peer memory 进入 ib_umem_get_peer。
+            evidence: code
+        - id: peer-skip
+          source: suep-rdma
+          target: gpu-memory
+          label: 跳过 Host Bitmap
+          fill: "#e5b534"
+          dashed: true
+          data:
+            kind: CONTROL
+            lane: PEER
+            description: 当前 is_peer 分支不设置/清除 Host MR Bitmap。
+            evidence: code
+        - id: fpga-rnic
+          source: spug-fpga
+          target: physical-rnic
+          label: PCIe Payload 数据面
+          fill: "#36b79c"
+          data:
+            kind: PHYSICAL
+            lane: PAYLOAD
+            description: SPUG 与物理 RNIC 之间的数据事务。
+            evidence: target
+        - id: rnic-irdma
+          source: physical-rnic
+          target: irdma
+          label: PCI 驱动绑定
+          fill: "#6f9f3d"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: 物理/虚拟 RNIC 由 ice 与 irdma 驱动。
+            evidence: code
+        - id: release-hook
+          source: hook-rdma
+          target: ib-umem
+          label: release 后再 unmap
+          fill: "#e5b534"
+          data:
+            kind: CONTROL
+            lane: RELEASE
+            description: 清理 Hook 发生在真正 DMA unmap 之前。
+            evidence: code
+      viewOptions:
+        - id: overview
+          label: 物理全景
+          hint: 展示 RDMA MR、定制内核 Hook、SUEP 虚拟设备、SPUG Bitmap 与 RNIC 数据面的关系及完整生命周期。
+        - id: rdma-userspace
+          label: RDMA 用户态
+          hint: 应用、libibverbs 与 MR 操作
+        - id: linux-rdma-core
+          label: SPU Linux RDMA 内核
+          hint: RDMA core、ib_umem、irdma 与最终 DMA SG
+        - id: kernel-hook-driver
+          label: 定制内核 Hook 与伴随驱动
+          hint: get/release 回调、设备归属与历史映射
+        - id: suep-virtualization
+          label: SUEP 虚拟化层
+          hint: SUEP、虚拟 PCI 总线、vSPUG 与 RNIC vBEP
+        - id: spug-security
+          label: SPUG 资源与密码数据面
+          hint: MMIO、Bitmap、加密使能与统一资源管理方向
+        - id: memory-and-device
+          label: 内存与物理设备
+          hint: Host DRAM、GPU peer memory 与物理 RNIC
+        - id: device-bringup
+          label: 设备虚拟化与 RDMA 装配
+          hint: 从 SUEP probe 到 vSPUG/vBEP 建立，再按 RDMA 模式注册 Hook 并启用硬件。
+        - id: host-mr-register
+          label: Host DRAM MR 注册与 Bitmap 置位
+          hint: DMA map 完成后取得最终地址，通过 Hook 定位 vBEP/vSPUG，再按 4 KiB 粒度置位。
+        - id: mr-release
+          label: MR 释放与 Bitmap 清理
+          hint: 在 DMA unmap 之前通过历史映射找回 vSPUG，并清除普通内存页授权。
+        - id: gdr-peer-boundary
+          label: GDR / Peer Memory 证据边界
+          hint: peer umem 进入同一 Hook 并保存归属，但当前跳过 Host MR Bitmap。
+        - id: safe-teardown-target
+          label: 安全卸载目标路径
+          hint: 先阻止新回调并等待在途操作，再 drain MR、清硬件状态、删除虚拟设备，最后释放 SUEP。
+      systemTree:
+        - label: RDMA 用户态
+          plane: rdma-userspace
+          nodes: *a19
+        - label: SPU Linux RDMA 内核
+          plane: linux-rdma-core
+          nodes: *a20
+        - label: 定制内核 Hook 与伴随驱动
+          plane: kernel-hook-driver
+          nodes: *a21
+        - label: SUEP 虚拟化层
+          plane: suep-virtualization
+          nodes: *a22
+        - label: SPUG 资源与密码数据面
+          plane: spug-security
+          nodes: *a23
+        - label: 内存与物理设备
+          plane: memory-and-device
+          nodes: *a24
+      storageTrees:
+        - id: rdma-core-sources
+          label: RDMA Core
+          plane: linux-rdma-core
+          roots:
+            - path: spu_kernel/drivers/infiniband/core/umem.c
+              role: RDMA umem lifecycle boundary
+              nodeId: rdma-core
+        - id: hook-rdma-sources
+          label: spu_kernel hook_rdma
+          plane: kernel-hook-driver
+          roots:
+            - path: spu_kernel/include/linux/suep_hook_rdma.h
+              role: Hook API
+              nodeId: hook-rdma
+            - path: spu_kernel/kernel/dma/suep_hook_rdma.c
+              role: Hook registration and dispatch
+              nodeId: hook-rdma
+        - id: suep-rdma-sources
+          label: suep_rdma_driver
+          plane: kernel-hook-driver
+          roots:
+            - path: spu-g/spu_driver/suep_rdma_driver.c
+              role: RDMA callback and Bitmap lifecycle
+              nodeId: suep-rdma
+        - id: suep-core-sources
+          label: SUEP PCI 根驱动
+          plane: suep-virtualization
+          roots:
+            - path: spu-g/spu_driver/suep_driver.c
+              role: SUEP probe and remove root
+              nodeId: suep-core
+        - id: hardware-regs-sources
+          label: SPUG 硬件寄存器层
+          plane: spug-security
+          roots:
+            - path: spu-g/spu_driver/suep_vspug_hardware_regs.c
+              role: SPUG MMIO abstraction
+              nodeId: hardware-regs
+      runtimeFacts:
+        - label: 证据等级
+          value: CODE_PROVEN
+          tone: good
+      cameraHudViews:
+        overview:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: 物理全景
+          detail: 展示 RDMA MR、定制内核 Hook、SUEP 虚拟设备、SPUG Bitmap 与 RNIC 数据面的关系及完整生命周期。
+        rdma-userspace:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: RDMA 用户态
+          detail: 应用、libibverbs 与 MR 操作
+        linux-rdma-core:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: SPU Linux RDMA 内核
+          detail: RDMA core、ib_umem、irdma 与最终 DMA SG
+        kernel-hook-driver:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: 定制内核 Hook 与伴随驱动
+          detail: get/release 回调、设备归属与历史映射
+        suep-virtualization:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: SUEP 虚拟化层
+          detail: SUEP、虚拟 PCI 总线、vSPUG 与 RNIC vBEP
+        spug-security:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: SPUG 资源与密码数据面
+          detail: MMIO、Bitmap、加密使能与统一资源管理方向
+        memory-and-device:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: 内存与物理设备
+          detail: Host DRAM、GPU peer memory 与物理 RNIC
+        device-bringup:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: 设备虚拟化与 RDMA 装配
+          detail: 从 SUEP probe 到 vSPUG/vBEP 建立，再按 RDMA 模式注册 Hook 并启用硬件。
+        host-mr-register:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: Host DRAM MR 注册与 Bitmap 置位
+          detail: DMA map 完成后取得最终地址，通过 Hook 定位 vBEP/vSPUG，再按 4 KiB 粒度置位。
+        mr-release:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: MR 释放与 Bitmap 清理
+          detail: 在 DMA unmap 之前通过历史映射找回 vSPUG，并清除普通内存页授权。
+        gdr-peer-boundary:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: GDR / Peer Memory 证据边界
+          detail: peer umem 进入同一 Hook 并保存归属，但当前跳过 Host MR Bitmap。
+        safe-teardown-target:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: 安全卸载目标路径
+          detail: 先阻止新回调并等待在途操作，再 drain MR、清硬件状态、删除虚拟设备，最后释放 SUEP。
+    enUS:
+      planeMeta:
+        rdma-userspace:
+          label: RDMA Userspace
+          short: RDMA Userspace
+          color: "#22a7cf"
+        linux-rdma-core:
+          label: SPU Linux RDMA Kernel
+          short: SPU Linux RDMA Kernel
+          color: "#7657c8"
+        kernel-hook-driver:
+          label: Custom Kernel Hook and Companion Driver
+          short: Custom Kernel Hook and Companion Driver
+          color: "#e14b72"
+        suep-virtualization:
+          label: SUEP Virtualization Layer
+          short: SUEP Virtualization Layer
+          color: "#2f83e7"
+        spug-security:
+          label: SPUG Resource and Crypto Data Plane
+          short: SPUG Resource and Crypto Data Plane
+          color: "#168f7b"
+        memory-and-device:
+          label: Memory and Physical Devices
+          short: Memory and Physical Devices
+          color: "#7fae3f"
+      edgeMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+        PHYSICAL:
+          color: "#7657c8"
+          label: PHYSICAL
+        DATA:
+          color: "#168f7b"
+          label: DATA
+      laneMeta:
+        CONTROL:
+          color: "#2878c7"
+          label: CONTROL
+          summary: CONTROL
+        LIFECYCLE:
+          color: "#7657c8"
+          label: LIFECYCLE
+          summary: LIFECYCLE
+        OWNERSHIP:
+          color: "#168f7b"
+          label: OWNERSHIP
+          summary: OWNERSHIP
+        VIRTUALIZATION:
+          color: "#2f83e7"
+          label: VIRTUALIZATION
+          summary: VIRTUALIZATION
+        MMIO:
+          color: "#7fae3f"
+          label: MMIO
+          summary: MMIO
+        TARGET:
+          color: "#e14b72"
+          label: TARGET
+          summary: TARGET
+        HARDWARE:
+          color: "#2878c7"
+          label: HARDWARE
+          summary: HARDWARE
+        PAYLOAD:
+          color: "#7657c8"
+          label: PAYLOAD
+          summary: PAYLOAD
+        PEER:
+          color: "#168f7b"
+          label: PEER
+          summary: PEER
+        PHYSICAL:
+          color: "#2f83e7"
+          label: PHYSICAL
+          summary: PHYSICAL
+        RELEASE:
+          color: "#7fae3f"
+          label: RELEASE
+          summary: RELEASE
+      functionInteractions:
+        rdma-app: []
+        rdma-core: []
+        ib-umem: []
+        irdma: []
+        hook-rdma: []
+        suep-rdma: []
+        umem-route-map: []
+        suep-core: []
+        virtual-pci: []
+        vspug: []
+        vbep-rnic: []
+        hardware-regs: []
+        region-manager: []
+        bitmap: []
+        spug-fpga: []
+        host-memory: []
+        gpu-memory: []
+        physical-rnic: []
+      driverCausalLayerMeta:
+        payload:
+          label: Payload and ownership
+          short: DATA
+          color: "#4d8edb"
+          description: payload
+        control:
+          label: Control execution
+          short: CTRL
+          color: "#708090"
+          description: control
+        sync:
+          label: Synchronization
+          short: SYNC
+          color: "#e5b534"
+          description: sync
+        lifecycle:
+          label: Lifecycle and rollback
+          short: LIFE
+          color: "#e14b72"
+          description: lifecycle
+      driverJourneyRelationMeta:
+        PAYLOAD:
+          color: "#4d8edb"
+          label: PAYLOAD
+          dashed: false
+        CALL:
+          color: "#708090"
+          label: CALL
+          dashed: false
+        QUEUE:
+          color: "#22b8cf"
+          label: QUEUE
+          dashed: false
+        STATE:
+          color: "#8a61d1"
+          label: STATE
+          dashed: false
+        MMIO:
+          color: "#f4a62a"
+          label: MMIO
+          dashed: false
+        IRQ:
+          color: "#e14b72"
+          label: IRQ
+          dashed: false
+        WAIT:
+          color: "#e5b534"
+          label: WAIT
+          dashed: true
+        ERROR:
+          color: "#c13f5c"
+          label: ERROR
+          dashed: true
+        LIFECYCLE:
+          color: "#e14b72"
+          label: LIFECYCLE
+          dashed: true
+      driverJourneys:
+        device-bringup:
+          id: device-bringup
+          title: Device Virtualization and RDMA Attach
+          shortTitle: Device Virtualization and RDMA Attach
+          summary: From SUEP probe through vSPUG/vBEP creation to RDMA hook registration and hardware enable.
+          caveat: ""
+          steps:
+            - id: bringup-suep
+              title: SUEP probe
+              shortTitle: suep_probe
+              moduleRole: suep-core
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_driver.c
+              contract: *a1
+            - id: bringup-bus
+              title: Establish virtual PCI bus
+              shortTitle: Establish virtual PCI bus
+              moduleRole: virtual-pci
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: bringup-vspug
+              title: Create vSPUG
+              shortTitle: create_virtual_spug
+              moduleRole: vspug
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_virtual_device.c
+              contract: *a2
+            - id: bringup-vbep
+              title: Create RNIC vBEP
+              shortTitle: create_virtual_bep
+              moduleRole: vbep-rnic
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_virtual_device.c
+              contract: *a3
+            - id: bringup-rdma
+              title: Attach RDMA extension
+              shortTitle: suep_rdma_register_vbep
+              moduleRole: suep-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a4
+            - id: bringup-regs
+              title: Enable RDMA crypto
+              shortTitle: Enable RDMA crypto
+              moduleRole: hardware-regs
+              contextLane: spug-security
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: bringup-suep
+              target: bringup-bus
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-bus
+              target: bringup-vspug
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-vspug
+              target: bringup-vbep
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-vbep
+              target: bringup-rdma
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: bringup-rdma
+              target: bringup-regs
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        host-mr-register:
+          id: host-mr-register
+          title: Host DRAM MR Registration and Bitmap Set
+          shortTitle: Host DRAM MR Registration and Bitmap Set
+          summary: Final DMA addresses are captured after mapping, resolved to vBEP/vSPUG through the hook, and set at 4 KiB granularity.
+          caveat: ""
+          steps:
+            - id: mr-app
+              title: Register MR
+              shortTitle: Register MR
+              moduleRole: rdma-app
+              contextLane: rdma-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: mr-core
+              title: Pin pages and DMA map
+              shortTitle: ib_umem_get / ib_umem_get_peer
+              moduleRole: rdma-core
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/drivers/infiniband/core/umem.c
+              contract: *a5
+            - id: mr-umem
+              title: Final DMA SG ready
+              shortTitle: Final DMA SG ready
+              moduleRole: ib-umem
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: mr-hook
+              title: Invoke get hook
+              shortTitle: call_suep_hook_ib_umem_get
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/kernel/dma/suep_hook_rdma.c
+              contract: *a6
+            - id: mr-route
+              title: Resolve vBEP/vSPUG
+              shortTitle: rdma_umem_get_cb
+              moduleRole: suep-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a7
+            - id: mr-map
+              title: Save release ownership
+              shortTitle: Save release ownership
+              moduleRole: umem-route-map
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: mr-bitmap
+              title: Set Bitmap
+              shortTitle: set_vspug_bitmap(..., true)
+              moduleRole: bitmap
+              contextLane: spug-security
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a8
+            - id: mr-rnic
+              title: Permit RDMA transaction
+              shortTitle: Permit RDMA transaction
+              moduleRole: physical-rnic
+              contextLane: memory-and-device
+              layers:
+                - payload
+              kind: data
+              evidence: RUNTIME_OBSERVED
+          edges:
+            - source: mr-app
+              target: mr-core
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-core
+              target: mr-umem
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-umem
+              target: mr-hook
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-hook
+              target: mr-route
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-route
+              target: mr-map
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-map
+              target: mr-bitmap
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: mr-bitmap
+              target: mr-rnic
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        mr-release:
+          id: mr-release
+          title: MR Release and Bitmap Cleanup
+          shortTitle: MR Release and Bitmap Cleanup
+          summary: Resolves the vSPUG from the historical map and clears ordinary-memory authorization before DMA unmap.
+          caveat: Current code does not remove hash entries and lacks page refcounting for overlapping MRs.
+          steps:
+            - id: release-app
+              title: Deregister MR
+              shortTitle: Deregister MR
+              moduleRole: rdma-app
+              contextLane: rdma-userspace
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+            - id: release-core
+              title: Enter ib_umem_release
+              shortTitle: ib_umem_release
+              moduleRole: rdma-core
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/drivers/infiniband/core/umem.c
+              contract: *a9
+            - id: release-hook-step
+              title: Callback before unmap
+              shortTitle: call_suep_hook_ib_umem_release
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/kernel/dma/suep_hook_rdma.c
+              contract: *a10
+            - id: release-map-step
+              title: Lookup vBEP index
+              shortTitle: Lookup vBEP index
+              moduleRole: umem-route-map
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: release-bitmap
+              title: Clear Bitmap
+              shortTitle: set_vspug_bitmap(..., false)
+              moduleRole: bitmap
+              contextLane: spug-security
+              layers:
+                - payload
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a11
+            - id: release-unmap
+              title: DMA unmap and unpin
+              shortTitle: DMA unmap and unpin
+              moduleRole: ib-umem
+              contextLane: linux-rdma-core
+              layers:
+                - sync
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: release-app
+              target: release-core
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-core
+              target: release-hook-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-hook-step
+              target: release-map-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-map-step
+              target: release-bitmap
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: release-bitmap
+              target: release-unmap
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        gdr-peer-boundary:
+          id: gdr-peer-boundary
+          title: GDR / Peer Memory Evidence Boundary
+          shortTitle: GDR / Peer Memory Evidence Boundary
+          summary: Peer umem enters the same hook and stores ownership, but currently skips Host MR Bitmap.
+          caveat: Peer-hook support does not prove an end-to-end encrypted GPU P2P path.
+          steps:
+            - id: peer-gpu
+              title: GPU peer memory
+              shortTitle: GPU peer memory
+              moduleRole: gpu-memory
+              contextLane: memory-and-device
+              layers:
+                - payload
+              kind: data
+              evidence: CODE_PROVEN
+            - id: peer-umem
+              title: ib_umem_get_peer
+              shortTitle: ib_umem_get_peer
+              moduleRole: ib-umem
+              contextLane: linux-rdma-core
+              layers:
+                - lifecycle
+              kind: data
+              evidence: CODE_PROVEN
+            - id: peer-hook-step
+              title: Invoke get hook
+              shortTitle: call_suep_hook_ib_umem_get
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu_kernel/kernel/dma/suep_hook_rdma.c
+              contract: *a6
+            - id: peer-track
+              title: Resolve and store ownership
+              shortTitle: rdma_umem_get_cb
+              moduleRole: suep-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: function
+              evidence: CODE_PROVEN
+              source: spu-g/spu_driver/suep_rdma_driver.c
+              contract: *a7
+            - id: peer-skip-step
+              title: Skip Host Bitmap
+              shortTitle: Skip Host Bitmap
+              moduleRole: gpu-memory
+              contextLane: memory-and-device
+              layers:
+                - control
+              kind: data
+              evidence: CODE_PROVEN
+          edges:
+            - source: peer-gpu
+              target: peer-umem
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: peer-umem
+              target: peer-hook-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: peer-hook-step
+              target: peer-track
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: peer-track
+              target: peer-skip-step
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+        safe-teardown-target:
+          id: safe-teardown-target
+          title: Safe Teardown Target Path
+          shortTitle: Safe Teardown Target Path
+          summary: Stop new callbacks, wait for in-flight work, drain MRs and hardware state, remove virtual devices, then release SUEP.
+          caveat: This is the target ordering derived from the audit; current code does not yet satisfy it fully.
+          steps:
+            - id: stop-traffic
+              title: Stop new MR/QP traffic
+              shortTitle: Stop new MR/QP traffic
+              moduleRole: rdma-app
+              contextLane: rdma-userspace
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+            - id: unregister-hook
+              title: Unregister hook and synchronize callbacks
+              shortTitle: Unregister hook and synchronize callbacks
+              moduleRole: hook-rdma
+              contextLane: kernel-hook-driver
+              layers:
+                - control
+              kind: data
+              evidence: INFERRED
+            - id: drain-map
+              title: Drain all MRs
+              shortTitle: Drain all MRs
+              moduleRole: umem-route-map
+              contextLane: kernel-hook-driver
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: clear-state
+              title: Clear Bitmap/crypto state
+              shortTitle: Clear Bitmap/crypto state
+              moduleRole: bitmap
+              contextLane: spug-security
+              layers:
+                - payload
+              kind: data
+              evidence: INFERRED
+            - id: remove-vbep
+              title: Remove vBEP
+              shortTitle: Remove vBEP
+              moduleRole: vbep-rnic
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: remove-vspug
+              title: Remove vSPUG
+              shortTitle: Remove vSPUG
+              moduleRole: vspug
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+            - id: remove-suep
+              title: Release BAR/IRQ/NTB/SUEP
+              shortTitle: Release BAR/IRQ/NTB/SUEP
+              moduleRole: suep-core
+              contextLane: suep-virtualization
+              layers:
+                - lifecycle
+              kind: data
+              evidence: INFERRED
+          edges:
+            - source: stop-traffic
+              target: unregister-hook
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: unregister-hook
+              target: drain-map
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: drain-map
+              target: clear-state
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: clear-state
+              target: remove-vbep
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: remove-vbep
+              target: remove-vspug
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+            - source: remove-vspug
+              target: remove-suep
+              label: NEXT
+              relation: PAYLOAD
+              layer: payload
+      topologyNodes:
+        - id: rdma-app
+          label: RDMA Application / libibverbs
+          fill: "#22a7cf"
+          data:
+            title: RDMA Application / libibverbs
+            plane: rdma-userspace
+            layer: ZONE 01 · REQUEST ENTRY
+            kind: client
+            description: Registers or releases MRs and issues RDMA Read, Write, or Atomic operations.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a12
+            codeRefs: []
+            views:
+              - overview
+              - rdma-userspace
+              - host-mr-register
+              - mr-release
+              - safe-teardown-target
+        - id: rdma-core
+          label: RDMA Core
+          fill: "#7657c8"
+          data:
+            title: RDMA Core
+            plane: linux-rdma-core
+            layer: ZONE 02 · DMA ADDRESS AUTHORITY
+            kind: service
+            description: Owns MR semantics, page pinning, and the ib_umem lifecycle.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: RDMA Core
+                path: spu_kernel/drivers/infiniband/core/umem.c
+                note: RDMA umem lifecycle boundary
+              - name: ib_umem_get / ib_umem_get_peer
+                path: spu_kernel/drivers/infiniband/core/umem.c
+                note: get lifecycle
+              - name: ib_umem_release
+                path: spu_kernel/drivers/infiniband/core/umem.c
+                note: release lifecycle
+            views:
+              - overview
+              - linux-rdma-core
+              - host-mr-register
+              - mr-release
+        - id: ib-umem
+          label: ib_umem + DMA SG
+          fill: "#8a61d1"
+          data:
+            title: ib_umem + DMA SG
+            plane: linux-rdma-core
+            layer: ZONE 02 · DMA ADDRESS AUTHORITY
+            kind: device
+            description: Carries device-visible dma_addr_t ranges after ib_dma_map_sg.
+            evidence: code
+            core: true
+            tags: *a13
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - linux-rdma-core
+              - host-mr-register
+              - mr-release
+              - gdr-peer-boundary
+        - id: irdma
+          label: ice + irdma
+          fill: "#6750b5"
+          data:
+            title: ice + irdma
+            plane: linux-rdma-core
+            layer: ZONE 02 · DMA ADDRESS AUTHORITY
+            kind: service
+            description: Intel E810 RoCE stack; custom logic does not modify its WQE data path.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - linux-rdma-core
+        - id: hook-rdma
+          label: spu_kernel hook_rdma
+          fill: "#e14b72"
+          data:
+            title: spu_kernel hook_rdma
+            plane: kernel-hook-driver
+            layer: ZONE 03 · MR LIFECYCLE BRIDGE
+            kind: network
+            description: Invokes SUEP callbacks after successful get and before the actual release/unmap.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: spu_kernel hook_rdma
+                path: spu_kernel/include/linux/suep_hook_rdma.h
+                note: Hook API
+              - name: spu_kernel hook_rdma
+                path: spu_kernel/kernel/dma/suep_hook_rdma.c
+                note: Hook registration and dispatch
+              - name: call_suep_hook_ib_umem_get
+                path: spu_kernel/kernel/dma/suep_hook_rdma.c
+                note: get hook dispatch
+              - name: call_suep_hook_ib_umem_release
+                path: spu_kernel/kernel/dma/suep_hook_rdma.c
+                note: release hook dispatch
+            views:
+              - overview
+              - kernel-hook-driver
+              - host-mr-register
+              - mr-release
+              - gdr-peer-boundary
+              - safe-teardown-target
+        - id: suep-rdma
+          label: suep_rdma_driver
+          fill: "#c13f5c"
+          data:
+            title: suep_rdma_driver
+            plane: kernel-hook-driver
+            layer: ZONE 03 · MR LIFECYCLE BRIDGE
+            kind: service
+            description: Resolves the RNIC vBEP and owning vSPUG, then maps Host DRAM DMA pages into Bitmap.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: suep_rdma_driver
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: RDMA callback and Bitmap lifecycle
+              - name: suep_rdma_register_vbep
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: RDMA vBEP registration
+              - name: rdma_umem_get_cb
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: get callback
+            views:
+              - overview
+              - kernel-hook-driver
+              - device-bringup
+              - host-mr-register
+              - gdr-peer-boundary
+        - id: umem-route-map
+          label: ib_umem → vBEP Map
+          fill: "#d75b69"
+          data:
+            title: ib_umem → vBEP Map
+            plane: kernel-hook-driver
+            layer: ZONE 03 · MR LIFECYCLE BRIDGE
+            kind: service
+            description: Restores ownership during release; current code has stale-entry, raw-pointer, and concurrency risks.
+            evidence: code
+            core: true
+            tags: *a14
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - kernel-hook-driver
+              - host-mr-register
+              - mr-release
+              - safe-teardown-target
+        - id: suep-core
+          label: SUEP PCI Root Driver
+          fill: "#2878c7"
+          data:
+            title: SUEP PCI Root Driver
+            plane: suep-virtualization
+            layer: ZONE 04 · DEVICE OWNERSHIP AUTHORITY
+            kind: service
+            description: Probe establishes BAR, NTB, IRQ, host management, sysfs, and the RDMA submodule.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: SUEP PCI Root Driver
+                path: spu-g/spu_driver/suep_driver.c
+                note: SUEP probe and remove root
+              - name: suep_probe
+                path: spu-g/spu_driver/suep_driver.c
+                note: PCI probe entry
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+              - safe-teardown-target
+        - id: virtual-pci
+          label: SUEP Virtual PCI Bus
+          fill: "#2f83e7"
+          data:
+            title: SUEP Virtual PCI Bus
+            plane: suep-virtualization
+            layer: ZONE 04 · DEVICE OWNERSHIP AUTHORITY
+            kind: network
+            description: Presents physical PCIe devices behind SPUG as standard PCI devices to the SPU OS.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+        - id: vspug
+          label: vSPUG Management Object
+          fill: "#3479c9"
+          data:
+            title: vSPUG Management Object
+            plane: suep-virtualization
+            layer: ZONE 04 · DEVICE OWNERSHIP AUTHORITY
+            kind: device
+            description: Owns work mode, BAR proxy window, RDMA window, and SPUG lifetime.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: *a15
+            codeRefs:
+              - name: create_virtual_spug
+                path: spu-g/spu_driver/suep_virtual_device.c
+                note: vSPUG lifecycle
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+              - safe-teardown-target
+        - id: vbep-rnic
+          label: RNIC vBEP
+          fill: "#3d8bd9"
+          data:
+            title: RNIC vBEP
+            plane: suep-virtualization
+            layer: ZONE 04 · DEVICE OWNERSHIP AUTHORITY
+            kind: device
+            description: Virtual PCI representation of the RNIC behind SPUG and the ownership lookup entry.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: create_virtual_bep
+                path: spu-g/spu_driver/suep_virtual_device.c
+                note: vBEP lifecycle
+            views:
+              - overview
+              - suep-virtualization
+              - device-bringup
+              - safe-teardown-target
+        - id: hardware-regs
+          label: SPUG Hardware Register Layer
+          fill: "#168f7b"
+          data:
+            title: SPUG Hardware Register Layer
+            plane: spug-security
+            layer: ZONE 05 · HARDWARE STATE AUTHORITY
+            kind: service
+            description: Centralizes the MMIO ABI for Bitmap, window, keys, and crypto enable.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs:
+              - name: SPUG Hardware Register Layer
+                path: spu-g/spu_driver/suep_vspug_hardware_regs.c
+                note: SPUG MMIO abstraction
+            views:
+              - overview
+              - spug-security
+              - device-bringup
+        - id: region-manager
+          label: Unified DMA Region Manager (Target)
+          fill: "#13a681"
+          data:
+            title: Unified DMA Region Manager (Target)
+            plane: spug-security
+            layer: ZONE 05 · HARDWARE STATE AUTHORITY
+            kind: service
+            description: Proposed single Bitmap owner for RDMA/NVMe with refcounts, generations, batched MMIO, and fail-closed behavior.
+            evidence: inference
+            core: true
+            tags: *a16
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spug-security
+        - id: bitmap
+          label: SPUG MR Bitmap
+          fill: "#1ba98b"
+          data:
+            title: SPUG MR Bitmap
+            plane: spug-security
+            layer: ZONE 05 · HARDWARE STATE AUTHORITY
+            kind: service
+            description: Classifies ordinary Host-memory DMA pages at 4 KiB granularity; its address domain must match the FPGA observation point.
+            evidence: code
+            core: true
+            tags: *a17
+            interfaces: []
+            codeRefs:
+              - name: set_vspug_bitmap(..., true)
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: Bitmap set path
+              - name: set_vspug_bitmap(..., false)
+                path: spu-g/spu_driver/suep_rdma_driver.c
+                note: Bitmap clear path
+            views:
+              - overview
+              - spug-security
+              - host-mr-register
+              - mr-release
+              - safe-teardown-target
+        - id: spug-fpga
+          label: SPUG FPGA Crypto Data Plane
+          fill: "#36b79c"
+          data:
+            title: SPUG FPGA Crypto Data Plane
+            plane: spug-security
+            layer: ZONE 05 · HARDWARE STATE AUTHORITY
+            kind: target
+            description: Uses hardware tables and policy to classify and transform PCIe payload; end-to-end behavior still requires board validation.
+            evidence: target
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - spug-security
+        - id: host-memory
+          label: Host / SPU DRAM
+          fill: "#7fae3f"
+          data:
+            title: Host / SPU DRAM
+            plane: memory-and-device
+            layer: ZONE 06 · PCIE DATA ENDPOINTS
+            kind: target
+            description: Page source for ordinary ib_umem; mapped DMA SG enters the MR Bitmap.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - memory-and-device
+        - id: gpu-memory
+          label: GPU Peer Memory / GDR
+          fill: "#9dbd5d"
+          data:
+            title: GPU Peer Memory / GDR
+            plane: memory-and-device
+            layer: ZONE 06 · PCIE DATA ENDPOINTS
+            kind: target
+            description: The is_peer path is tracked but skips Host MR Bitmap; the P2P crypto loop is not yet proven by current code.
+            evidence: inference
+            core: true
+            tags: *a18
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - memory-and-device
+              - gdr-peer-boundary
+        - id: physical-rnic
+          label: Physical RNIC / Intel E810
+          fill: "#6f9f3d"
+          data:
+            title: Physical RNIC / Intel E810
+            plane: memory-and-device
+            layer: ZONE 06 · PCIE DATA ENDPOINTS
+            kind: device
+            description: Physical endpoint issuing and receiving RoCE PCIe transactions.
+            evidence: code
+            core: true
+            tags: []
+            interfaces: []
+            codeRefs: []
+            views:
+              - overview
+              - memory-and-device
+              - host-mr-register
+      topologyEdges:
+        - id: app-core
+          source: rdma-app
+          target: rdma-core
+          label: Register/release MR
+          fill: "#22a7cf"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Userspace verbs enter RDMA core.
+            evidence: code
+        - id: core-umem
+          source: rdma-core
+          target: ib-umem
+          label: pin + DMA map
+          fill: "#7657c8"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: Successful mapping creates final DMA SG.
+            evidence: code
+        - id: irdma-core
+          source: irdma
+          target: rdma-core
+          label: ib_device / MR provider
+          fill: "#6750b5"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Provides the RNIC ib_device context.
+            evidence: code
+        - id: umem-hook-get
+          source: ib-umem
+          target: hook-rdma
+          label: get Hook
+          fill: "#e14b72"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: Called after DMA map completes.
+            evidence: code
+        - id: hook-callback
+          source: hook-rdma
+          target: suep-rdma
+          label: Callback dispatch
+          fill: "#d85068"
+          data:
+            kind: CONTROL
+            lane: CONTROL
+            description: Invokes SUEP-registered get/release callbacks.
+            evidence: code
+        - id: callback-map
+          source: suep-rdma
+          target: umem-route-map
+          label: Store/lookup ownership
+          fill: "#d75b69"
+          data:
+            kind: CONTROL
+            lane: LIFECYCLE
+            description: Associates ib_umem pointers with vBEP indices.
+            evidence: code
+        - id: callback-vbep
+          source: suep-rdma
+          target: vbep-rnic
+          label: Resolve RNIC
+          fill: "#2f83e7"
+          data:
+            kind: CONTROL
+            lane: OWNERSHIP
+            description: pci_dev → vBEP.
+            evidence: code
+        - id: vbep-vspug
+          source: vbep-rnic
+          target: vspug
+          label: Owning SPUG
+          fill: "#2f83e7"
+          data:
+            kind: CONTROL
+            lane: OWNERSHIP
+            description: Stable vBEP → vSPUG ownership relation.
+            evidence: code
+        - id: suep-vpci
+          source: suep-core
+          target: virtual-pci
+          label: Initialize bus
+          fill: "#2878c7"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: SUEP establishes the virtual PCI bus.
+            evidence: code
+        - id: vpci-vspug
+          source: virtual-pci
+          target: vspug
+          label: Create vSPUG
+          fill: "#3479c9"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: Maps management window and reads work mode.
+            evidence: code
+        - id: vpci-vbep
+          source: virtual-pci
+          target: vbep-rnic
+          label: Create/activate vBEP
+          fill: "#3d8bd9"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: Scans the device, maps BARs, and adds it to PCI core.
+            evidence: code
+        - id: vspug-register
+          source: vspug
+          target: suep-rdma
+          label: RDMA-mode attach
+          fill: "#c13f5c"
+          data:
+            kind: CONTROL
+            lane: VIRTUALIZATION
+            description: Registers the vBEP extension when mode=RDMA.
+            evidence: code
+        - id: callback-regs
+          source: suep-rdma
+          target: hardware-regs
+          label: Bitmap/crypto operations
+          fill: "#168f7b"
+          data:
+            kind: CONTROL
+            lane: MMIO
+            description: Business logic accesses SPUG through the register abstraction.
+            evidence: code
+        - id: manager-regs
+          source: region-manager
+          target: hardware-regs
+          label: Single hardware owner
+          fill: "#13a681"
+          dashed: true
+          data:
+            kind: CONTROL
+            lane: TARGET
+            description: Target design centralizes references and batched MMIO.
+            evidence: inference
+        - id: regs-bitmap
+          source: hardware-regs
+          target: bitmap
+          label: MMIO set/clear
+          fill: "#1ba98b"
+          data:
+            kind: PHYSICAL
+            lane: MMIO
+            description: Updates hardware Bitmap by DMA page.
+            evidence: code
+        - id: bitmap-fpga
+          source: bitmap
+          target: spug-fpga
+          label: Page classification policy
+          fill: "#36b79c"
+          data:
+            kind: CONTROL
+            lane: HARDWARE
+            description: Bitmap state participates in payload classification.
+            evidence: target
+        - id: host-umem
+          source: host-memory
+          target: ib-umem
+          label: Ordinary pages
+          fill: "#7fae3f"
+          data:
+            kind: DATA
+            lane: PAYLOAD
+            description: Pinned pages become Host DRAM DMA SG.
+            evidence: code
+        - id: gpu-umem
+          source: gpu-memory
+          target: ib-umem
+          label: peer umem
+          fill: "#9dbd5d"
+          data:
+            kind: DATA
+            lane: PEER
+            description: GDR peer memory enters ib_umem_get_peer.
+            evidence: code
+        - id: peer-skip
+          source: suep-rdma
+          target: gpu-memory
+          label: Skip Host Bitmap
+          fill: "#e5b534"
+          dashed: true
+          data:
+            kind: CONTROL
+            lane: PEER
+            description: Current is_peer path skips Host MR Bitmap set/clear.
+            evidence: code
+        - id: fpga-rnic
+          source: spug-fpga
+          target: physical-rnic
+          label: PCIe payload data plane
+          fill: "#36b79c"
+          data:
+            kind: PHYSICAL
+            lane: PAYLOAD
+            description: Data transactions between SPUG and the physical RNIC.
+            evidence: target
+        - id: rnic-irdma
+          source: physical-rnic
+          target: irdma
+          label: PCI driver binding
+          fill: "#6f9f3d"
+          data:
+            kind: PHYSICAL
+            lane: PHYSICAL
+            description: The physical/virtual RNIC is driven by ice and irdma.
+            evidence: code
+        - id: release-hook
+          source: hook-rdma
+          target: ib-umem
+          label: release before unmap
+          fill: "#e5b534"
+          data:
+            kind: CONTROL
+            lane: RELEASE
+            description: Cleanup hook runs before the real DMA unmap.
+            evidence: code
+      viewOptions:
+        - id: overview
+          label: Overview
+          hint: Maps RDMA MR lifecycle, custom kernel hooks, SUEP virtual devices, SPUG Bitmap, and the RNIC data plane.
+        - id: rdma-userspace
+          label: RDMA Userspace
+          hint: Application, libibverbs, and MR operations
+        - id: linux-rdma-core
+          label: SPU Linux RDMA Kernel
+          hint: RDMA core, ib_umem, irdma, and final DMA SG
+        - id: kernel-hook-driver
+          label: Custom Kernel Hook and Companion Driver
+          hint: Get/release callbacks, device ownership, and legacy mapping
+        - id: suep-virtualization
+          label: SUEP Virtualization Layer
+          hint: SUEP, virtual PCI bus, vSPUG, and RNIC vBEP
+        - id: spug-security
+          label: SPUG Resource and Crypto Data Plane
+          hint: MMIO, Bitmap, crypto enable, and unified resource ownership
+        - id: memory-and-device
+          label: Memory and Physical Devices
+          hint: Host DRAM, GPU peer memory, and physical RNIC
+        - id: device-bringup
+          label: Device Virtualization and RDMA Attach
+          hint: From SUEP probe through vSPUG/vBEP creation to RDMA hook registration and hardware enable.
+        - id: host-mr-register
+          label: Host DRAM MR Registration and Bitmap Set
+          hint: Final DMA addresses are captured after mapping, resolved to vBEP/vSPUG through the hook, and set at 4 KiB granularity.
+        - id: mr-release
+          label: MR Release and Bitmap Cleanup
+          hint: Resolves the vSPUG from the historical map and clears ordinary-memory authorization before DMA unmap.
+        - id: gdr-peer-boundary
+          label: GDR / Peer Memory Evidence Boundary
+          hint: Peer umem enters the same hook and stores ownership, but currently skips Host MR Bitmap.
+        - id: safe-teardown-target
+          label: Safe Teardown Target Path
+          hint: Stop new callbacks, wait for in-flight work, drain MRs and hardware state, remove virtual devices, then release SUEP.
+      systemTree:
+        - label: RDMA Userspace
+          plane: rdma-userspace
+          nodes: *a19
+        - label: SPU Linux RDMA Kernel
+          plane: linux-rdma-core
+          nodes: *a20
+        - label: Custom Kernel Hook and Companion Driver
+          plane: kernel-hook-driver
+          nodes: *a21
+        - label: SUEP Virtualization Layer
+          plane: suep-virtualization
+          nodes: *a22
+        - label: SPUG Resource and Crypto Data Plane
+          plane: spug-security
+          nodes: *a23
+        - label: Memory and Physical Devices
+          plane: memory-and-device
+          nodes: *a24
+      storageTrees:
+        - id: rdma-core-sources
+          label: RDMA Core
+          plane: linux-rdma-core
+          roots:
+            - path: spu_kernel/drivers/infiniband/core/umem.c
+              role: RDMA umem lifecycle boundary
+              nodeId: rdma-core
+        - id: hook-rdma-sources
+          label: spu_kernel hook_rdma
+          plane: kernel-hook-driver
+          roots:
+            - path: spu_kernel/include/linux/suep_hook_rdma.h
+              role: Hook API
+              nodeId: hook-rdma
+            - path: spu_kernel/kernel/dma/suep_hook_rdma.c
+              role: Hook registration and dispatch
+              nodeId: hook-rdma
+        - id: suep-rdma-sources
+          label: suep_rdma_driver
+          plane: kernel-hook-driver
+          roots:
+            - path: spu-g/spu_driver/suep_rdma_driver.c
+              role: RDMA callback and Bitmap lifecycle
+              nodeId: suep-rdma
+        - id: suep-core-sources
+          label: SUEP PCI Root Driver
+          plane: suep-virtualization
+          roots:
+            - path: spu-g/spu_driver/suep_driver.c
+              role: SUEP probe and remove root
+              nodeId: suep-core
+        - id: hardware-regs-sources
+          label: SPUG Hardware Register Layer
+          plane: spug-security
+          roots:
+            - path: spu-g/spu_driver/suep_vspug_hardware_regs.c
+              role: SPUG MMIO abstraction
+              nodeId: hardware-regs
+      runtimeFacts:
+        - label: Evidence level
+          value: CODE_PROVEN
+          tone: good
+      cameraHudViews:
+        overview:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: Overview
+          detail: Maps RDMA MR lifecycle, custom kernel hooks, SUEP virtual devices, SPUG Bitmap, and the RNIC data plane.
+        rdma-userspace:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: RDMA Userspace
+          detail: Application, libibverbs, and MR operations
+        linux-rdma-core:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: SPU Linux RDMA Kernel
+          detail: RDMA core, ib_umem, irdma, and final DMA SG
+        kernel-hook-driver:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: Custom Kernel Hook and Companion Driver
+          detail: Get/release callbacks, device ownership, and legacy mapping
+        suep-virtualization:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: SUEP Virtualization Layer
+          detail: SUEP, virtual PCI bus, vSPUG, and RNIC vBEP
+        spug-security:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: SPUG Resource and Crypto Data Plane
+          detail: MMIO, Bitmap, crypto enable, and unified resource ownership
+        memory-and-device:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: Memory and Physical Devices
+          detail: Host DRAM, GPU peer memory, and physical RNIC
+        device-bringup:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: Device Virtualization and RDMA Attach
+          detail: From SUEP probe through vSPUG/vBEP creation to RDMA hook registration and hardware enable.
+        host-mr-register:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: Host DRAM MR Registration and Bitmap Set
+          detail: Final DMA addresses are captured after mapping, resolved to vBEP/vSPUG through the hook, and set at 4 KiB granularity.
+        mr-release:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: MR Release and Bitmap Cleanup
+          detail: Resolves the vSPUG from the historical map and clears ordinary-memory authorization before DMA unmap.
+        gdr-peer-boundary:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: GDR / Peer Memory Evidence Boundary
+          detail: Peer umem enters the same hook and stores ownership, but currently skips Host MR Bitmap.
+        safe-teardown-target:
+          eyebrow: SPU-SPUG-RDMA-DRIVER
+          title: Safe Teardown Target Path
+          detail: Stop new callbacks, wait for in-flight work, drain MRs and hardware state, remove virtual devices, then release SUEP.
+  common:
+    focusModuleGroups:
+      rdma-app:
+        - rdma-app
+      rdma-core:
+        - rdma-core
+      ib-umem:
+        - ib-umem
+      irdma:
+        - irdma
+      hook-rdma:
+        - hook-rdma
+      suep-rdma:
+        - suep-rdma
+      umem-route-map:
+        - umem-route-map
+      suep-core:
+        - suep-core
+      virtual-pci:
+        - virtual-pci
+      vspug:
+        - vspug
+      vbep-rnic:
+        - vbep-rnic
+      hardware-regs:
+        - hardware-regs
+      region-manager:
+        - region-manager
+      bitmap:
+        - bitmap
+      spug-fpga:
+        - spug-fpga
+      host-memory:
+        - host-memory
+      gpu-memory:
+        - gpu-memory
+      physical-rnic:
+        - physical-rnic
+    driverJourneyModuleRoleByNodeId:
+      rdma-app: rdma-app
+      rdma-core: rdma-core
+      ib-umem: ib-umem
+      irdma: irdma
+      hook-rdma: hook-rdma
+      suep-rdma: suep-rdma
+      umem-route-map: umem-route-map
+      suep-core: suep-core
+      virtual-pci: virtual-pci
+      vspug: vspug
+      vbep-rnic: vbep-rnic
+      hardware-regs: hardware-regs
+      region-manager: region-manager
+      bitmap: bitmap
+      spug-fpga: spug-fpga
+      host-memory: host-memory
+      gpu-memory: gpu-memory
+      physical-rnic: physical-rnic
+    driverJourneyOrder:
+      - device-bringup
+      - host-mr-register
+      - mr-release
+      - gdr-peer-boundary
+      - safe-teardown-target
+    nodePositions:
+      rdma-app: *a25
+      rdma-core: *a26
+      ib-umem: *a27
+      irdma: *a28
+      hook-rdma: *a29
+      suep-rdma: *a30
+      umem-route-map: *a31
+      suep-core: *a32
+      virtual-pci: *a33
+      vspug: *a34
+      vbep-rnic: *a35
+      hardware-regs: *a36
+      region-manager: *a37
+      bitmap: *a38
+      spug-fpga: *a39
+      host-memory: *a40
+      gpu-memory: *a41
+      physical-rnic: *a42
+    macroZones:
+      rdma-userspace:
+        center: *a43
+        halfSize:
+          - 6
+          - 6
+          - 0.4
+        nodeIds: *a19
+      linux-rdma-core:
+        center: *a44
+        halfSize:
+          - 6.5
+          - 8
+          - 0.4
+        nodeIds: *a20
+      kernel-hook-driver:
+        center: *a45
+        halfSize:
+          - 7
+          - 8
+          - 0.4
+        nodeIds: *a21
+      suep-virtualization:
+        center: *a46
+        halfSize:
+          - 8
+          - 9
+          - 0.4
+        nodeIds: *a22
+      spug-security:
+        center: *a47
+        halfSize:
+          - 8.5
+          - 9
+          - 0.4
+        nodeIds: *a23
+      memory-and-device:
+        center: *a48
+        halfSize:
+          - 7.5
+          - 8
+          - 0.4
+        nodeIds: *a24
+    globalModuleLabels:
+      - id: rdma-app
+        color: "#22a7cf"
+        halfWidth: 4
+        moduleSide: left
+        cameraSide: left
+      - id: rdma-core
+        color: "#7657c8"
+        halfWidth: 4.5
+        moduleSide: left
+        cameraSide: left
+      - id: ib-umem
+        color: "#8a61d1"
+        halfWidth: 4.5
+        moduleSide: left
+        cameraSide: left
+      - id: irdma
+        color: "#6750b5"
+        halfWidth: 4.5
+        moduleSide: left
+        cameraSide: left
+      - id: hook-rdma
+        color: "#e14b72"
+        halfWidth: 5
+        moduleSide: left
+        cameraSide: left
+      - id: suep-rdma
+        color: "#c13f5c"
+        halfWidth: 5
+        moduleSide: left
+        cameraSide: left
+      - id: umem-route-map
+        color: "#d75b69"
+        halfWidth: 5
+        moduleSide: left
+        cameraSide: left
+      - id: suep-core
+        color: "#2878c7"
+        halfWidth: 5.5
+        moduleSide: left
+        cameraSide: left
+      - id: virtual-pci
+        color: "#2f83e7"
+        halfWidth: 5.5
+        moduleSide: left
+        cameraSide: left
+      - id: vspug
+        color: "#3479c9"
+        halfWidth: 5.5
+        moduleSide: right
+        cameraSide: right
+      - id: vbep-rnic
+        color: "#3d8bd9"
+        halfWidth: 5.5
+        moduleSide: right
+        cameraSide: right
+      - id: hardware-regs
+        color: "#168f7b"
+        halfWidth: 6
+        moduleSide: left
+        cameraSide: left
+      - id: region-manager
+        color: "#13a681"
+        halfWidth: 6
+        moduleSide: left
+        cameraSide: left
+      - id: bitmap
+        color: "#1ba98b"
+        halfWidth: 6
+        moduleSide: right
+        cameraSide: right
+      - id: spug-fpga
+        color: "#36b79c"
+        halfWidth: 6
+        moduleSide: right
+        cameraSide: right
+      - id: host-memory
+        color: "#7fae3f"
+        halfWidth: 5
+        moduleSide: right
+        cameraSide: right
+      - id: gpu-memory
+        color: "#9dbd5d"
+        halfWidth: 5
+        moduleSide: right
+        cameraSide: right
+      - id: physical-rnic
+        color: "#6f9f3d"
+        halfWidth: 5
+        moduleSide: right
+        cameraSide: right
+    routeNodeIds:
+      device-bringup:
+        - suep-core
+        - virtual-pci
+        - vspug
+        - vbep-rnic
+        - suep-rdma
+        - hardware-regs
+      host-mr-register:
+        - rdma-app
+        - rdma-core
+        - ib-umem
+        - hook-rdma
+        - suep-rdma
+        - umem-route-map
+        - bitmap
+        - physical-rnic
+      mr-release:
+        - rdma-app
+        - rdma-core
+        - hook-rdma
+        - umem-route-map
+        - bitmap
+        - ib-umem
+      gdr-peer-boundary:
+        - gpu-memory
+        - ib-umem
+        - hook-rdma
+        - suep-rdma
+        - gpu-memory
+      safe-teardown-target:
+        - rdma-app
+        - hook-rdma
+        - umem-route-map
+        - bitmap
+        - vbep-rnic
+        - vspug
+        - suep-core
+    directionCards: []
+    visuals:
+      zones:
+        - id: rdma-userspace
+          anchorNodeId: rdma-app
+          eyebrow: *a49
+          title: *a50
+          summary: *a51
+          position: *a43
+          size: *a52
+          color: "#22a7cf"
+          detailGroup: rdma-userspace
+          backdrop: server
+        - id: linux-rdma-core
+          anchorNodeId: rdma-core
+          eyebrow: *a53
+          title: *a54
+          summary: *a55
+          position: *a44
+          size: *a56
+          color: "#7657c8"
+          detailGroup: linux-rdma-core
+          backdrop: server
+        - id: kernel-hook-driver
+          anchorNodeId: hook-rdma
+          eyebrow: *a57
+          title: *a58
+          summary: *a59
+          position: *a45
+          size: *a60
+          color: "#e14b72"
+          detailGroup: kernel-hook-driver
+          backdrop: server
+        - id: suep-virtualization
+          anchorNodeId: suep-core
+          eyebrow: *a61
+          title: *a62
+          summary: *a63
+          position: *a46
+          size: *a64
+          color: "#2f83e7"
+          detailGroup: suep-virtualization
+          backdrop: generic
+        - id: spug-security
+          anchorNodeId: hardware-regs
+          eyebrow: *a65
+          title: *a66
+          summary: *a67
+          position: *a47
+          size: *a68
+          color: "#168f7b"
+          detailGroup: spug-security
+          backdrop: gateway
+        - id: memory-and-device
+          anchorNodeId: host-memory
+          eyebrow: *a69
+          title: *a70
+          summary: *a71
+          position: *a48
+          size: *a72
+          color: "#7fae3f"
+          detailGroup: memory-and-device
+          backdrop: generic
+      modules:
+        - nodeId: rdma-app
+          title: *a73
+          eyebrow: *a49
+          position: *a25
+          size: *a74
+          color: "#22a7cf"
+          labelOffset:
+            - 5
+            - 0.2
+            - 1.3
+          detailGroup: rdma-userspace
+        - nodeId: rdma-core
+          title: *a75
+          eyebrow: *a53
+          position: *a26
+          size: *a76
+          color: "#7657c8"
+          labelOffset:
+            - 5.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: linux-rdma-core
+        - nodeId: ib-umem
+          title: *a77
+          eyebrow: *a53
+          position: *a27
+          size: *a78
+          color: "#8a61d1"
+          labelOffset:
+            - 5.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: linux-rdma-core
+        - nodeId: irdma
+          title: *a79
+          eyebrow: *a53
+          position: *a28
+          size: *a80
+          color: "#6750b5"
+          labelOffset:
+            - 5.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: linux-rdma-core
+        - nodeId: hook-rdma
+          title: *a81
+          eyebrow: *a57
+          position: *a29
+          size: *a82
+          color: "#e14b72"
+          labelOffset:
+            - 6
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: kernel-hook-driver
+        - nodeId: suep-rdma
+          title: *a83
+          eyebrow: *a57
+          position: *a30
+          size: *a84
+          color: "#c13f5c"
+          labelOffset:
+            - 6
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: kernel-hook-driver
+        - nodeId: umem-route-map
+          title: *a85
+          eyebrow: *a57
+          position: *a31
+          size: *a86
+          color: "#d75b69"
+          labelOffset:
+            - 6
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: kernel-hook-driver
+        - nodeId: suep-core
+          title: *a87
+          eyebrow: *a61
+          position: *a32
+          size: *a88
+          color: "#2878c7"
+          labelOffset:
+            - 6.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: suep-virtualization
+        - nodeId: virtual-pci
+          title: *a89
+          eyebrow: *a61
+          position: *a33
+          size: *a90
+          color: "#2f83e7"
+          labelOffset:
+            - 6.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: suep-virtualization
+        - nodeId: vspug
+          title: *a91
+          eyebrow: *a61
+          position: *a34
+          size: *a92
+          color: "#3479c9"
+          labelOffset:
+            - 6.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: suep-virtualization
+        - nodeId: vbep-rnic
+          title: *a93
+          eyebrow: *a61
+          position: *a35
+          size: *a94
+          color: "#3d8bd9"
+          labelOffset:
+            - 6.5
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: suep-virtualization
+        - nodeId: hardware-regs
+          title: *a95
+          eyebrow: *a65
+          position: *a36
+          size: *a96
+          color: "#168f7b"
+          labelOffset:
+            - 7
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: spug-security
+        - nodeId: region-manager
+          title: *a97
+          eyebrow: *a65
+          position: *a37
+          size: *a98
+          color: "#13a681"
+          labelOffset:
+            - 7
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: spug-security
+        - nodeId: bitmap
+          title: *a99
+          eyebrow: *a65
+          position: *a38
+          size: *a100
+          color: "#1ba98b"
+          labelOffset:
+            - 7
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: spug-security
+        - nodeId: spug-fpga
+          title: *a101
+          eyebrow: *a65
+          position: *a39
+          size: *a102
+          color: "#36b79c"
+          labelOffset:
+            - 7
+            - 0.2
+            - 1.2000000000000002
+          detailGroup: spug-security
+        - nodeId: host-memory
+          title: *a103
+          eyebrow: *a69
+          position: *a40
+          size: *a104
+          color: "#7fae3f"
+          labelOffset:
+            - 6
+            - 0.2
+            - 1.3
+          detailGroup: memory-and-device
+        - nodeId: gpu-memory
+          title: *a105
+          eyebrow: *a69
+          position: *a41
+          size: *a106
+          color: "#9dbd5d"
+          labelOffset:
+            - 6
+            - 0.2
+            - 1.3
+          detailGroup: memory-and-device
+        - nodeId: physical-rnic
+          title: *a107
+          eyebrow: *a69
+          position: *a42
+          size: *a108
+          color: "#6f9f3d"
+          labelOffset:
+            - 6
+            - 0.2
+            - 1.3
+          detailGroup: memory-and-device
+      layers: []
+      depths: []
+  displayDefaults:
+    pipeThickness: 4.5
+    hudDistance: 1.2
+    moduleLabelDistance: 1.2
+    labelLayoutMode: module
+    labelLineThickness: 1.5
+    moduleLabelScale: 1
+    focusAnnotationScale: 1
+    focusHudTextScale: 1
+    subLabelDistance: 30
+    subLabelFadeRange: 8
+    farFadeStart: 48
+    farBlockOpacity: 0.22
+    farFlowOpacity: 0.26

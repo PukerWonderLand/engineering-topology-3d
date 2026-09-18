@@ -21,6 +21,7 @@ export interface ProjectedGlobalModuleLabel {
   cameraDistance: number;
   visibility: number;
   muted: boolean;
+  selected?: boolean;
 }
 
 export interface GlobalModuleLabelLayout extends ProjectedGlobalModuleLabel {
@@ -46,6 +47,13 @@ interface ModuleLabelCandidate {
   side: GlobalLabelSide;
   column: number;
   score: number;
+}
+
+function compareGlobalLabelPriority(first: ProjectedGlobalModuleLabel, second: ProjectedGlobalModuleLabel) {
+  return Number(Boolean(second.selected)) - Number(Boolean(first.selected))
+    || second.visibility - first.visibility
+    || first.cameraDistance - second.cameraDistance
+    || first.id.localeCompare(second.id);
 }
 
 function clampNumber(value: number, minimum: number, maximum: number) {
@@ -317,9 +325,9 @@ function resolveModuleNeighborhoodLayout(
   const orderedLabels = projectedLabels.toSorted((first, second) => {
     const firstBoundaryRoom = Math.min(first.anchorY - top, bottom - first.anchorY);
     const secondBoundaryRoom = Math.min(second.anchorY - top, bottom - second.anchorY);
-    return firstBoundaryRoom - secondBoundaryRoom
-      || first.anchorY - second.anchorY
-      || first.cameraDistance - second.cameraDistance;
+    return compareGlobalLabelPriority(first, second)
+      || firstBoundaryRoom - secondBoundaryRoom
+      || first.anchorY - second.anchorY;
   });
   const layouts: GlobalModuleLabelLayout[] = [];
 
@@ -335,7 +343,9 @@ function resolveModuleNeighborhoodLayout(
       { x: position.x, y: position.y, width: metrics.cardWidth, height: metrics.cardHeight },
       layout,
     )));
-    if (!candidate) return [];
+    // A dense topology should degrade progressively instead of making every
+    // annotation disappear because the final card cannot be placed.
+    if (!candidate) continue;
     layouts.push({
       ...label,
       side: candidate.side,
@@ -360,44 +370,51 @@ function resolveViewportFallback(
 ) {
   const top = metrics.margin;
   const bottom = Math.max(top + metrics.cardHeight, viewportHeight - metrics.margin);
-  const rawCapacity = Math.max(1, Math.floor((bottom - top + metrics.gap) / (metrics.cardHeight + metrics.gap)));
-  const minimumColumns = Math.ceil(labels.length / rawCapacity);
   const maximumColumns = Math.max(1, Math.min(
     labels.length,
     Math.floor((viewportWidth - metrics.margin * 2 + metrics.gap) / (metrics.cardWidth + metrics.gap)),
   ));
-  const sortedLabels = labels.toSorted((first, second) => first.anchorY - second.anchorY || first.cameraDistance - second.cameraDistance);
+  const priorityLabels = labels.toSorted(compareGlobalLabelPriority);
+  const rawCapacity = Math.max(1, Math.floor((bottom - top + metrics.gap) / (metrics.cardHeight + metrics.gap)));
 
-  for (let columnCount = minimumColumns; columnCount <= maximumColumns; columnCount += 1) {
-    const columns = distributeLabels(sortedLabels, columnCount);
-    const groupWidth = columnCount * metrics.cardWidth + Math.max(0, columnCount - 1) * metrics.gap;
-    const largestStart = Math.max(metrics.margin, viewportWidth - metrics.margin - groupWidth);
-    const groupStart = clampNumber(
-      viewportWidth / 2 - groupWidth / 2 + (moduleLabelDistance - 1.5) * 18,
-      metrics.margin,
-      largestStart,
-    );
-    const layouts: GlobalModuleLabelLayout[] = [];
-    let fits = true;
-    columns.forEach((columnLabels, columnIndex) => {
-      if (!fits || columnLabels.length === 0) return;
-      const x = groupStart + columnIndex * (metrics.cardWidth + metrics.gap);
-      const slots = verticalSlotsForColumn(x, top, bottom, metrics, obstacles);
-      const yPositions = assignLabelsToSlots(columnLabels, slots, metrics.cardHeight);
-      if (!yPositions) {
-        fits = false;
-        return;
-      }
-      columnLabels.forEach((label, index) => layouts.push({
-        ...label,
-        x: Math.round(x * 2) / 2,
-        y: yPositions[index],
-        width: metrics.cardWidth,
-        height: metrics.cardHeight,
-        column: columnIndex,
-      }));
-    });
-    if (fits && layouts.length === labels.length && !hasAnyOverlap(layouts, obstacles)) return layouts;
+  // Keep the highest-value cards when the viewport cannot physically fit the
+  // complete label set. Returning an empty array would hide useful context.
+  for (let labelCount = priorityLabels.length; labelCount >= 1; labelCount -= 1) {
+    const visibleLabels = priorityLabels
+      .slice(0, labelCount)
+      .toSorted((first, second) => first.anchorY - second.anchorY || compareGlobalLabelPriority(first, second));
+    const minimumColumns = Math.ceil(visibleLabels.length / rawCapacity);
+    for (let columnCount = minimumColumns; columnCount <= maximumColumns; columnCount += 1) {
+      const columns = distributeLabels(visibleLabels, columnCount);
+      const groupWidth = columnCount * metrics.cardWidth + Math.max(0, columnCount - 1) * metrics.gap;
+      const largestStart = Math.max(metrics.margin, viewportWidth - metrics.margin - groupWidth);
+      const groupStart = clampNumber(
+        viewportWidth / 2 - groupWidth / 2 + (moduleLabelDistance - 1.5) * 18,
+        metrics.margin,
+        largestStart,
+      );
+      const layouts: GlobalModuleLabelLayout[] = [];
+      let fits = true;
+      columns.forEach((columnLabels, columnIndex) => {
+        if (!fits || columnLabels.length === 0) return;
+        const x = groupStart + columnIndex * (metrics.cardWidth + metrics.gap);
+        const slots = verticalSlotsForColumn(x, top, bottom, metrics, obstacles);
+        const yPositions = assignLabelsToSlots(columnLabels, slots, metrics.cardHeight);
+        if (!yPositions) {
+          fits = false;
+          return;
+        }
+        columnLabels.forEach((label, index) => layouts.push({
+          ...label,
+          x: Math.round(x * 2) / 2,
+          y: yPositions[index],
+          width: metrics.cardWidth,
+          height: metrics.cardHeight,
+          column: columnIndex,
+        }));
+      });
+      if (fits && layouts.length === visibleLabels.length && !hasAnyOverlap(layouts, obstacles)) return layouts;
+    }
   }
   return [];
 }
@@ -413,7 +430,7 @@ export function resolveGlobalLabelCollisions(
 ) {
   const metrics = globalLabelMetrics(viewportWidth, viewportHeight, moduleLabelScale);
   if (layoutMode === "module") {
-    return resolveModuleNeighborhoodLayout(
+    const neighborhoodLayouts = resolveModuleNeighborhoodLayout(
       projectedLabels,
       viewportWidth,
       viewportHeight,
@@ -421,6 +438,16 @@ export function resolveGlobalLabelCollisions(
       metrics,
       obstacles,
     );
+    if (neighborhoodLayouts.length === projectedLabels.length) return neighborhoodLayouts;
+    const fallbackLayouts = resolveViewportFallback(
+      projectedLabels,
+      viewportWidth,
+      viewportHeight,
+      moduleLabelDistance,
+      metrics,
+      obstacles,
+    );
+    return fallbackLayouts.length > neighborhoodLayouts.length ? fallbackLayouts : neighborhoodLayouts;
   }
   const layouts: GlobalModuleLabelLayout[] = [];
   let sideLayoutFailed = false;
